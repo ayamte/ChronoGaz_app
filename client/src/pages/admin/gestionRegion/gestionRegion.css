@@ -1,0 +1,587 @@
+/* Variables de couleurs ChronoGaz */  
+:root {  
+  --primary-blue: #1F55A3;  
+  --secondary-blue: #3498db;  
+  --dark-gray: #34495e;  
+  --light-gray: #ecf0f1;  
+  --white: #ffffff;  
+  --red: #e74c3c;  
+  --dark-red: #c0392b;  
+  --light-blue: #164a91;  
+  --green: #059669;  
+  --orange: #ea580c;  
+}  
+  
+.region-management-layout {  
+  display: flex;  
+  height: 100vh;  
+}  
+  
+.region-management-wrapper {  
+  margin-left: 256px;  
+  margin-top: 70px;  
+  min-height: calc(100vh - 70px);  
+  background-color: #f8f9fa;  
+  padding: 24px;  
+  transition: margin-left 0.3s ease, width 0.3s ease;  
+  width: calc(100vw - 256px);  
+}  
+  
+/* Quand le body a la classe sidebar-collapsed */  
+body.sidebar-collapsed .region-management-wrapper {  
+  margin-left: 64px;  
+  width: calc(100vw - 64px);  
+}  
+  
+.region-management-container {  
+  width: 100%;  
+  max-width: none;  
+  background-color: #f9fafb;  
+  padding: 1.5rem;  
+}  
+  
+.region-management-content {  
+  width: 100%;  
+  max-width: 80rem;  
+  margin: 0 auto;  
+  display: flex;  
+  flex-direction: column;  
+  gap: 1.5rem;  
+}  
+  
+/* Header Styles */  
+.region-page-header {  
+  margin-bottom: 2rem;  
+}  
+  
+.region-page-title {  
+  font-size: 1.875rem;  
+  font-weight: 700;  
+  color: #111827;  
+  margin: 0;  
+}  
+  
+.region-page-subtitle {  
+  color: #6b7280;  
+  margin-top: 0.5rem;  
+}  
+  
+/* Action Section */  
+.region-action-section {  
+  display: flex;  
+  justify-content: flex-start;  
+  margin-bottom: 1.5rem;  
+}  
+  
+.region-add-button {  
+  display: flex;  
+  align-items: center;  
+  gap: 0.5rem;  
+  padding: 12px 24px;  
+  background-color: var(--secondary-blue);  
+  color: var(--white);  
+  border: none;  
+  border-radius: 8px;  
+  font-weight: 500;  
+  cursor: pointer;  
+  transition: background-color 0.2s ease;  
+}  
+  
+.region-add-button:hover {  
+  background-color: #2980b9;  
+}  
+  
+.region-button-icon {  
+  height: 1rem;  
+  width: 1rem;  
+}  
+  
+/* Search Section */  
+.region-search-section {  
+  margin-bottom: 1.5rem;  
+}  
+  
+.region-search-container {  
+  position: relative;  
+  max-width: 28rem;  
+}  
+  
+.region-search-icon {  
+  position: absolute;  
+  left: 12px;  
+  top: 50%;  
+  transform: translateY(-50%);  
+  color: #9ca3af;  
+  height: 1rem;  
+  width: 1rem;  
+}  
+  
+.region-search-input {  
+  width: 100%;  
+  padding: 12px 12px 12px 40px;  
+  border: 1px solid #d1d5db;  
+  border-radius: 8px;  
+  font-size: 0.875rem;  
+  background-color: var(--white);  
+  transition: border-color 0.2s ease;  
+}  
+  
+.region-search-input:focus {  
+  outline: none;  
+  border-color: var(--primary-blue);  
+  box-shadow: 0 0 0 3px rgba(31, 85, 163, 0.1);  
+}  
+  
+.region-search-input::placeholder {  
+  color: #9ca3af;  
+}  
+  
+/* Table Card */  
+.region-table-card {  
+  background-color: var(--white);  
+  border-radius: 12px;  
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);  
+  border: 1px solid #e5e7eb;  
+  overflow: hidden;  
+}  
+  
+.region-table-header {  
+  padding: 24px 24px 16px 24px;  
+  border-bottom: 1px solid #e5e7eb;  
+}  
+  
+.region-table-title {  
+  font-size: 1.125rem;  
+  font-weight: 600;  
+  color: #111827;  
+  margin: 0;  
+}  
+  
+.region-table-content {  
+  padding: 0;  
+}  
+  
+.region-table-container {  
+  overflow-x: auto;  
+}
+
+/* Table Styles */  
+.region-regions-table {  
+  width: 100%;  
+  border-collapse: collapse;  
+}  
+  
+.region-regions-table thead {  
+  background-color: #f9fafb;  
+}  
+  
+/* Table Styles - Centrer les en-têtes */  
+.region-regions-table th {  
+  padding: 12px 24px;  
+  text-align: center; /* Changé de left à center */  
+  font-size: 0.75rem;  
+  font-weight: 500;  
+  color: #6b7280;  
+  text-transform: uppercase;  
+  letter-spacing: 0.05em;  
+  border-bottom: 1px solid #e5e7eb;  
+}  
+  
+/* Table Styles - Centrer le contenu des cellules */  
+.region-regions-table td {  
+  padding: 16px 24px;  
+  border-bottom: 1px solid #e5e7eb;  
+  font-size: 0.875rem;  
+  color: #111827;  
+  text-align: center; /* Ajouté pour centrer le contenu */  
+}  
+  
+.region-regions-table tbody tr:hover {  
+  background-color: #f9fafb;  
+}  
+  
+.region-font-medium {  
+  font-weight: 500;  
+}  
+  
+/* Action Buttons - Centrer les boutons */  
+.region-action-buttons {  
+  display: flex;  
+  gap: 0.5rem;  
+  justify-content: center; /* Ajouté pour centrer les boutons */  
+}
+  
+.region-edit-action-button,  
+.region-delete-action-button {  
+  display: flex;  
+  align-items: center;  
+  justify-content: center;  
+  padding: 6px;  
+  border: none;  
+  border-radius: 6px;  
+  cursor: pointer;  
+  transition: background-color 0.2s ease;  
+}  
+  
+.region-edit-action-button {  
+  background-color: #f0f9ff;  
+  color: #0369a1;  
+}  
+  
+.region-edit-action-button:hover {  
+  background-color: #e0f2fe;  
+}  
+  
+.region-delete-action-button {  
+  background-color: #fef2f2;  
+  color: #dc2626;  
+}  
+  
+.region-delete-action-button:hover {  
+  background-color: #fee2e2;  
+}  
+  
+.region-action-icon {  
+  height: 1rem;  
+  width: 1rem;  
+}  
+  
+/* Modal Styles */  
+.region-modal-overlay {  
+  position: fixed;  
+  top: 0;  
+  left: 0;  
+  right: 0;  
+  bottom: 0;  
+  background-color: rgba(0, 0, 0, 0.5);  
+  display: flex;  
+  align-items: center;  
+  justify-content: center;  
+  z-index: 1000;  
+  -webkit-backdrop-filter: blur(2px);  
+  backdrop-filter: blur(2px);  
+  animation: regionFadeIn 0.2s ease-out;  
+}  
+  
+.region-modal-content {  
+  background-color: var(--white);  
+  border-radius: 12px;  
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);  
+  width: 95%;  
+  max-width: 500px;  
+  max-height: 90vh;  
+  overflow-y: auto;  
+  animation: regionSlideIn 0.3s ease-out;  
+}  
+  
+.region-modal-header {  
+  display: flex;  
+  align-items: center;  
+  justify-content: space-between;  
+  padding: 24px 32px 16px 32px;  
+  border-bottom: 1px solid #e5e7eb;  
+}  
+  
+.region-modal-title {  
+  font-size: 1.25rem;  
+  font-weight: 600;  
+  color: #111827;  
+  margin: 0;  
+}  
+  
+.region-modal-close {  
+  display: flex;  
+  align-items: center;  
+  justify-content: center;  
+  padding: 8px;  
+  background: none;  
+  border: none;  
+  border-radius: 6px;  
+  cursor: pointer;  
+  transition: background-color 0.2s ease;  
+}  
+  
+.region-modal-close:hover {  
+  background-color: #f3f4f6;  
+}  
+  
+.region-close-icon {  
+  height: 1.25rem;  
+  width: 1.25rem;  
+  color: #6b7280;  
+}  
+  
+/* Form Styles */  
+.region-modal-form {  
+  padding: 24px 32px;  
+  display: flex;  
+  flex-direction: column;  
+  gap: 1.25rem;  
+}  
+  
+.region-form-group {  
+  display: flex;  
+  flex-direction: column;  
+  gap: 0.5rem;  
+}  
+  
+.region-form-label {  
+  font-size: 0.875rem;  
+  font-weight: 500;  
+  color: #374151;  
+}  
+  
+.region-form-input {  
+  width: 100%;  
+  min-width: 0;  
+  padding: 14px 16px;  
+  border: 1px solid #d1d5db;  
+  border-radius: 8px;  
+  font-size: 0.875rem;  
+  background-color: var(--white);  
+  transition: border-color 0.2s ease;  
+  box-sizing: border-box;  
+}  
+  
+.region-form-input:focus {  
+  outline: none;  
+  border-color: var(--primary-blue);  
+  box-shadow: 0 0 0 3px rgba(31, 85, 163, 0.1);  
+}  
+  
+.region-form-input::placeholder {  
+  color: #9ca3af;  
+}  
+  
+.region-form-actions {  
+  display: flex;  
+  justify-content: flex-end;  
+  gap: 0.75rem;  
+  margin-top: 1rem;  
+  padding-top: 1rem;  
+  border-top: 1px solid #e5e7eb;  
+}  
+  
+.region-cancel-button {  
+  padding: 12px 24px;  
+  border: 1px solid #d1d5db;  
+  background-color: var(--white);  
+  color: #374151;  
+  border-radius: 6px;  
+  font-weight: 500;  
+  cursor: pointer;  
+  transition: all 0.2s ease;  
+}  
+  
+.region-cancel-button:hover {  
+  background-color: #f9fafb;  
+}  
+  
+.region-submit-button {  
+  padding: 12px 24px;  
+  background-color: var(--secondary-blue);  
+  color: var(--white);  
+  border: none;  
+  border-radius: 6px;  
+  font-weight: 500;  
+  cursor: pointer;  
+  transition: background-color 0.2s ease;  
+}  
+  
+.region-submit-button:hover {  
+  background-color: #2980b9;  
+}  
+  
+/* No Results */  
+.region-no-results {  
+  text-align: center;  
+  padding: 2rem;  
+  color: #6b7280;  
+  font-size: 0.875rem;  
+}  
+  
+/* Animations */  
+@keyframes regionFadeIn {  
+  from {  
+    opacity: 0;  
+  }  
+  to {  
+    opacity: 1;  
+  }  
+}  
+  
+@keyframes regionSlideIn {  
+  from {  
+    opacity: 0;  
+    transform: translateY(-20px) scale(0.95);  
+  }  
+  to {  
+    opacity: 1;  
+    transform: translateY(0) scale(1);  
+  }  
+}  
+  
+@keyframes regionFadeInUp {  
+  from {  
+    opacity: 0;  
+    transform: translateY(20px);  
+  }  
+  to {  
+    opacity: 1;  
+    transform: translateY(0);  
+  }  
+}  
+  
+.region-table-card {  
+  animation: regionFadeInUp 0.6s ease-out;  
+}  
+  
+/* Responsive Design */  
+@media (max-width: 768px) {  
+  .region-management-wrapper {  
+    margin-left: 256px;  
+    padding: 16px;  
+  }  
+    
+  body.sidebar-collapsed .region-management-wrapper {  
+    margin-left: 64px;  
+    width: calc(100vw - 64px);  
+  }  
+    
+  .region-page-title {  
+    font-size: 1.5rem;  
+  }  
+    
+  .region-table-card {  
+    margin: 0 -16px;  
+    border-radius: 0;  
+  }  
+    
+  .region-regions-table th,  
+  .region-regions-table td {  
+    padding: 8px 12px;  
+  }  
+    
+  .region-regions-table th {  
+    font-size: 0.625rem;  
+  }  
+    
+  .region-regions-table td {  
+    font-size: 0.75rem;  
+  }  
+    
+  .region-modal-content {  
+    width: 95%;  
+    max-width: 95vw;  
+    margin: 10px;  
+  }  
+    
+  .region-modal-header {  
+    padding: 20px 24px 16px 24px;  
+  }  
+    
+  .region-modal-form {  
+    padding: 20px 24px;  
+  }  
+}  
+  
+@media (max-width: 480px) {  
+  .region-management-wrapper {  
+    padding: 12px;  
+  }  
+    
+  .region-management-container {  
+    padding: 1rem;  
+  }  
+    
+  .region-page-header {  
+    margin-bottom: 1.5rem;  
+  }  
+    
+  .region-search-container {  
+    max-width: 100%;  
+  }  
+    
+  .region-add-button {  
+    width: 100%;  
+    justify-content: center;  
+  }  
+    
+  .region-table-header {  
+    padding: 16px;  
+  }  
+    
+  .region-regions-table {  
+    font-size: 0.75rem;  
+  }  
+    
+  .region-regions-table th,  
+  .region-regions-table td {  
+    padding: 6px 8px;  
+  }  
+    
+  .region-modal-content {  
+    width: 98%;  
+    max-width: 98vw;  
+    margin: 5px;  
+  }  
+    
+  .region-modal-header {  
+    padding: 16px 20px 12px 20px;  
+  }  
+    
+  .region-modal-form {  
+    padding: 16px 20px;  
+  }  
+}  
+  
+/* Hover Effects */  
+.region-table-card:hover {  
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);  
+}  
+  
+/* Focus States */  
+.region-add-button:focus,  
+.region-search-input:focus,  
+.region-edit-action-button:focus,  
+.region-delete-action-button:focus,  
+.region-cancel-button:focus,  
+.region-submit-button:focus {  
+  outline: 2px solid var(--primary-blue);  
+  outline-offset: 2px;  
+}  
+  
+/* Animation pour les éléments du modal */  
+.region-modal-form .region-form-group {  
+  animation: regionFadeInUp 0.4s ease-out;  
+}  
+  
+/* Styles pour les états de validation */  
+.region-form-input:invalid {  
+  border-color: var(--red);  
+}  
+  
+.region-form-input:valid {  
+  border-color: var(--green);  
+}  
+  
+/* Styles pour l'impression */  
+@media print {  
+  .region-modal-overlay,  
+  .region-add-button,  
+  .region-search-section,  
+  .region-action-buttons {  
+    display: none;  
+  }  
+    
+  .region-management-wrapper {  
+    margin-left: 0;  
+    margin-top: 0;  
+    padding: 0;  
+  }  
+    
+  .region-table-card {  
+    box-shadow: none;  
+    border: 1px solid #000;  
+  }  
+}
