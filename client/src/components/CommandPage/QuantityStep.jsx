@@ -1,8 +1,8 @@
 // components/QuantityStep.jsx
 import React from 'react';
 import GasCard from './GasCard';
-import butaButane from '../../../src/assets/buta-gaz-butane.svg';
-import butaPropane from '../../../src/assets/buta-gaz-propane.svg';
+import butaButane from '../../../src/assets/svg/buta-gaz-butane.svg';
+import butaPropane from '../../../src/assets/svg/buta-gaz-propane.svg';
 
 
 const QuantityStep = ({ 

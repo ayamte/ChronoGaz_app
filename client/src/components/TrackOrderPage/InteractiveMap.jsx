@@ -167,7 +167,7 @@ const InteractiveMap = ({ deliveryPosition, driverName, isVisible, destinationPo
         <div 
           ref={mapRef}
           className="w-full h-96"
-          style={{ minHeight: '400px' }}
+          style={{ minHeight: '400px', position: 'relative', zIndex: 0 }}
         />
         
         {/* Footer de la carte */}
