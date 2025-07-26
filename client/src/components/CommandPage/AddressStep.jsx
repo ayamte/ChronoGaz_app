@@ -12,6 +12,8 @@ const AddressStep = ({
   onNext, 
   canProceed 
 }) => {
+
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-bold mb-6 text-center" style={{color: '#1F55A3'}}>

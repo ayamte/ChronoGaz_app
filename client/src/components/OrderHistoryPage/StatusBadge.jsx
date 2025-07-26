@@ -20,14 +20,6 @@ const StatusBadge = ({ status }) => {
             bgColor: '#FEF3C7',
             textColor: '#92400E'
           };
-        case 'en_route':
-          return { 
-            text: 'En route', 
-            icon: Truck, 
-            color: '#4DAEBD', 
-            bgColor: '#E0F2FE',
-            textColor: '#0C4A6E'
-          };
         case 'annulee':
           return { 
             text: 'Annulée', 

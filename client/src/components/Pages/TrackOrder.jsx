@@ -100,11 +100,7 @@ const TrackOrder = () => {
     vehicle: "Camionnette - ABC 1234"
   };
 
-  const orderItems = [
-    { name: "Bouteille Propane 34kg x 2", price: 200 },
-    { name: "Bouteille Butane 12kg x 1", price: 50 },
-    { name: "Frais de livraison", price: 20 }
-  ];
+ 
 
   const getStatusDescription = () => {
     switch(orderStatus) {
@@ -144,10 +140,7 @@ const TrackOrder = () => {
           destinationPosition={destinationPosition}
         />
 
-        <OrderSummary 
-          orderItems={orderItems}
-          total={270}
-        />
+        <OrderSummary />
       </div>
     </div>
   );

@@ -70,7 +70,7 @@ const OrderHistory = () => {
         id: "GAZ-2024-001230",
         date: "2024-07-22",
         time: "11:30",
-        status: "en_route",
+        status: "en_cours",
         items: [
           { name: "Bouteille Propane 34kg", quantity: 1, price: 100 },
           { name: "Bouteille Butane 12kg", quantity: 1, price: 50 }

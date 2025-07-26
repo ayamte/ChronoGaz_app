@@ -84,7 +84,7 @@ const OrderCard = ({ order }) => {
                 </button>
               ) : null}
               
-              {order.driver && (order.status === 'en_cours' || order.status === 'en_route') && (
+              {order.driver && (order.status === 'en_cours') && (
                 <button 
                   className="px-4 py-2 rounded-lg text-white font-medium hover:opacity-80 transition-opacity"
                   style={{backgroundColor: '#1F55A3'}}

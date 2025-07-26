@@ -6,7 +6,7 @@ const SearchAndFilters = ({ searchTerm, setSearchTerm, filterStatus, setFilterSt
     const filterButtons = [
       { value: 'toutes', label: 'Toutes', color: '#6B7280' },
       { value: 'livree', label: 'Livrées', color: '#10B981' },
-      { value: 'en_route', label: 'En route', color: '#4DAEBD' },
+    //  { value: 'en_route', label: 'En route', color: '#4DAEBD' },
       { value: 'en_cours', label: 'En cours', color: '#F59E0B' },
       { value: 'annulee', label: 'Annulées', color: '#EF4444' }
     ];
