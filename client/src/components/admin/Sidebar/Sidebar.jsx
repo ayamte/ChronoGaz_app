@@ -31,7 +31,12 @@ const menuItems = [
     icon: Users,    
     label: "Gestion des Clients",    
     href: "/gestionclient",    
-  },    
+  }, 
+  {    
+    icon: Users,    
+    label: "Gestion des employés",    
+    href: "/gestion-chauffeur",    
+  }, 
   {    
     icon: MapPin,    
     label: "Gestion des régions",    
@@ -41,12 +46,22 @@ const menuItems = [
     icon: Receipt,    
     label: "Bons fournisseurs",    
     href: "/gestionbon",    
+  }, 
+   {    
+    icon: Receipt,    
+    label: "Ajouter produit",    
+    href: "/ajouter-produit",    
   },    
   {    
     icon: Package,    
     label: "Suivre les commandes",    
     href: "/suivicommande",    
-  },    
+  },  
+    {    
+    icon: Package,    
+    label: "Gérer les commandes",    
+    href: "/gerer-commande",    
+  }  
 ]    
     
 function SidebarNavigation({ userName = "Utilisateur" }) {    

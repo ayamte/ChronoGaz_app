@@ -5,11 +5,21 @@ import Dashboard from './pages/admin/Dashboard/Dashboard';
 import GestionCamion from './pages/admin/gestionCamion/gestionCamion';
 import InfoCamion from './pages/admin/infoCamion/infoCamion';  
 import GestionClient from './pages/admin/gestionClient/gestionClient';
+import GestionChauffeur from './pages/admin/GestionChauffeur/GestionChauffeur';
 import GestionRegion from './pages/admin/gestionRegion/gestionRegion';
 import GestionBon from './pages/admin/gestionBon/gestionBon';
+import AjouterProduit from './pages/admin/AjouterProduit/AjouterProduit';
 import SuiviCommande from './pages/admin/suiviCommande/suiviCommande';
-import { LoginForm } from './pages/Login/login'
-import { SignupForm } from './pages/Signup/signup'
+import OrderManagement from './pages/admin/OrderManagement/OrderManagement';
+import { LoginForm } from './pages/Login/login';
+import { SignupForm } from './pages/Signup/signup';
+import DailyRoutePage from './pages/chauffeur/DailyRoutePage/DailyRoutePage';
+import NextOrderMap from './pages/chauffeur/NextOrderMap/NextOrderMap';
+import TruckUnloading from './pages/chauffeur/TruckUnloading/TruckUnloading';
+import TruckLoading from './pages/chauffeur/TruckLoading/TruckLoading';
+import RouteHistory from './pages/chauffeur/RouteHistory/RouteHistory';
+import EndOfRoutePage from './pages/chauffeur/EndOfRoute/EndOfRoute';
+import SupplierVoucher from './pages/chauffeur/SupplierVoucher/SupplierVoucher';
 import './App.css';      
       
 function App() {      
@@ -22,11 +32,21 @@ function App() {
           <Route path="/gestioncamion" element={<GestionCamion />} /> 
           <Route path="/infoCamion" element={<InfoCamion />} />
           <Route path="/gestionclient" element={<GestionClient />} /> 
+          <Route path="/gestion-chauffeur" element={<GestionChauffeur />} /> 
           <Route path="/gestionregion" element={<GestionRegion />} /> 
           <Route path="/gestionbon" element={<GestionBon />} /> 
+          <Route path="/ajouter-produit" element={<AjouterProduit />} /> 
           <Route path="/suivicommande" element={<SuiviCommande />} /> 
+          <Route path="/gerer-commande" element={<OrderManagement />} />
           <Route path="/login" element={<LoginForm />} /> 
           <Route path="/signup" element={<SignupForm />} /> 
+          <Route path="/chauffeur/dailyroutepage" element={<DailyRoutePage />} />
+          <Route path="/chauffeur/next-order" element={<NextOrderMap />} />
+          <Route path="/chauffeur/chargement" element={<TruckLoading  />} /> 
+          <Route path="/chauffeur/dechargement" element={<TruckUnloading  />} /> 
+          <Route path="/chauffeur/historique" element={<RouteHistory  />} /> 
+          <Route path="/chauffeur/end-route" element={<EndOfRoutePage />} />
+          <Route path="/chauffeur/supplier-voucher" element={<SupplierVoucher />} />
           {/*<Route path="/info-Camion/:id" element={<InfoCamion />} />*/}
         </Routes>      
       </div>      
