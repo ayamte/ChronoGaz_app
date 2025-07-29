@@ -44,6 +44,7 @@ const SummaryStep = ({ orderData, onBack, onConfirm }) => {
             <p className="text-gray-600">Position GPS: {orderData.gpsLocation?.latitude}, {orderData.gpsLocation?.longitude}</p>
           ) : (
             <div className="text-gray-600">
+              <p>{orderData.address.region}</p>
               <p>{orderData.address.fullAddress}</p>
               <p>{orderData.address.phone}</p>
               {orderData.address.instructions && <p className="italic">{orderData.address.instructions}</p>}

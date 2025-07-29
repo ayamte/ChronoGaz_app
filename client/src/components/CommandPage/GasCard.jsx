@@ -2,7 +2,7 @@
 import React from 'react';
 import { ShoppingCart, Plus, Minus } from 'lucide-react';
 
-const GasCard = ({ title, weight, price, quantity, onQuantityChange, imageUrl, productId }) => {
+const GasCard = ({ title, weight, price, quantity, onQuantityChange, gamme, imageUrl, productId, actif }) => {
   return (
     <div className="border border-gray-300 rounded-xl p-6 bg-white hover:shadow-xl transition-shadow duration-300 ease-in-out max-w-sm mx-auto">
       <div className="flex flex-col items-center">
@@ -15,7 +15,9 @@ const GasCard = ({ title, weight, price, quantity, onQuantityChange, imageUrl, p
         </div>
         <h3 className="text-2xl font-extrabold text-blue-900 mb-2">{title}</h3>
         <p className="text-gray-500 mb-1 uppercase tracking-wide font-semibold">{weight}</p>
+        <p className="text-gray-500 mb-1 tracking-wide font-semibold">{gamme}</p>
         <p className="text-3xl font-extrabold text-blue-700 mb-6">{price} DH</p>
+        <p className={`text-gray-500 mb-1 tracking-wide font-semibold ${actif ? 'text-green-600' : 'text-red-600'}`}>{actif ? "Disponible" : "Pas disponible"}</p>
         <div className="flex items-center space-x-5">
           <button
             onClick={() => onQuantityChange(productId, 'decrement')}

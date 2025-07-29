@@ -12,7 +12,7 @@ const Command = () => {
   const [quantities, setQuantities] = useState({});
   const [useGPS, setUseGPS] = useState(false);
   const [address, setAddress] = useState({
-    fullAddress: '2 Mars, immeuble 122, Apartement 12',
+    fullAddress: 'immeuble 122, Apartement 12',
     phone: '0674563411',
     instructions: ''
   });
@@ -20,78 +20,100 @@ const Command = () => {
 
   // Produits disponibles (normalement depuis votre API)
   const products = [
-    {
-      id: 1,
-      reference: 'BUT-12KG-AFRIQUIA',
-      nom_court: 'Butane 12kg Afriquia',
-      type_gaz: 'BUTANE',
-      capacite: 12,
-      marque: 'Afriquia',
-      image_url: butaButane
-    },
-    {
-      id: 2,
-      reference: 'BUT-12KG-SHELL',
-      nom_court: 'Butane 12kg Shell',
-      type_gaz: 'BUTANE',
-      capacite: 12,
-      marque: 'Shell',
-      image_url: butaButane
-    },
-    {
-      id: 3,
-      reference: 'PROP-12KG-TOTAL',
-      nom_court: 'Propane 12kg Total',
-      type_gaz: 'PROPANE',
-      capacite: 12,
-      marque: 'Total',
-      image_url: butaPropane
-    },
-    {
-      id: 4,
-      reference: 'BUT-34KG-AFRIQUIA',
-      nom_court: 'Butane 34kg Afriquia',
-      type_gaz: 'BUTANE',
-      capacite: 34,
-      marque: 'Afriquia',
-      image_url: butaButane
-    },
-    {
-      id: 5,
-      reference: 'PROP-34KG-SHELL',
-      nom_court: 'Propane 34kg Shell',
-      type_gaz: 'PROPANE',
-      capacite: 34,
-      marque: 'Shell',
-      image_url: butaPropane
-    },
-    {
-      id: 6,
-      reference: 'PROP-34KG-SHELL',
-      nom_court: 'Propane 34kg Shell',
-      type_gaz: 'PROPANE',
-      capacite: 34,
-      marque: 'Shell',
-      image_url: butaPropane
-    }
+    // Butane 12 kg
+  {
+    id: 1,
+    reference: 'BUT-12KG-AFRIQUIA',
+    nom_court: 'Butane 12kg Afriquia',
+    type_gaz: 'BUTANE',
+    capacite: 12,
+    marque: 'Afriquia',
+    gamme: 'Économique',
+    image_url: butaButane,
+    actif: 1
+  },
+  {
+    id: 2,
+    reference: 'BUT-12KG-SHELL',
+    nom_court: 'Butane 12kg Shell',
+    type_gaz: 'BUTANE',
+    capacite: 12,
+    marque: 'Shell',
+    gamme: 'Standard',
+    image_url: butaButane,
+    actif: 1
+  },
+  {
+    id: 3,
+    reference: 'BUT-12KG-TOTAL',
+    nom_court: 'Butane 12kg Total',
+    type_gaz: 'BUTANE',
+    capacite: 12,
+    marque: 'Total',
+    gamme: 'Premium',
+    image_url: butaButane,
+    actif: 1
+  },
+
+  // Propane 34 kg
+  {
+    id: 4,
+    reference: 'PROP-34KG-AFRIQUIA',
+    nom_court: 'Propane 34kg Afriquia',
+    type_gaz: 'PROPANE',
+    capacite: 34,
+    marque: 'Afriquia',
+    gamme: 'Économique',
+    image_url: butaPropane,
+    actif: 1
+  },
+  {
+    id: 5,
+    reference: 'PROP-34KG-SHELL',
+    nom_court: 'Propane 34kg Shell',
+    type_gaz: 'PROPANE',
+    capacite: 34,
+    marque: 'Shell',
+    gamme: 'Standard',
+    image_url: butaPropane,
+    actif: 0
+  },
+  {
+    id: 6,
+    reference: 'PROP-34KG-TOTAL',
+    nom_court: 'Propane 34kg Total',
+    type_gaz: 'PROPANE',
+    capacite: 34,
+    marque: 'Total',
+    gamme: 'Premium',
+    image_url: butaPropane,
+    actif: 1
+  }
   ];
 
   const prices = {
-    1: 120, // BUT-12KG-AFRIQUIA
-    2: 125, // BUT-12KG-SHELL
-    3: 135, // PROP-12KG-TOTAL
-    4: 350, // BUT-34KG-AFRIQUIA
-    5: 380,  // PROP-34KG-SHELL
-    6: 200
+    1: 120,  // Butane 12kg Afriquia (Économique)
+    2: 130,  // Butane 12kg Shell (Standard)
+    3: 140,  // Butane 12kg Total (Premium)
+    4: 350,  // Propane 34kg Afriquia (Économique)
+    5: 370,  // Propane 34kg Shell (Standard)
+    6: 390   // Propane 34kg Total (Premium)
   };
 
   const deliveryFee = 20;
 
   const handleQuantityChange = (productId, operation) => {
+    const product = products.find(p => p.id === productId);
+    if(!product) return;
+
+    if (operation === 'increment' && product.actif !== 1){
+      alert('Impossible d\'ajouter un produit non disponible');
+      return;
+    }
     setQuantities(prev => ({
       ...prev,
-      [productId]: operation === 'increment' 
-        ? (prev[productId] || 0) + 1 
+      [productId]: operation === 'increment'
+        ? (prev[productId] || 0) + 1
         : Math.max(0, (prev[productId] || 0) - 1)
     }));
   };

@@ -1,5 +1,5 @@
-import React from 'react';
-import { MapPin } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Map } from 'lucide-react';
 
 const AddressStep = ({ 
   useGPS, 
@@ -12,7 +12,21 @@ const AddressStep = ({
   onNext, 
   canProceed 
 }) => {
+  const [selectedRegion, setSelectedRegion] = useState('');
+  const [showRegions, setShowRegions] = useState(false);
 
+  const regions = [
+    { id: 'mars', name: '2 Mars', color: '#FF6B6B' },
+    { id: 'maarif', name: 'Maarif', color: '#4ECDC4' },
+    { id: 'biranzerane', name: 'Bir Anzarane', color: '#45B7D1' },
+    { id: 'alqods', name: 'Al Qods', color: '#96CEB4' }
+  ];
+
+  const handleRegionSelect = (regionId) => {
+    setSelectedRegion(regionId);
+    const region = regions.find(r => r.id === regionId);
+    setAddress({...address, region: region.name});
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -65,7 +79,10 @@ const AddressStep = ({
               id="manual"
               name="addressType"
               checked={!useGPS}
-              onChange={() => setUseGPS(false)}
+              onChange={() => {
+                setUseGPS(false);
+                setShowRegions(false);
+              }}
               className="w-4 h-4"
             />
             <label htmlFor="manual" className="font-medium cursor-pointer">
@@ -75,6 +92,54 @@ const AddressStep = ({
           
           {!useGPS && (
             <div className="space-y-4">
+              {/* Region Selection */}
+              <div className="mb-4">
+                <button
+                  onClick={() => setShowRegions(!showRegions)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  <Map size={16} style={{color: '#4DAEBD'}} />
+                  <span className="text-sm font-medium">Choisir une région</span>
+                </button>
+                
+                {showRegions && (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {regions.map((region) => (
+                      <div
+                        key={region.id}
+                        onClick={() => {
+                          handleRegionSelect(region.id);
+                          setShowRegions(false);
+                        }}
+                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                          selectedRegion === region.id
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{backgroundColor: region.color}}
+                          ></div>
+                          <span className={`text-sm font-medium ${
+                            selectedRegion === region.id ? 'text-blue-600' : 'text-gray-700'
+                          }`}>
+                            {region.name}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {selectedRegion && (
+                  <p className="mt-2 text-sm text-blue-600">
+                    Région sélectionnée: {regions.find(r => r.id === selectedRegion)?.name}
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2">Adresse complète *</label>
                 <textarea

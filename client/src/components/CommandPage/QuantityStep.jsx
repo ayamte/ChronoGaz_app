@@ -18,7 +18,9 @@ const QuantityStep = ({ products, quantities, prices, onQuantityChange, onNext, 
             price={prices[product.id]}
             quantity={quantities[product.id] || 0}
             onQuantityChange={onQuantityChange}
+            gamme={product.gamme}
             imageUrl={product.image_url}
+            actif={product.actif}
           />
         ))}
       </div>
