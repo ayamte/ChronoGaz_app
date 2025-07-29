@@ -16,11 +16,48 @@ const AddressStep = ({
   const [showRegions, setShowRegions] = useState(false);
 
   const regions = [
-    { id: 'mars', name: '2 Mars', color: '#FF6B6B' },
-    { id: 'maarif', name: 'Maarif', color: '#4ECDC4' },
-    { id: 'biranzerane', name: 'Bir Anzarane', color: '#45B7D1' },
-    { id: 'alqods', name: 'Al Qods', color: '#96CEB4' }
+    {
+      id: 'mars',
+      name: '2 Mars',
+      color: '#FF6B6B',
+      description: 'Quartier résidentiel au centre-ville.',
+      zone_geographique: 'POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))',
+      actif: 1,
+      created_at: '2025-07-29T10:00:00Z',
+      updated_at: '2025-07-29T10:00:00Z'
+    },
+    {
+      id: 'maarif',
+      name: 'Maarif',
+      color: '#4ECDC4',
+      description: 'Quartier commerçant très fréquenté.',
+      zone_geographique: 'POLYGON((1 1, 1 2, 2 2, 2 1, 1 1))',
+      actif: 1,
+      created_at: '2025-07-29T10:00:00Z',
+      updated_at: '2025-07-29T10:00:00Z'
+    },
+    {
+      id: 'biranzerane',
+      name: 'Bir Anzarane',
+      color: '#45B7D1',
+      description: 'Zone longeant le boulevard Bir Anzarane.',
+      zone_geographique: 'POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))',
+      actif: 1,
+      created_at: '2025-07-29T10:00:00Z',
+      updated_at: '2025-07-29T10:00:00Z'
+    },
+    {
+      id: 'alqods',
+      name: 'Al Qods',
+      color: '#96CEB4',
+      description: 'Quartier résidentiel populaire.',
+      zone_geographique: 'POLYGON((3 3, 3 4, 4 4, 4 3, 3 3))',
+      actif: 1,
+      created_at: '2025-07-29T10:00:00Z',
+      updated_at: '2025-07-29T10:00:00Z'
+    }
   ];
+  ;
 
   const handleRegionSelect = (regionId) => {
     setSelectedRegion(regionId);

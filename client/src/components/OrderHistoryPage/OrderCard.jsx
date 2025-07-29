@@ -22,7 +22,7 @@ const OrderCard = ({ order }) => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-bold" style={{color: '#1F55A3'}}>
-                {order.id}
+                {order.numero_commande}
               </h3>
               <p className="text-gray-600 text-sm">
                 {formatDate(order.date)} à {order.time}
