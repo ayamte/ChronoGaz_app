@@ -21,74 +21,116 @@ const Command = () => {
   // Produits disponibles (normalement depuis votre API)
   const products = [
     // Butane 12 kg
-  {
-    id: 1,
-    reference: 'BUT-12KG-AFRIQUIA',
-    nom_court: 'Butane 12kg Afriquia',
-    type_gaz: 'BUTANE',
-    capacite: 12,
-    marque: 'Afriquia',
-    gamme: 'Économique',
-    image_url: butaButane,
-    actif: 1
-  },
-  {
-    id: 2,
-    reference: 'BUT-12KG-SHELL',
-    nom_court: 'Butane 12kg Shell',
-    type_gaz: 'BUTANE',
-    capacite: 12,
-    marque: 'Shell',
-    gamme: 'Standard',
-    image_url: butaButane,
-    actif: 1
-  },
-  {
-    id: 3,
-    reference: 'BUT-12KG-TOTAL',
-    nom_court: 'Butane 12kg Total',
-    type_gaz: 'BUTANE',
-    capacite: 12,
-    marque: 'Total',
-    gamme: 'Premium',
-    image_url: butaButane,
-    actif: 1
-  },
-
-  // Propane 34 kg
-  {
-    id: 4,
-    reference: 'PROP-34KG-AFRIQUIA',
-    nom_court: 'Propane 34kg Afriquia',
-    type_gaz: 'PROPANE',
-    capacite: 34,
-    marque: 'Afriquia',
-    gamme: 'Économique',
-    image_url: butaPropane,
-    actif: 1
-  },
-  {
-    id: 5,
-    reference: 'PROP-34KG-SHELL',
-    nom_court: 'Propane 34kg Shell',
-    type_gaz: 'PROPANE',
-    capacite: 34,
-    marque: 'Shell',
-    gamme: 'Standard',
-    image_url: butaPropane,
-    actif: 0
-  },
-  {
-    id: 6,
-    reference: 'PROP-34KG-TOTAL',
-    nom_court: 'Propane 34kg Total',
-    type_gaz: 'PROPANE',
-    capacite: 34,
-    marque: 'Total',
-    gamme: 'Premium',
-    image_url: butaPropane,
-    actif: 1
-  }
+      {
+        id: 1,
+        reference: 'BUT-12KG-AFRIQUIA',
+        nom_court: 'Butane 12kg Afriquia',
+        nom_long: 'Bouteille de Gaz Butane 12kg Afriquia - Gamme Économique',
+        type_gaz: 'BUTANE',
+        capacite: 12,
+        marque: 'Afriquia',
+        gamme: 'Économique',
+        description: 'Bouteille de gaz butane de 12kg de la marque Afriquia. Idéale pour un usage domestique quotidien avec un excellent rapport qualité-prix. Parfaite pour la cuisine, le chauffage d\'appoint et l\'eau chaude.',
+        image_url: butaButane,
+        poids_vide: 15.5,
+        poids_plein: 27.5,
+        category_id: 1,
+        actif: 1,
+        created_at: '2024-01-15T10:30:00Z',
+        updated_at: '2024-12-01T14:20:00Z'
+      },
+      {
+        id: 2,
+        reference: 'BUT-12KG-SHELL',
+        nom_court: 'Butane 12kg Shell',
+        nom_long: 'Bouteille de Gaz Butane 12kg Shell - Gamme Standard',
+        type_gaz: 'BUTANE',
+        capacite: 12,
+        marque: 'Shell',
+        gamme: 'Standard',
+        description: 'Bouteille de gaz butane Shell 12kg, qualité standard fiable. Conçue pour répondre aux besoins énergétiques domestiques avec une combustion propre et efficace.',
+        image_url: butaButane,
+        poids_vide: 15.2,
+        poids_plein: 27.2,
+        category_id: 1,
+        actif: 1,
+        created_at: '2024-01-20T09:15:00Z',
+        updated_at: '2024-11-28T16:45:00Z'
+      },
+      {
+        id: 3,
+        reference: 'BUT-12KG-TOTAL',
+        nom_court: 'Butane 12kg Total',
+        nom_long: 'Bouteille de Gaz Butane 12kg Total - Gamme Premium',
+        type_gaz: 'BUTANE',
+        capacite: 12,
+        marque: 'Total',
+        gamme: 'Premium',
+        description: 'Bouteille de gaz butane premium Total 12kg. Qualité supérieure avec une pureté optimale du gaz pour une performance maximale. Recommandée pour les utilisateurs exigeants.',
+        image_url: butaButane,
+        poids_vide: 15.8,
+        poids_plein: 27.8,
+        category_id: 1,
+        actif: 1,
+        created_at: '2024-01-25T11:00:00Z',
+        updated_at: '2024-12-02T13:30:00Z'
+      },
+    
+      // Propane 34 kg
+      {
+        id: 4,
+        reference: 'PROP-34KG-AFRIQUIA',
+        nom_court: 'Propane 34kg Afriquia',
+        nom_long: 'Bouteille de Gaz Propane 34kg Afriquia - Usage Professionnel',
+        type_gaz: 'PROPANE',
+        capacite: 34,
+        marque: 'Afriquia',
+        gamme: 'Économique',
+        description: 'Grande bouteille de propane 34kg Afriquia, parfaite pour les besoins professionnels et industriels. Résistance aux basses températures et performance constante.',
+        image_url: butaPropane,
+        poids_vide: 28.5,
+        poids_plein: 62.5,
+        category_id: 2,
+        actif: 1,
+        created_at: '2024-02-01T08:45:00Z',
+        updated_at: '2024-11-30T10:15:00Z'
+      },
+      {
+        id: 5,
+        reference: 'PROP-34KG-SHELL',
+        nom_court: 'Propane 34kg Shell',
+        nom_long: 'Bouteille de Gaz Propane 34kg Shell - Qualité Industrielle',
+        type_gaz: 'PROPANE',
+        capacite: 34,
+        marque: 'Shell',
+        gamme: 'Standard',
+        description: 'Bouteille de propane Shell 34kg pour usage industriel et commercial. Conçue pour les applications nécessitant une grande quantité de gaz avec une fiabilité éprouvée.',
+        image_url: butaPropane,
+        poids_vide: 28.2,
+        poids_plein: 62.2,
+        category_id: 2,
+        actif: 0, // Pas disponible
+        created_at: '2024-02-05T14:20:00Z',
+        updated_at: '2024-12-01T09:00:00Z'
+      },
+      {
+        id: 6,
+        reference: 'PROP-34KG-TOTAL',
+        nom_court: 'Propane 34kg Total',
+        nom_long: 'Bouteille de Gaz Propane 34kg Total - Excellence Professionnelle',
+        type_gaz: 'PROPANE',
+        capacite: 34,
+        marque: 'Total',
+        gamme: 'Premium',
+        description: 'Bouteille de propane Total 34kg haut de gamme. Qualité premium pour les professionnels exigeants. Pureté maximale et performance exceptionnelle dans toutes les conditions.',
+        image_url: butaPropane,
+        poids_vide: 29.0,
+        poids_plein: 63.0,
+        category_id: 2,
+        actif: 1,
+        created_at: '2024-02-10T16:30:00Z',
+        updated_at: '2024-12-02T15:45:00Z'
+      }
   ];
 
   const prices = {
