@@ -1,115 +1,177 @@
 import { useState } from "react"  
+import { Eye, EyeOff, Mail, Lock, AlertCircle, User } from "lucide-react"  
+import { authService } from "../services/authService"  
 import "./login.css"  
-import backgroundLogin from "../../assets/background_login.png";  
+import { redirectUserByRole } from '../utils/redirectUtils'; 
   
-export function LoginForm({ className = "", ...props }) {  
+const LoginPage = () => {  
   const [formData, setFormData] = useState({  
     email: "",  
-    password: ""  
+    password: "",  
   })  
+  const [showPassword, setShowPassword] = useState(false)  
+  const [isLoading, setIsLoading] = useState(false)  
+  const [error, setError] = useState("")  
+  const [rememberMe, setRememberMe] = useState(false)  
   
-  const handleInputChange = (e) => {  
-    const { name, value } = e.target  
-    setFormData(prev => ({  
+  const redirectUserByRole = (role) => {  
+    switch (role) {  
+      case 'ADMIN':  
+        window.location.href = '/dashboard';  
+        break;  
+      case 'CLIENT':  
+        window.location.href = '/Command';  
+        break;  
+      case 'EMPLOYE':  
+        window.location.href = '/chauffeur/dailyroutepage';  
+        break;  
+      default:  
+        window.location.href = '/';  
+    }  
+  };  
+  
+  const handleSubmit = async (e) => {  
+    e.preventDefault()  
+    setIsLoading(true)  
+    setError("")  
+  
+    try {  
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/login`, {  
+        method: "POST",  
+        headers: {  
+          "Content-Type": "application/json",  
+        },  
+        body: JSON.stringify({  
+          email: formData.email,  
+          password: formData.password  
+        }),  
+      })  
+  
+      const data = await response.json()  
+  
+      if (data.success) {  
+        // Utiliser authService pour stocker les données  
+        authService.setToken(data.data.token);  
+        authService.setUser(data.data.user);  
+          
+        // Redirection selon le rôle  
+        redirectUserByRole(data.data.user.role);  
+      } else {  
+        throw new Error(data.message)  
+      }  
+    } catch (err) {  
+      setError(err.message || "Une erreur est survenue")  
+    } finally {  
+      setIsLoading(false)  
+    }  
+  }  
+  
+  const handleChange = (e) => {  
+    setFormData((prev) => ({  
       ...prev,  
-      [name]: value  
+      [e.target.name]: e.target.value,  
     }))  
   }  
   
-  const handleSubmit = (e) => {  
-    e.preventDefault()  
-    console.log("Login attempt:", formData)  
-  }  
-  
   return (  
-  <div className={`login-page-background`}>  
-    <div className={`login-form-container ${className}`} {...props}> 
-      <div className="login-card">  
-        <div className="login-card-content">  
-          <form className="login-form" onSubmit={handleSubmit}>  
-            <div className="login-form-inner">  
-              <div className="login-header">  
-                <h1 className="login-title">Welcome back</h1>  
-                <p className="login-subtitle">Login to your ChronoGaz account</p>  
-              </div>  
-                
-              <div className="login-field">  
-                <label htmlFor="email" className="login-label">Email</label>  
-                <input   
-                  id="email"   
+    <div className="login-container">  
+      <div className="login-background"></div>  
+  
+      <div className="login-content">  
+        <div className="login-card">  
+          {/* Header */}  
+          <div className="login-header">  
+            <div className="login-icon">  
+              <User className="icon" />  
+            </div>  
+            <h1 className="login-title">Bon retour !</h1>  
+            <p className="login-subtitle">Connectez-vous à votre compte</p>  
+          </div>  
+  
+          {/* Error Alert */}  
+          {error && (  
+            <div className="error-alert">  
+              <AlertCircle className="error-icon" />  
+              <span>{error}</span>  
+            </div>  
+          )}  
+  
+          {/* Form */}  
+          <form onSubmit={handleSubmit} className="login-form">  
+            <div className="form-group">  
+              <label htmlFor="email" className="form-label">  
+                Email  
+              </label>  
+              <div className="input-wrapper">  
+                <Mail className="input-icon" />  
+                <input  
+                  id="email"  
                   name="email"  
-                  type="email"   
-                  placeholder="m@example.com"   
+                  type="email"  
+                  placeholder="votre@email.com"  
                   value={formData.email}  
-                  onChange={handleInputChange}  
-                  className="login-input"  
-                  required   
+                  onChange={handleChange}  
+                  className="form-input"  
+                  required  
                 />  
               </div>  
-                
-              <div className="login-field">  
-                <div className="login-password-header">  
-                  <label htmlFor="password" className="login-label">Password</label>  
-                  <button type="button" className="login-forgot-link">  
-                    Forgot your password?  
-                  </button>  
-                </div>  
-                <input   
-                  id="password"   
+            </div>  
+  
+            <div className="form-group">  
+              <label htmlFor="password" className="form-label">  
+                Mot de passe  
+              </label>  
+              <div className="input-wrapper">  
+                <Lock className="input-icon" />  
+                <input  
+                  id="password"  
                   name="password"  
-                  type="password"   
+                  type={showPassword ? "text" : "password"}  
+                  placeholder="••••••••"  
                   value={formData.password}  
-                  onChange={handleInputChange}  
-                  className="login-input"  
-                  required   
+                  onChange={handleChange}  
+                  className="form-input password-input"  
+                  required  
                 />  
-              </div>  
-                
-              <button type="submit" className="login-submit-button">  
-                Login  
-              </button>  
-                
-              <div className="login-divider">  
-                <span className="login-divider-text">Or continue with</span>  
-              </div>  
-                
-              <div className="login-social-buttons">  
-                <button type="button" className="login-social-button">  
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="login-social-icon">  
-                    <path  
-                      d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"  
-                      fill="currentColor"  
-                    />  
-                  </svg>  
-                  <span className="login-sr-only">Login with Google</span>  
-                </button>  
-              </div>  
-                
-              <div className="login-signup-link">  
-                Don't have an account?{" "}  
-                <button type="button" className="login-signup-anchor">  
-                  Sign up  
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="password-toggle">  
+                  {showPassword ? <EyeOff className="toggle-icon" /> : <Eye className="toggle-icon" />}  
                 </button>  
               </div>  
             </div>  
+  
+            <div className="form-options">  
+              <label className="checkbox-label">  
+                <input  
+                  type="checkbox"  
+                  checked={rememberMe}  
+                  onChange={(e) => setRememberMe(e.target.checked)}  
+                  className="checkbox"  
+                />  
+                <span className="checkbox-text">Se souvenir de moi</span>  
+              </label>  
+              <button type="button" className="forgot-password">  
+                Mot de passe oublié ?  
+              </button>  
+            </div>  
+  
+            <button type="submit" className={`login-button ${isLoading ? "loading" : ""}`} disabled={isLoading}>  
+              {isLoading ? "Connexion..." : "Se connecter"}  
+            </button>  
           </form>  
-            
-          <div className="login-background-section">  
-            <img  
-              src={backgroundLogin}  
-              alt="Login Background"  
-              className="login-background-image"  
-            />  
+  
+          {/* Footer */}  
+          <div className="login-footer">  
+            <p>  
+              Pas encore de compte ?{" "}  
+              <a href="/signup" className="signup-link">  
+                S'inscrire  
+              </a>  
+            </p>  
           </div>  
         </div>  
       </div>  
-        
-      <div className="login-terms">  
-        By clicking continue, you agree to our <button type="button">Terms of Service</button> and <button type="button">Privacy Policy</button>.  
-      </div>  
-    </div>  
     </div>  
   )  
 }  
   
-export default LoginForm
+export default LoginPage

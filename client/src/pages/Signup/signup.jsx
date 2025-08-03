@@ -1,228 +1,561 @@
 import { useState } from "react"  
+import { Eye, EyeOff, User, Building, Mail, Lock, Phone, MapPin, AlertCircle, CheckCircle } from "lucide-react"  
+import { authService } from "../services/authService"  
 import "./signup.css"  
   
-export function SignupForm({ className = "", ...props }) {  
-  const [clientType, setClientType] = useState("")  
-  const [formData, setFormData] = useState({  
-    firstName: "",  
-    lastName: "",  
+const SignupPage = () => {  
+  const [userType, setUserType] = useState("PHYSIQUE")  
+  const [showPassword, setShowPassword] = useState(false)  
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)  
+  const [isLoading, setIsLoading] = useState(false)  
+  const [error, setError] = useState("")  
+  const [success, setSuccess] = useState(false)  
+  
+  const [physicalData, setPhysicalData] = useState({  
     email: "",  
     password: "",  
-    phone: "",  
-    address: "",  
-    region: "",  
-    clientType: "", // Ajouté  
-    taxNumber: ""  
+    confirmPassword: "",  
+    first_name: "",  
+    last_name: "",  
+    civilite: "M",  
+    date_naissance: "",  
+    cin: "",  
+    telephone_principal: "",  
+    adresse_principale: "",  
+    ville: "",  
+    region_principale: "",  
   })  
   
-  const handleInputChange = (e) => {  
-    const { name, value } = e.target  
-    setFormData(prev => ({  
-      ...prev,  
-      [name]: value  
-    }))  
-  }  
+  const [moralData, setMoralData] = useState({  
+    email: "",  
+    password: "",  
+    confirmPassword: "",  
+    raison_sociale: "",  
+    ice: "",  
+    patente: "",  
+    rc: "",  
+    ville_rc: "",  
+    forme_juridique: "",  
+    secteur_activite: "",  
+    telephone_principal: "",  
+    adresse_principale: "",  
+    ville: "",  
+    region_principale: "",  
+  })  
   
-  const handleSelectChange = (e) => {  
-    const { name, value } = e.target  
-    setFormData(prev => ({  
-      ...prev,  
-      [name]: value  
-    }))  
-      
-    // Mettre à jour clientType quand le type de client change  
-    if (name === "clientType") {  
-      setClientType(value)  
+  const handleSubmit = async (e) => {  
+    e.preventDefault()  
+    setIsLoading(true)  
+    setError("")  
+  
+    const currentData = userType === "PHYSIQUE" ? physicalData : moralData  
+  
+    // Validation  
+    if (currentData.password !== currentData.confirmPassword) {  
+      setError("Les mots de passe ne correspondent pas")  
+      setIsLoading(false)  
+      return  
+    }  
+  
+    if (currentData.password.length < 8) {  
+      setError("Le mot de passe doit contenir au moins 8 caractères")  
+      setIsLoading(false)  
+      return  
+    }  
+  
+    try {  
+      // Préparer les données selon le format backend  
+      const requestData = {  
+        email: currentData.email,  
+        password: currentData.password,  
+        role_code: 'CLIENT', // Par défaut pour l'inscription publique  
+        type_personne: userType,  
+        profile: userType === 'PHYSIQUE' ? {  
+          first_name: currentData.first_name,  
+          last_name: currentData.last_name,  
+          civilite: currentData.civilite,  
+          date_naissance: currentData.date_naissance || null,  
+          cin: currentData.cin,  
+          telephone_principal: currentData.telephone_principal,  
+          adresse_principale: currentData.adresse_principale,  
+          ville: currentData.ville,  
+          region_principale: currentData.region_principale  
+        } : {  
+          raison_sociale: currentData.raison_sociale,  
+          ice: currentData.ice,  
+          patente: currentData.patente,  
+          rc: currentData.rc,  
+          ville_rc: currentData.ville_rc,  
+          forme_juridique: currentData.forme_juridique,  
+          secteur_activite: currentData.secteur_activite,  
+          telephone_principal: currentData.telephone_principal,  
+          adresse_principale: currentData.adresse_principale,  
+          ville: currentData.ville,  
+          region_principale: currentData.region_principale  
+        }  
+      }  
+  
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/auth/register`, {  
+        method: "POST",  
+        headers: {  
+          "Content-Type": "application/json",  
+        },  
+        body: JSON.stringify(requestData),  
+      })  
+  
+      const data = await response.json()  
+  
+      if (data.success) {  
+        // Si le backend retourne un token lors de l'inscription  
+        if (data.data.token) {  
+          authService.setToken(data.data.token);  
+          authService.setUser(data.data.user);  
+        }  
+        setSuccess(true)  
+      } else {  
+        throw new Error(data.message)  
+      }  
+    } catch (err) {  
+      setError(err.message || "Une erreur est survenue")  
+    } finally {  
+      setIsLoading(false)  
     }  
   }  
   
-  const handleSubmit = (e) => {  
-    e.preventDefault()  
-    console.log("Signup attempt:", formData)  
+  const handlePhysicalChange = (e) => {  
+    setPhysicalData((prev) => ({  
+      ...prev,  
+      [e.target.name]: e.target.value,  
+    }))  
+  }  
+  
+  const handleMoralChange = (e) => {  
+    setMoralData((prev) => ({  
+      ...prev,  
+      [e.target.name]: e.target.value,  
+    }))  
+  }  
+  
+  if (success) {  
+    return (  
+      <div className="signup-container">  
+        <div className="signup-background"></div>  
+        <div className="signup-content">  
+          <div className="signup-card">  
+            <div className="success-content">  
+              <div className="success-icon">  
+                <CheckCircle className="icon" />  
+              </div>  
+              <h2 className="success-title">Inscription réussie !</h2>  
+              <p className="success-text">  
+                Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter.  
+              </p>  
+              <button onClick={() => (window.location.href = "/login")} className="success-button">  
+                Se connecter  
+              </button>  
+            </div>  
+          </div>  
+        </div>  
+      </div>  
+    )  
   }  
   
   return (  
-    <div className={`signup-page-background`}>  
-     <div className={`signup-form-container ${className}`} {...props}>   
-      <div className="signup-card">  
-        <div className="signup-card-content">  
-          <form className="signup-form" onSubmit={handleSubmit}>  
-            <div className="signup-form-inner">  
-              <div className="signup-header">  
-                <h1 className="signup-title">Créer un compte</h1>  
-                <p className="signup-subtitle">Rejoignez ChronoGaz aujourd'hui</p>  
-              </div>  
+    <div className="signup-container">  
+      <div className="signup-background"></div>  
   
-              <div className="signup-name-row">  
-                <div className="signup-field">  
-                  <label htmlFor="firstName" className="signup-label">Prénom</label>  
+      <div className="signup-content">  
+        <div className="signup-card">  
+          {/* Header */}  
+          <div className="signup-header">  
+            <h1 className="signup-title">Créer un compte</h1>  
+            <p className="signup-subtitle">Rejoignez-nous dès aujourd'hui</p>  
+          </div>  
+  
+          {/* User Type Selection */}  
+          <div className="user-type-selection">  
+            <button  
+              type="button"  
+              onClick={() => setUserType("PHYSIQUE")}  
+              className={`user-type-btn ${userType === "PHYSIQUE" ? "active" : ""}`}  
+            >  
+              <User className="user-type-icon" />  
+              <span>Particulier</span>  
+            </button>  
+            <button  
+              type="button"  
+              onClick={() => setUserType("MORAL")}  
+              className={`user-type-btn ${userType === "MORAL" ? "active" : ""}`}  
+            >  
+              <Building className="user-type-icon" />  
+              <span>Entreprise</span>  
+            </button>  
+          </div>  
+  
+          {/* Error Alert */}  
+          {error && (  
+            <div className="error-alert">  
+              <AlertCircle className="error-icon" />  
+              <span>{error}</span>  
+            </div>  
+          )}  
+  
+          {/* Form */}  
+          <form onSubmit={handleSubmit} className="signup-form">  
+            {/* Common Fields */}  
+            <div className="form-section">  
+              <div className="form-group">  
+                <label htmlFor="email" className="form-label">  
+                  Email *  
+                </label>  
+                <div className="input-wrapper">  
+                  <Mail className="input-icon" />  
                   <input  
-                    id="firstName"  
-                    name="firstName"  
-                    type="text"  
-                    value={formData.firstName}  
-                    onChange={handleInputChange}  
-                    className="signup-input"  
+                    id="email"  
+                    name="email"  
+                    type="email"  
+                    placeholder="votre@email.com"  
+                    value={userType === "PHYSIQUE" ? physicalData.email : moralData.email}  
+                    onChange={userType === "PHYSIQUE" ? handlePhysicalChange : handleMoralChange}  
+                    className="form-input"  
                     required  
                   />  
                 </div>  
-                <div className="signup-field">  
-                  <label htmlFor="lastName" className="signup-label">Nom</label>  
-                  <input  
-                    id="lastName"  
-                    name="lastName"  
-                    type="text"  
-                    value={formData.lastName}  
-                    onChange={handleInputChange}  
-                    className="signup-input"  
-                    required  
-                  />  
-                </div>  
               </div>  
   
-              <div className="signup-field">  
-                <label htmlFor="email" className="signup-label">Adresse e-mail</label>  
-                <input  
-                  id="email"  
-                  name="email"  
-                  type="email"  
-                  value={formData.email}  
-                  onChange={handleInputChange}  
-                  className="signup-input"  
-                  required  
-                />  
-              </div>  
-  
-              <div className="signup-field">  
-                <label htmlFor="password" className="signup-label">Mot de passe</label>  
-                <input  
-                  id="password"  
-                  name="password"  
-                  type="password"  
-                  value={formData.password}  
-                  onChange={handleInputChange}  
-                  className="signup-input"  
-                  required  
-                />  
-              </div>  
-  
-              <div className="signup-field">  
-                <label htmlFor="phone" className="signup-label">Numéro de téléphone</label>  
-                <input  
-                  id="phone"  
-                  name="phone"  
-                  type="tel"  
-                  value={formData.phone}  
-                  onChange={handleInputChange}  
-                  className="signup-input"  
-                  required  
-                />  
-              </div>  
-  
-              <div className="signup-field">  
-                <label htmlFor="address" className="signup-label">Adresse complète</label>  
-                <input  
-                  id="address"  
-                  name="address"  
-                  type="text"  
-                  value={formData.address}  
-                  onChange={handleInputChange}  
-                  className="signup-input"  
-                  required  
-                />  
-              </div>  
-  
-              <div className="signup-field">  
-                <label htmlFor="region" className="signup-label">Région</label>  
-                <select  
-                  id="region"  
-                  name="region"  
-                  value={formData.region}  
-                  onChange={handleSelectChange}  
-                  className="signup-select"  
-                  required  
-                >  
-                  <option value="">Sélectionnez votre région</option>  
-                  <option value="2mars">2 Mars</option>  
-                  <option value="maarif">Maarif</option>  
-                  <option value="biranazarane">Bir Anzarane</option>  
-                  <option value="boulevardalqods">Boulevard al qods</option>  
-                </select>  
-              </div>  
-  
-              {/* NOUVEAU CHAMP : Type de client */}  
-              <div className="signup-field">  
-                <label htmlFor="clientType" className="signup-label">Type de client</label>  
-                <select  
-                  id="clientType"  
-                  name="clientType"  
-                  value={formData.clientType}  
-                  onChange={handleSelectChange}  
-                  className="signup-select"  
-                  required  
-                >  
-                  <option value="">Sélectionnez votre type</option>  
-                  <option value="particulier">Particulier</option>  
-                  <option value="entreprise">Entreprise</option>  
-                  <option value="industrie">Industrie</option>  
-                </select>  
-              </div>  
-  
-              {/* CHAMP CONDITIONNEL : Matricule fiscal (seulement si entreprise) */}  
-              {clientType === "entreprise" && (  
-                <div className="signup-field signup-conditional-field">  
-                  <label htmlFor="taxNumber" className="signup-label">Matricule fiscal</label>  
-                  <input  
-                    id="taxNumber"  
-                    name="taxNumber"  
-                    type="text"  
-                    placeholder="Ex: 12345678"  
-                    value={formData.taxNumber}  
-                    onChange={handleInputChange}  
-                    className="signup-input"  
-                    required  
-                  />  
-                </div>  
-              )}  
-  
-              <button type="submit" className="signup-submit-button">  
-                Créer mon compte  
-              </button>  
-  
-              <div className="signup-divider">  
-                <span className="signup-divider-text">Ou continuez avec</span>  
-              </div>  
-  
-              <div className="signup-social-buttons">  
-                <button type="button" className="signup-social-button">  
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="signup-social-icon">  
-                    <path  
-                      d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"  
-                      fill="currentColor"  
+              <div className="form-row">  
+                <div className="form-group">  
+                  <label htmlFor="password" className="form-label">  
+                    Mot de passe *  
+                  </label>  
+                  <div className="input-wrapper">  
+                    <Lock className="input-icon" />  
+                    <input  
+                      id="password"  
+                      name="password"  
+                      type={showPassword ? "text" : "password"}  
+                      placeholder="••••••••"  
+                      value={userType === "PHYSIQUE" ? physicalData.password : moralData.password}  
+                      onChange={userType === "PHYSIQUE" ? handlePhysicalChange : handleMoralChange}  
+                      className="form-input password-input"  
+                      required  
                     />  
-                  </svg>  
-                  <span className="signup-sr-only">S'inscrire avec Google</span>  
-                </button>  
-              </div>  
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="password-toggle">  
+                      {showPassword ? <EyeOff className="toggle-icon" /> : <Eye className="toggle-icon" />}  
+                    </button>  
+                  </div>  
+                </div>  
   
-              <div className="signup-login-link">  
-                Vous avez déjà un compte ?{" "}  
-                <button type="button" className="signup-login-anchor">  
-                  Se connecter  
-                </button>  
+                <div className="form-group">  
+                  <label htmlFor="confirmPassword" className="form-label">  
+                    Confirmer *  
+                  </label>  
+                  <div className="input-wrapper">  
+                    <Lock className="input-icon" />  
+                    <input  
+                      id="confirmPassword"  
+                      name="confirmPassword"  
+                      type={showConfirmPassword ? "text" : "password"}  
+                      placeholder="••••••••"  
+                      value={userType === "PHYSIQUE" ? physicalData.confirmPassword : moralData.confirmPassword}  
+                      onChange={userType === "PHYSIQUE" ? handlePhysicalChange : handleMoralChange}  
+                      className="form-input password-input"  
+                      required  
+                    />  
+                    <button  
+                      type="button"  
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}  
+                      className="password-toggle"  
+                    >  
+                      {showConfirmPassword ? <EyeOff className="toggle-icon" /> : <Eye className="toggle-icon" />}  
+                    </button>  
+                  </div>  
+                </div>  
               </div>  
             </div>  
+  
+            {/* Physical User Fields */}  
+            {userType === "PHYSIQUE" && (  
+              <div className="form-section">  
+                <div className="form-row-3">  
+                  <div className="form-group">  
+                    <label htmlFor="civilite" className="form-label">  
+                      Civilité *  
+                    </label>  
+                    <select  
+                      id="civilite"  
+                      name="civilite"  
+                      value={physicalData.civilite}  
+                      onChange={handlePhysicalChange}  
+                      className="form-select"  
+                    >  
+                      <option value="M">M.</option>  
+                      <option value="Mme">Mme</option>  
+                      <option value="Mlle">Mlle</option>  
+                    </select>  
+                  </div>  
+                  <div className="form-group">  
+                    <label htmlFor="first_name" className="form-label">  
+                      Prénom *  
+                    </label>  
+                    <input  
+                      id="first_name"  
+                      name="first_name"  
+                      placeholder="Votre prénom"  
+                      value={physicalData.first_name}  
+                      onChange={handlePhysicalChange}  
+                      className="form-input"  
+                      required  
+                    />  
+                  </div>  
+                  <div className="form-group">  
+                    <label htmlFor="last_name" className="form-label">  
+                      Nom *  
+                    </label>  
+                    <input  
+                      id="last_name"  
+                      name="last_name"  
+                      placeholder="Votre nom"  
+                      value={physicalData.last_name}  
+                      onChange={handlePhysicalChange}  
+                      className="form-input"  
+                      required  
+                    />  
+                  </div>  
+                </div>  
+  
+                <div className="form-row">  
+                  <div className="form-group">  
+                    <label htmlFor="date_naissance" className="form-label">  
+                      Date de naissance  
+                    </label>  
+                    <input  
+                      id="date_naissance"  
+                      name="date_naissance"  
+                      type="date"  
+                      value={physicalData.date_naissance}  
+                      onChange={handlePhysicalChange}  
+                      className="form-input"  
+                    />  
+                  </div>  
+                  <div className="form-group">  
+                    <label htmlFor="cin" className="form-label">  
+                      CIN  
+                    </label>  
+                    <input  
+                      id="cin"  
+                      name="cin"  
+                      placeholder="Numéro CIN"  
+                      value={physicalData.cin}  
+                      onChange={handlePhysicalChange}  
+                      className="form-input"  
+                    />  
+                  </div>  
+                </div>  
+              </div>  
+            )}  
+  
+            {/* Moral User Fields */}  
+            {userType === "MORAL" && (  
+              <div className="form-section">  
+                <div className="form-group">  
+                  <label htmlFor="raison_sociale" className="form-label">  
+                    Raison sociale *  
+                  </label>  
+                  <input  
+                    id="raison_sociale"  
+                    name="raison_sociale"  
+                    placeholder="Nom de l'entreprise"  
+                    value={moralData.raison_sociale}  
+                    onChange={handleMoralChange}  
+                    className="form-input"  
+                    required  
+                  />  
+                </div>  
+  
+                <div className="form-row">  
+                  <div className="form-group">  
+                    <label htmlFor="ice" className="form-label">  
+                      ICE  
+                    </label>  
+                    <input  
+                      id="ice"  
+                      name="ice"  
+                      placeholder="Numéro ICE"  
+                      value={moralData.ice}  
+                      onChange={handleMoralChange}  
+                      className="form-input"  
+                    />  
+                  </div>  
+                  <div className="form-group">  
+                    <label htmlFor="rc" className="form-label">  
+                      RC  
+                    </label>  
+                    <input  
+                      id="rc"  
+                      name="rc"  
+                      placeholder="Registre de commerce"  
+                      value={moralData.rc}  
+                      onChange={handleMoralChange}  
+                      className="form-input"  
+                    />  
+                  </div>  
+                </div>  
+  
+                <div className="form-row">  
+                  <div className="form-group">  
+                    <label htmlFor="forme_juridique" className="form-label">  
+                      Forme juridique  
+                    </label>  
+                    <input  
+                      id="forme_juridique"  
+                      name="forme_juridique"  
+                      placeholder="SARL, SA, etc."  
+                      value={moralData.forme_juridique}  
+                      onChange={handleMoralChange}  
+                      className="form-input"  
+                    />  
+                  </div>  
+                  <div className="form-group">  
+                    <label htmlFor="secteur_activite" className="form-label">  
+                      Secteur d'activité  
+                    </label>  
+                    <input  
+                      id="secteur_activite"  
+                      name="secteur_activite"  
+                      placeholder="Secteur d'activité"  
+                      value={moralData.secteur_activite}  
+                      onChange={handleMoralChange}  
+                      className="form-input"  
+                    />  
+                  </div>  
+                </div>  
+  
+                <div className="form-group">  
+                  <label htmlFor="ville_rc" className="form-label">  
+                    Ville RC  
+                  </label>  
+                  <input  
+                    id="ville_rc"  
+                    name="ville_rc"  
+                    placeholder="Ville du registre de commerce"  
+                    value={moralData.ville_rc}  
+                    onChange={handleMoralChange}  
+                    className="form-input"  
+                  />  
+                </div>  
+              </div>  
+            )}  
+  
+            {/* Contact Information */}  
+            <div className="form-section">  
+              <div className="form-group">  
+                <label htmlFor="telephone_principal" className="form-label">  
+                  Téléphone principal *  
+                </label>  
+                <div className="input-wrapper">  
+                  <Phone className="input-icon" />  
+                  <input  
+                    id="telephone_principal"  
+                    name="telephone_principal"  
+                    placeholder="+212 6XX XXX XXX"  
+                    value={userType === "PHYSIQUE" ? physicalData.telephone_principal : moralData.telephone_principal}  
+                    onChange={userType === "PHYSIQUE" ? handlePhysicalChange : handleMoralChange}  
+                    className="form-input"  
+                    required  
+                  />  
+                </div>  
+              </div>  
+  
+              <div className="form-group">  
+                <label htmlFor="adresse_principale" className="form-label">  
+                  Adresse principale  
+                </label>  
+                <div className="input-wrapper">  
+                  <MapPin className="input-icon textarea-icon" />  
+                  <textarea  
+                    id="adresse_principale"  
+                    name="adresse_principale"  
+                    placeholder="Votre adresse complète"  
+                    value={userType === "PHYSIQUE" ? physicalData.adresse_principale : moralData.adresse_principale}  
+                    onChange={userType === "PHYSIQUE" ? handlePhysicalChange : handleMoralChange}  
+                    className="form-textarea"  
+                    rows="3"  
+                  />  
+                </div>  
+              </div>  
+  
+              <div className="form-row">  
+                <div className="form-group">  
+                  <label htmlFor="ville" className="form-label">  
+                    Ville  
+                  </label>  
+                  <input  
+                    id="ville"  
+                    name="ville"  
+                    placeholder="Votre ville"  
+                    value={userType === "PHYSIQUE" ? physicalData.ville : moralData.ville}  
+                    onChange={userType === "PHYSIQUE" ? handlePhysicalChange : handleMoralChange}  
+                    className="form-input"  
+                  />  
+                </div>  
+                <div className="form-group">  
+                  <label htmlFor="region_principale" className="form-label">  
+                    Région *  
+                  </label>  
+                  <select  
+                    id="region_principale"  
+                    name="region_principale"  
+                    value={userType === "PHYSIQUE" ? physicalData.region_principale : moralData.region_principale}  
+                    onChange={userType === "PHYSIQUE" ? handlePhysicalChange : handleMoralChange}  
+                    className="form-select"  
+                    required  
+                  >  
+                    <option value="">Sélectionner une région</option>  
+                    <option value="2 Mars">2 Mars</option>  
+                    <option value="Maarif">Maarif</option>  
+                    <option value="Bir Anzarane">Bir Anzarane</option>  
+                    <option value="Boulevard al qods">Boulevard al qods</option>  
+                  </select>  
+                </div>  
+              </div>  
+            </div>  
+  
+            {/* Terms */}  
+            <div className="terms-group">  
+              <label className="checkbox-label">  
+                <input type="checkbox" className="checkbox" required />  
+                <span className="checkbox-text">  
+                  J'accepte les{" "}  
+                  <a href="/terms" className="terms-link">  
+                    conditions d'utilisation  
+                  </a>{" "}  
+                  et la{" "}  
+                  <a href="/privacy" className="terms-link">  
+                    politique de confidentialité  
+                  </a>  
+                </span>  
+              </label>  
+            </div>  
+  
+            <button type="submit" className={`signup-button ${isLoading ? "loading" : ""}`} disabled={isLoading}>  
+              {isLoading ? "Création du compte..." : "Créer mon compte"}  
+            </button>  
           </form>  
+  
+          {/* Footer */}  
+          <div className="signup-footer">  
+            <p>  
+              Déjà un compte ?{" "}  
+              <a href="/login" className="login-link">  
+                Se connecter  
+              </a>  
+            </p>  
+          </div>  
         </div>  
       </div>  
-  
-      <div className="signup-terms">  
-        En cliquant sur continuer, vous acceptez nos <button type="button">Conditions d'utilisation</button> et notre{" "}  
-        <button type="button">Politique de confidentialité</button>.  
-      </div>  
-    </div>
     </div>  
   )  
 }  
   
-export default SignupForm
+export default SignupPage

@@ -12,6 +12,8 @@ import {
 } from 'react-icons/md'      
 import logo from '../../assets/image/logo.png'     
 import "./SideBar.css"      
+import { authService } from '../../services/authService';  
+import { redirectUserByRole } from '../../utils/redirectUtils';
       
 const menuItems = [  
   {  
@@ -53,9 +55,14 @@ function SidebarNavigation({ userName = "Utilisateur", children }) {
     };    
   }, [isCollapsed]);    
       
-  const handleLogout = () => {      
-    console.log("Déconnexion...")      
-  }      
+  const handleLogout = () => {  
+   authService.logout();  
+  }    
+  
+  const handleHomeClick = () => {  
+    const user = authService.getUser();  
+    redirectUserByRole(user.role);  
+  };
       
   const toggleDropdown = () => {      
     setDropdownOpen(!dropdownOpen)      
