@@ -1,8 +1,10 @@
-// api/src/server.js    
 const express = require('express');    
 const cors = require('cors');    
 const connectDB = require('./config/database');    
-    
+  
+// Import des routes d'authentification  
+const authRoutes = require('./routes/authRouter');  
+  
 // Import des modèles    
 const Role = require('./models/Role');    
 const User = require('./models/User');    
@@ -14,27 +16,23 @@ const Product = require('./models/Product');
 const Truck = require('./models/Truck');    
 const Region = require('./models/Region');    
   
-// Import des routes  
-const authRoutes = require('./routes/authRouter'); 
-const userRoutes = require('./routes/usersRouter'); 
-const adminRoutes = require('./routes/adminRouter');    
+// Import du middleware d'authentification  
+const { authenticateToken } = require('./middleware/authMiddleware');  
   
 require('dotenv').config();    
-    
+  
 const app = express();    
-    
+  
 // Connexion à MongoDB    
 connectDB();    
-    
+  
 // Middleware    
 app.use(cors());    
 app.use(express.json());    
 app.use(express.urlencoded({ extended: true }));    
   
-// Routes d'authentification  
+// Routes d'authentification (publiques)  
 app.use('/api/auth', authRoutes);  
-app.use('/api/users', userRoutes);
-app.use('/api/admin', adminRoutes);
   
 // Routes de test et santé    
 app.get('/api/health', (req, res) => {    
@@ -67,8 +65,8 @@ app.get('/api/roles', async (req, res) => {
   }    
 });    
   
-// Route pour tester les utilisateurs    
-app.get('/api/users', async (req, res) => {    
+// Route protégée pour tester les utilisateurs    
+app.get('/api/users', authenticateToken, async (req, res) => {    
   try {    
     const users = await User.find()    
       .populate('role_id', 'code nom')    
@@ -104,8 +102,8 @@ app.get('/api/products', async (req, res) => {
   }    
 });    
   
-// Route pour tester les clients    
-app.get('/api/customers', async (req, res) => {    
+// Route protégée pour tester les clients    
+app.get('/api/customers', authenticateToken, async (req, res) => {    
   try {    
     const customers = await Customer.find({ statut: 'ACTIF' })    
       .populate('physical_user_id')    
@@ -123,8 +121,8 @@ app.get('/api/customers', async (req, res) => {
   }    
 });    
   
-// Route pour tester les camions    
-app.get('/api/trucks', async (req, res) => {    
+// Route protégée pour tester les camions    
+app.get('/api/trucks', authenticateToken, async (req, res) => {    
   try {    
     const trucks = await Truck.find({ actif: true })    
       .populate('region_id', 'code nom');    
@@ -141,8 +139,8 @@ app.get('/api/trucks', async (req, res) => {
   }    
 });    
   
-// Route pour les statistiques générales    
-app.get('/api/stats', async (req, res) => {    
+// Route protégée pour les statistiques générales    
+app.get('/api/stats', authenticateToken, async (req, res) => {    
   try {    
     const stats = {    
       users: await User.countDocuments(),    
@@ -170,23 +168,15 @@ app.use('*', (req, res) => {
   res.status(404).json({    
     success: false,    
     message: 'Route non trouvée',    
-    availableRoutes: [  
+    availableRoutes: [    
       'POST /api/auth/register',  
       'POST /api/auth/login',  
-      'GET /api/users/profile',  
-      'PUT /api/users/profile',
-      'GET /api/admin/clients',  
-      'GET /api/admin/employees', 
-      'PUT /api/admin/users/:userId',     
-      'DELETE /api/admin/users/:userId',
-      'POST /api/admin/users', 
-      'GET /api/health',  
-      'GET /api/roles',  
-      'GET /api/users',  
-      'GET /api/products',  
-      'GET /api/customers',  
-      'GET /api/trucks',  
-      'GET /api/stats'  
+      'GET /api/health',    
+      'GET /api/users (protégée)',    
+      'GET /api/products',    
+      'GET /api/customers (protégée)',    
+      'GET /api/trucks (protégée)',    
+      'GET /api/stats (protégée)'    
     ]    
   });    
 });    
@@ -207,8 +197,10 @@ app.listen(PORT, () => {
   console.log(`🚀 ChronoGaz server running on port ${PORT}`);    
   console.log(`📊 MongoDB connected to chronogaz_db`);    
   console.log(`🔗 API Health: http://localhost:${PORT}/api/health`);    
+  console.log(`🔐 Auth Register: http://localhost:${PORT}/api/auth/register`);  
+  console.log(`🔐 Auth Login: http://localhost:${PORT}/api/auth/login`);  
   console.log(`📈 API Stats: http://localhost:${PORT}/api/stats`);    
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);    
 });    
   
-module.expor
+module.exports = app;
