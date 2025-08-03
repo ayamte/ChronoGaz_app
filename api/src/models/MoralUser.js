@@ -12,7 +12,11 @@ const MoralUserSchema = new mongoose.Schema({
   telephone_principal: String,  
   adresse_principale: String,  
   ville: String,  
-  region_principale: String,  
+  region_principale: {   
+  type: String,   
+  enum: ['2 Mars', 'Maarif', 'Bir Anzarane', 'Boulevard al qods'],  
+  required: false  
+},  
   actif: { type: Boolean, default: true },  
 }, { timestamps: true });  
   

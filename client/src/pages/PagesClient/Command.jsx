@@ -6,6 +6,7 @@ import AddressStep from '../../components/client/CommandPage/AddressStep';
 import SummaryStep from '../../components/client/CommandPage/SummaryStep';
 import butaButane from '../../assets/svg/buta-gaz-butane.svg';
 import butaPropane from '../../assets/svg/buta-gaz-propane.svg';
+import SidebarNavigation from '../../components/client/SideBar'
 
 
 const Command = () => {
@@ -220,10 +221,11 @@ const Command = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Title />
-      <StepsIndicator currentStep={currentStep} />
-      <div className="max-w-4xl mx-auto p-6">
+  <SidebarNavigation userName="Nom du client">  
+    <div className="command-page-content">  
+      <Title />  
+      <StepsIndicator currentStep={currentStep} />  
+      <div className="max-w-4xl mx-auto p-6">  
         {currentStep === 1 && (
           <QuantityStep
             products={products}
@@ -254,8 +256,9 @@ const Command = () => {
             onConfirm={handleConfirmOrder}
           />
         )}
-      </div>
-    </div>
+      </div>  
+    </div>  
+  </SidebarNavigation> 
   );
 };
 
