@@ -28,16 +28,12 @@ import Command from './pages/PagesClient/Command';
 import TrackOrder from './pages/PagesClient/TrackOrder';
 import OrderHistory from './pages/PagesClient/OrderHistory';
 import ServiceEvaluation from './pages/PagesClient/ServiceEvaluation';
-import Sidebar from './components/SideBar';
 
 import './App.css'; 
   
 function App() {  
   return (  
     <Router>  
-      <div className="App" style={{ display: 'flex' }}>
-        <Sidebar /> {/* sidebar de ghani-dev */}
-        <div style={{ flex: 1, padding: '80px' }}>
           <Routes>  
             {/* Routes main */}
             <Route path="/" element={<Home />} />    
@@ -66,9 +62,7 @@ function App() {
             <Route path="/Trackorder" element={<TrackOrder />} /> 
             <Route path="/Orderhistory" element={<OrderHistory />} /> 
             <Route path="/Serviceevaluation" element={<ServiceEvaluation />} /> 
-          </Routes>  
-        </div>
-      </div>  
+          </Routes>   
     </Router>  
   );  
 }  

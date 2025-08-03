@@ -399,6 +399,43 @@ db.products.insertMany([
     updatedAt: new Date()  
   }  
 ]);  
+
+
+const region2Mars = db.regions.insertOne({  
+  code: '2MARS',  
+  nom: '2 Mars',  
+  description: 'Région 2 Mars - Casablanca',  
+  actif: true,  
+  createdAt: new Date(),  
+  updatedAt: new Date()  
+});  
+  
+const regionMaarif = db.regions.insertOne({  
+  code: 'MAARIF',  
+  nom: 'Maarif',  
+  description: 'Région Maarif - Casablanca',  
+  actif: true,  
+  createdAt: new Date(),  
+  updatedAt: new Date()  
+});  
+  
+const regionBirAnzarane = db.regions.insertOne({  
+  code: 'BIRANZAN',  
+  nom: 'Bir Anzarane',  
+  description: 'Région Bir Anzarane - Casablanca',  
+  actif: true,  
+  createdAt: new Date(),  
+  updatedAt: new Date()  
+});  
+  
+const regionBoulevardAlQods = db.regions.insertOne({  
+  code: 'BLVQODS',  
+  nom: 'Boulevard al qods',  
+  description: 'Région Boulevard al qods - Casablanca',  
+  actif: true,  
+  createdAt: new Date(),  
+  updatedAt: new Date()  
+});
   
 // Insérer les statuts de commande  
 const statutNouvelle = db.statutcommandes.insertOne({  

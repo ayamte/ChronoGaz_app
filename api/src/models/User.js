@@ -3,35 +3,16 @@ const mongoose = require('mongoose');
 const UserSchema = new mongoose.Schema({  
   email: { type: String, required: true, unique: true },  
   password_hash: { type: String, required: true },  
-  role: {  
-    code: { type: String, enum: ['ADMIN', 'CLIENT', 'EMPLOYE'], required: true },  
-    nom: String  
-  },  
+  role_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true },  
   statut: { type: String, enum: ['ACTIF', 'INACTIF', 'SUSPENDU', 'EN_ATTENTE'], default: 'EN_ATTENTE' },  
-  profile: {  
-    // Pour physical_user  
-    first_name: String,  
-    last_name: String,  
-    civilite: { type: String, enum: ['M', 'Mme', 'Mlle'] },  
-    cin: String,  
-    telephone_principal: String,  
-    // Pour moral_user  
-    raison_sociale: String,  
-    ice: String,  
-    rc: String  
-  },  
-  customer_info: {  
-    customer_code: String,  
-    type_client: { type: String, enum: ['PHYSIQUE', 'MORAL'] },  
-    credit_limite: { type: Number, default: 0 }  
-  },  
-  employee_info: {  
-    matricule: String,  
-    fonction: { type: String, enum: ['CHAUFFEUR', 'ACCOMPAGNANT', 'MAGASINIER'] },  
-    date_embauche: Date  
-  }  
-}, {  
-  timestamps: true  
-});  
+  last_login: Date,  
+  email_verified: { type: Boolean, default: false },  
+  reset_token: String,  
+  reset_token_expires: Date  
+}, { timestamps: true });  
+  
+UserSchema.index({ email: 1 });  
+UserSchema.index({ role_id: 1 });  
+UserSchema.index({ statut: 1 });  
   
 module.exports = mongoose.model('User', UserSchema);

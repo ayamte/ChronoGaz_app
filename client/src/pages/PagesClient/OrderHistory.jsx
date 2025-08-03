@@ -4,6 +4,7 @@ import StatisticsBar from '../../components/client/OrderHistoryPage/StatisticsBa
 import SearchAndFilters from '../../components/client/OrderHistoryPage/SearchAndFilters';
 import OrderCard from '../../components/client/OrderHistoryPage/OrderCard';
 import Title from '../../components/client/OrderHistoryPage/Title';
+import SidebarNavigation from '../../components/client/SideBar'
 
 
 const OrderHistory = () => {
@@ -210,6 +211,7 @@ const OrderHistory = () => {
     }, [orders]);
   
     return (
+      <SidebarNavigation userName="Nom du client">
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <Title stats={stats}/>
@@ -250,6 +252,7 @@ const OrderHistory = () => {
           )}
         </div>
       </div>
+      </SidebarNavigation>
     );
   };
   

@@ -1,3 +1,4 @@
+/*connection à la base de données*/
 const mongoose = require('mongoose');  
   
 const mongoURI = process.env.MONGODB_URI;  
