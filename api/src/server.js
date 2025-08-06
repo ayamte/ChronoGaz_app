@@ -490,12 +490,12 @@ app.post('/api/customers/company', authenticateToken, async (req, res) => {
 // GET - Récupérer tous les employés  
 app.get('/api/employees', authenticateToken, async (req, res) => {  
   try {  
-    const employees = await Employe.find({ actif: true })  
+    const employees = await Employe.find()  
       .populate({  
         path: 'physical_user_id',  
         populate: {  
           path: 'user_id',  
-          select: 'email statut'  
+          select: 'email'  
         }  
       });  
     res.json({ success: true, count: employees.length, data: employees });  
@@ -548,8 +548,7 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
     const newUser = new User({      
       email: profile.email,      
       password_hash: hashedPassword,      
-      role_id: roleEmploye._id,  // Utilise le rôle déterminé dynamiquement    
-      statut: 'ACTIF'      
+      role_id: roleEmploye._id,        
     });     
     const savedUser = await newUser.save();    
     
@@ -574,7 +573,7 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
       cnss: profile.cnss,  
       fonction,      
       date_embauche: new Date(),      
-      actif: true      
+      statut: statut || 'ACTIF'
     });
     
     const savedEmployee = await employee.save();    

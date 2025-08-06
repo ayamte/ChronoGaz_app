@@ -12,8 +12,7 @@ const getProfile = async (req, res) => {
     let profileData = {  
       id: user._id,  
       email: user.email,  
-      role: user.role_id.code,  
-      statut: user.statut,  
+      role: user.role_id.code, 
       last_login: user.last_login  
     };  
   
@@ -132,7 +131,7 @@ const updateProfile = async (req, res) => {
     if (physicalUser && profile) {  
       // Validation pour personne physique  
       const allowedFields = [  
-        'first_name', 'last_name', 'civilite', 'cin',   
+        'first_name', 'last_name', 'civilite',   
         'telephone_principal', 'adresse_principale',   
         'ville', 'region_principale', 'date_naissance'  
       ];  

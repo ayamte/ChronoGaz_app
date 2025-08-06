@@ -24,17 +24,29 @@
   
 /* Layout principal */  
 .stock-management-wrapper {  
-  min-height: 100vh;  
+  margin-left: 256px;  
+  margin-top: 70px;  
+  min-height: calc(100vh - 70px);  
   background-color: var(--gray-50);  
-  padding: 0;  
-  margin: 0;  
+  padding: 24px;  
+  transition: margin-left 0.3s ease, width 0.3s ease;  
+  width: calc(100vw - 256px);  
+}  
+  
+/* Quand le body a la classe sidebar-collapsed */  
+body.sidebar-collapsed .stock-management-wrapper {  
+  margin-left: 64px;  
+  width: calc(100vw - 64px);  
 }  
   
 .stock-management-container {  
-  max-width: 100%;  
+  width: 100%;  
+  max-width: none;  
+  background-color: transparent; /* Pas de background ici */  
+  padding: 0; /* Pas de padding supplémentaire */  
   margin: 0;  
-  padding: 0;  
-}  
+}
+
   
 .stock-main {  
   padding: 24px;  
@@ -546,5 +558,21 @@
   
   .stock-table {  
     min-width: 800px;  
+  }  
+}
+
+
+/* Responsive Design pour sidebar */  
+@media (max-width: 768px) {  
+  .stock-management-wrapper {  
+    margin-left: 0;  
+    margin-top: 70px;  
+    width: 100vw;  
+    padding: 16px;  
+  }  
+    
+  body.sidebar-collapsed .stock-management-wrapper {  
+    margin-left: 0;  
+    width: 100vw;  
   }  
 }

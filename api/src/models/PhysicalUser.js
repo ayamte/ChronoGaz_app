@@ -18,8 +18,7 @@ const PhysicalUserSchema = new mongoose.Schema({
     enum: ['2 Mars', 'Maarif', 'Bir Anzarane', 'Boulevard al qods'],  
     required: false        
   },        
-  moral_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'MoralUser' },      
-  actif: { type: Boolean, default: true },        
+  moral_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'MoralUser' },  
 }, { timestamps: true });
     
 PhysicalUserSchema.index({ user_id: 1 });    
