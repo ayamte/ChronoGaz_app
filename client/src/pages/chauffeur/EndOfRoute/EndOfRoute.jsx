@@ -15,7 +15,6 @@ import {
   MdSave as Save,  
   MdPrint as Printer,  
 } from 'react-icons/md'  
-import DriverSidebar from "../../../components/chauffeur/DriverSidebar/DriverSidebar"  
 import './EndOfRoute.css'  
   
 // Mock data basé sur votre code original  
@@ -255,7 +254,6 @@ export default function EndOfRoutePage() {
   if (showConfirmation) {  
     return (  
       <div className="eor-layout">  
-        <DriverSidebar userName={mockUser.name} />  
         <div className="eor-wrapper">  
           <div className="eor-confirmation-container">  
             <div className="eor-confirmation-card">  
@@ -293,8 +291,6 @@ export default function EndOfRoutePage() {
   
   return (  
     <div className="eor-layout">  
-      <DriverSidebar userName={mockUser.name} />  
-        
       <div className="eor-wrapper">  
         <div className="eor-container">  
           <div className="eor-content">  

@@ -6,7 +6,6 @@ import {
   MdFilterList as Filter,  
   MdRotateRight as Loader2  
 } from "react-icons/md" 
-import DriverSidebar from "../../../components/chauffeur/DriverSidebar/DriverSidebar"
 import "./DailyRoutePage.css"
 import { useNavigate } from 'react-router-dom'  
 import { MdFlag as Flag } from 'react-icons/md'
@@ -201,8 +200,7 @@ export default function DailyRoutePage() {
   
   if (loading) {  
     return (  
-      <div className="daily-route-layout">  
-        <DriverSidebar />  
+      <div className="daily-route-layout">   
         <div className="daily-route-content">  
           <div className="loading-container">  
             <div className="loading-content">  
@@ -218,7 +216,6 @@ export default function DailyRoutePage() {
   if (error) {  
     return (  
       <div className="daily-route-layout">  
-        <DriverSidebar />  
         <div className="daily-route-content">  
           <div className="error-container">  
             <div className="error-card">  
@@ -240,8 +237,7 @@ export default function DailyRoutePage() {
   }  
   
   return (  
-    <div className="daily-route-layout">  
-      <DriverSidebar />  
+    <div className="daily-route-layout">
         
       <div className="daily-route-content">  
         <main className="main-content">  

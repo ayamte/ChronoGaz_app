@@ -18,7 +18,6 @@ import {
   MdEmail as Email,
   MdAdd as Plus
 } from 'react-icons/md'
-import SidebarNavigation from "../../../components/chauffeur/DriverSidebar/DriverSidebar"
 import './NextOrderMap.css'
 
 // Mock data
@@ -468,7 +467,6 @@ export default function NextOrderMapPage() {
 
   return (
     <div className="nom-layout">
-      <SidebarNavigation />
       
       <div className="nom-wrapper">
         <div className="nom-container">

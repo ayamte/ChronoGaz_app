@@ -6,7 +6,7 @@ const CustomerSchema = new mongoose.Schema({
   physical_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'PhysicalUser' },  
   moral_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'MoralUser' },  
   date_inscription: { type: Date, default: Date.now },  
-  statut: { type: String, enum: ['ACTIF', 'INACTIF', 'SUSPENDU'], default: 'ACTIF' },  
+  statut: { type: String, enum: ['ACTIF', 'INACTIF', 'SUSPENDU', 'EN_ATTENTE'], default: 'ACTIF' },
   credit_limite: { type: Number, default: 0 },  
   credit_utilise: { type: Number, default: 0 },  
 }, { timestamps: true });  

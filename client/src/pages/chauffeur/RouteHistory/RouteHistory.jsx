@@ -11,7 +11,6 @@ import {
   MdLocationOn as MapPin,  
   MdCalendarToday as Calendar,  
 } from 'react-icons/md'  
-import DriverSidebar from "../../../components/chauffeur/DriverSidebar/DriverSidebar"  
 import './RouteHistory.css'  
   
 // Mock data pour l'historique des tournées  
@@ -344,8 +343,7 @@ export default function RouteHistoryPage() {
   
   if (loading) {  
     return (  
-      <div className="rh-layout">  
-        <DriverSidebar userName={mockUser.name} />  
+      <div className="rh-layout">    
         <div className="rh-wrapper">  
           <div className="rh-loading">  
             <div className="rh-spinner" />  
@@ -358,7 +356,6 @@ export default function RouteHistoryPage() {
   
   return (  
     <div className="rh-layout">  
-      <DriverSidebar userName={mockUser.name} />  
         
       <div className="rh-wrapper">  
         <div className="rh-container">  

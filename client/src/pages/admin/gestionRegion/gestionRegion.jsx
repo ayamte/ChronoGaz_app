@@ -7,7 +7,6 @@ import {
   MdClose as X  
 } from "react-icons/md"  
 import "./gestionRegion.css"  
-import SidebarNavigation from '../../../components/admin/Sidebar/Sidebar'  
   
 // Données d'exemple pour les régions  
 const regionsData = [  
@@ -125,7 +124,6 @@ export default function RegionManagement() {
   
   return (  
     <div className="region-management-layout">  
-      <SidebarNavigation />  
         
       <div className="region-management-wrapper">  
         <div className="region-management-container">  

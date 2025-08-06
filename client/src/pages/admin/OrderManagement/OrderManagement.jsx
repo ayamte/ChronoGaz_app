@@ -20,7 +20,6 @@ import {
   MdSmartphone as Smartphone,
   MdDescription as ClipboardList,
 } from 'react-icons/md'
-import SidebarNavigation from '../../../components/admin/Sidebar/Sidebar' 
 import './OrderManagement.css'
 
 // Mock data
@@ -535,7 +534,6 @@ export default function OrderManagementPage() {
 
   return (
     <div className="om-layout">
-      <SidebarNavigation />
       
       <div className="om-wrapper">
         <div className="om-container">

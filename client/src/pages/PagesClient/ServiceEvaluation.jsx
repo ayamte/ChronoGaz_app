@@ -3,7 +3,6 @@ import { Star, CheckCircle, Send, MessageSquare, Clock, Shield, Zap, Smartphone 
 import DriverInfo from '../../components/client/ServiceEvaluationPage/DriverInfo';
 import StarRating from '../../components/client/ServiceEvaluationPage/StarRating';
 import Title from '../../components/client/ServiceEvaluationPage/Title';
-import SidebarNavigation from '../../components/client/SideBar'
 
 
 const ServiceEvaluation = () => {
@@ -89,7 +88,6 @@ const ServiceEvaluation = () => {
     }
   
     return (
-      <SidebarNavigation userName="Nom du client">
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white p-6 shadow-lg" style={{background: 'linear-gradient(135deg, #1F55A3 0%, #245FA6 100%)'}}>
@@ -182,7 +180,6 @@ const ServiceEvaluation = () => {
           </div>          
         </div>
       </div>
-      </SidebarNavigation>
     );
   };
   

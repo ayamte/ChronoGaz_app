@@ -10,7 +10,6 @@ import {
 } from "react-icons/md"  
 import { useNavigate } from "react-router-dom"  
 import "./infoCamion.css"  
-import SidebarNavigation from '../../../components/admin/Sidebar/Sidebar'  
   
 // Données d'exemple pour un camion  
 const initialTruckData = {  
@@ -64,7 +63,6 @@ export default function TruckDetails() {
   
   return (  
     <div className="truck-details-layout">  
-      <SidebarNavigation />  
         
       <div className="truck-details-wrapper">  
         <div className="truck-details-container">  

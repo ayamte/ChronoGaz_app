@@ -10,7 +10,6 @@ import {
   MdClose as X  
 } from "react-icons/md"  
 import "./gestionCamion.css"  
-import SidebarNavigation from '../../../components/admin/Sidebar/Sidebar'  
   
 // Données d'exemple pour les camions  
 const trucksData = [  
@@ -122,7 +121,6 @@ export default function TruckManagement() {
   
   return (  
     <div className="truck-management-layout">  
-      <SidebarNavigation />  
         
       <div className="truck-management-wrapper">  
         <div className="truck-management-container">  

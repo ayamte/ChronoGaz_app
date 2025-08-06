@@ -6,7 +6,6 @@ import AddressStep from '../../components/client/CommandPage/AddressStep';
 import SummaryStep from '../../components/client/CommandPage/SummaryStep';
 import butaButane from '../../assets/svg/buta-gaz-butane.svg';
 import butaPropane from '../../assets/svg/buta-gaz-propane.svg';
-import SidebarNavigation from '../../components/client/SideBar'
 
 
 const Command = () => {
@@ -221,7 +220,7 @@ const Command = () => {
   };
 
   return (
-  <SidebarNavigation userName="Nom du client">  
+
     <div className="command-page-content">  
       <Title />  
       <StepsIndicator currentStep={currentStep} />  
@@ -258,7 +257,6 @@ const Command = () => {
         )}
       </div>  
     </div>  
-  </SidebarNavigation> 
   );
 };
 

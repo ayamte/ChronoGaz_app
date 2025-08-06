@@ -14,8 +14,8 @@ import {
 } from 'react-icons/md'      
 import logo from './logo.png'      
 import "./DriverSidebar.css"   
-import { authService } from '../../services/authService';    
-import { redirectUserByRole } from '../utils/redirectUtils';  
+import { authService } from '../../../services/authService';  
+/*import { redirectUserByRole } from '../../../utils/redirectUtils'; */
       
 const menuItems = [            
   {      
@@ -73,11 +73,7 @@ function SidebarNavigation({ userName = "Chauffeur" }) {
   authService.logout(); 
   }   
 
-  const handleHomeClick = () => {  
-    const user = authService.getUser();  
-    redirectUserByRole(user.role);  
-  };
-      
+ 
   const toggleDropdown = () => {      
     setDropdownOpen(!dropdownOpen)      
   }      

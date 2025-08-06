@@ -14,7 +14,6 @@ import {
   MdVisibility as Eye,
   MdLocalShipping as TruckIcon,
 } from 'react-icons/md'
-import SidebarNavigation from "../../../components/chauffeur/DriverSidebar/DriverSidebar"
 import './SupplierVoucher.css'
 
 // Mock data
@@ -246,8 +245,6 @@ export default function SupplierVoucherPage() {
   if (showConfirmation && generatedVoucher) {
     return (
       <div className="sv-layout">
-        <SidebarNavigation />
-        
         <div className="sv-wrapper">
           <div className="sv-confirmation-container">
             <div className="sv-confirmation-card">
@@ -309,7 +306,6 @@ export default function SupplierVoucherPage() {
 
   return (
     <div className="sv-layout">
-      <SidebarNavigation />
       
       <div className="sv-wrapper">
         <div className="sv-container">
