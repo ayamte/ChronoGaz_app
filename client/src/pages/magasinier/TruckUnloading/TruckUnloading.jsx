@@ -13,7 +13,6 @@ import {
   MdWarehouse as Warehouse,
   MdAssignmentTurnedIn as ClipboardCheck,
 } from 'react-icons/md'
-import DriverSidebar from "../../../components/chauffeur/DriverSidebar/DriverSidebar"
 import './TruckUnloading.css'
 
 // Mock data
@@ -260,7 +259,6 @@ export default function TruckUnloadingPage() {
   if (showConfirmation) {
     return (
       <div className="tu-layout">
-        <DriverSidebar userName={mockUser.name} />
         <div className="tu-wrapper">
           <div className="tu-confirmation-container">
             <div className="tu-confirmation-card">
@@ -293,7 +291,6 @@ export default function TruckUnloadingPage() {
   if (showPreview) {
     return (
       <div className="tu-layout">
-        <DriverSidebar userName={mockUser.name} />
         <div className="tu-wrapper">
           <div className="tu-preview-overlay">
             <div className="tu-preview-modal">
@@ -381,7 +378,6 @@ export default function TruckUnloadingPage() {
   // Return principal
   return (
     <div className="tu-layout">
-      <DriverSidebar userName={mockUser.name} />
       
       <div className="tu-wrapper">
         <div className="tu-container">

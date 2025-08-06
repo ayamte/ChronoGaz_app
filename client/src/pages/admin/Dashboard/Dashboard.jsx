@@ -1,8 +1,5 @@
 import { useState } from "react"  
 import {   
-  MdTrendingUp as TrendingUp,   
-  MdLocalShipping as Package,   
-  MdAttachMoney as DollarSign,   
   MdChevronLeft as ChevronLeft,   
   MdChevronRight as ChevronRight,   
   MdCalendarToday as Calendar,   
@@ -10,7 +7,6 @@ import {
 } from "react-icons/md"  
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'  
 import "./Dashboard.css"  
-import SidebarNavigation from '../../../components/admin/Sidebar/Sidebar'
 import butaneImage from './butane.png'
 import propaneImage from './propane.png'
   
@@ -203,7 +199,6 @@ export default function Dashboard() {
   
   return (  
     <div className="dashboard-layout">    
-      <SidebarNavigation />    
           
       <div className="dashboard-wrapper">  
         <div className="dashboard-container">  

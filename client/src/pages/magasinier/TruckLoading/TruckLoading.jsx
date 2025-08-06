@@ -10,7 +10,6 @@ import {
   MdSave as Save,
   MdInventory as Package
 } from 'react-icons/md'
-import DriverSidebar from "../../../components/chauffeur/DriverSidebar/DriverSidebar"
 import './TruckLoading.css'
 
 // Mock data
@@ -321,7 +320,6 @@ export default function TruckLoadingPage() {
   if (showConfirmation) {
     return (
       <div className="tl-layout">
-        <DriverSidebar userName={mockUser.name} />
         <div className="tl-wrapper">
           <div className="tl-confirmation-container">
             <div className="tl-confirmation-card">
@@ -353,7 +351,6 @@ export default function TruckLoadingPage() {
   if (showPreview) {
     return (
       <div className="tl-layout">
-        <DriverSidebar userName={mockUser.name} />
         <div className="tl-wrapper">
           <div className="tl-preview-overlay">
             <div className="tl-preview-modal">
@@ -451,7 +448,6 @@ export default function TruckLoadingPage() {
   // Return principal
   return (
     <div className="tl-layout">
-      <DriverSidebar userName={mockUser.name} />
       
       <div className="tl-wrapper">
         <div className="tl-container">

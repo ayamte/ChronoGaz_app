@@ -8,7 +8,6 @@ import {
   MdAttachFile as AttachFile  
 } from "react-icons/md"  
 import "./gestionBon.css"  
-import SidebarNavigation from '../../../components/admin/Sidebar/Sidebar'  
   
 // Données d'exemple pour les bons des fournisseurs  
 const supplierVouchersData = [  
@@ -211,7 +210,6 @@ export default function SupplierVoucherManagement() {
   
   return (  
     <div className="supplier-management-layout">  
-      <SidebarNavigation />  
         
       <div className="supplier-management-wrapper">  
         <div className="supplier-management-container">  

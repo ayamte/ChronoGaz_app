@@ -534,7 +534,11 @@ body.sidebar-collapsed .chauffeur-management-wrapper {
   background-color: #f9fafb;    
 }    
     
-
+.badge-magasinier {  
+  background-color: #fef3c7;  
+  color: #92400e;  
+  border: 1px solid #fcd34d;  
+}
 .submit-button {  
   padding: 12px 24px;  
   background-color: var(--secondary-blue);  

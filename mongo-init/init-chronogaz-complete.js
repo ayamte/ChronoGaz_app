@@ -196,6 +196,16 @@ const roleEmploye = db.roles.insertOne({
   createdAt: new Date(),  
   updatedAt: new Date()  
 });  
+
+const roleEmployeMagasin = db.roles.insertOne({  
+  code: 'EMPLOYE_MAGASIN',  
+  nom: 'Employé Magasin',  
+  description: 'Accès employé magasin pour gestion stock',  
+  niveau_acces: 2,  
+  actif: true,  
+  createdAt: new Date(),  
+  updatedAt: new Date()  
+});
   
 // Insérer les régions  
 const regionCasa = db.regions.insertOne({  

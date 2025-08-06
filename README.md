@@ -6,7 +6,7 @@ All the authentication routes follow /api/auth/
 | --- | --------------------------- | ------ | -------- | ---------- | ------------------------------------------------------ |
 | 1   | `/api/auth/register`        | POST   | Done     | No         | Register a new client account                          |
 | 2   | `/api/auth/login`           | POST   | Done     | No         | Log in with email and password, return tokens          |
-| 3   | `/api/auth/logout`          | POST   | NotD     | Yes        | Invalidate the refresh token (logout)                  |
+| 3   | `/api/auth/logout`          | POST   | Done     | Yes        | Invalidate the refresh token (logout)                  |
 | 4   | `/api/auth/refresh`         | POST   | NotD     | No         | Get new access token using refresh token               |
 | 5   | `/api/auth/forgot-password` | POST   | NotD     | No         | Send reset password link or code to user email         |
 | 6   | `/api/auth/reset-password`  | POST   | NotD     | No         | Reset user password using token or verification process|

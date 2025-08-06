@@ -1,654 +1,777 @@
-import { useState } from "react"  
-import {   
-  MdSearch as Search,   
-  MdAdd as Plus,   
-  MdPerson as Driver,   
-  MdPeople as Companion,  
-  MdLocalShipping as Truck,  
-  MdEdit as Edit,  
-  MdDelete as Delete,  
-  MdClose as X,
-  MdPhone as Phone,
-  MdEmail as Email  
-} from "react-icons/md"  
-import "./GestionChauffeur.css"  
-import SidebarNavigation from '../../../components/admin/Sidebar/Sidebar'  
+import { useState, useEffect } from "react"      
+import {       
+  MdSearch as Search,       
+  MdAdd as Plus,          
+  MdEdit as Edit,      
+  MdDelete as Delete,      
+  MdClose as X      
+} from "react-icons/md"      
+import "./GestionChauffeur.css"      
+import { employeeService } from '../../../services/employeeService'    
+    
+export default function GestionChauffeur() {      
+  const [searchTerm, setSearchTerm] = useState("")      
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)      
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)      
+  const [chauffeurs, setChauffeurs] = useState([])      
+  const [editingChauffeur, setEditingChauffeur] = useState(null)      
+  const [loading, setLoading] = useState(true)    
+  const [error, setError] = useState("")    
+  const [isLoading, setIsLoading] = useState(false)    
+    
+  // CORRIGÉ: Formulaire avec tous les champs nécessaires
+  const [formData, setFormData] = useState({        
+    nom: "",        
+    type: "",        
+    telephone: "",        
+    email: "",        
+    cin: "",  
+    cnss: "",  
+    matricule: "",  
+    civilite: "M", // AJOUTÉ  
+    statut: "ACTIF" // AJOUTÉ  
+  })
+    
+  // Charger les employés depuis l'API    
+  useEffect(() => {    
+    const fetchEmployees = async () => {    
+      try {    
+        setLoading(true);    
+        const response = await employeeService.getAll();    
+            
+        if (response.success) {    
+          // CORRIGÉ: Transformer les données avec civilité et statut
+          const transformedEmployees = response.data.map(employee => ({      
+            id: employee._id,      
+            nom: employee.physical_user_id ?       
+              `${employee.physical_user_id.first_name} ${employee.physical_user_id.last_name}` : 'N/A',      
+            type: employee.fonction === 'CHAUFFEUR' ? 'Chauffeur' :     
+                  employee.fonction === 'ACCOMPAGNANT' ? 'Accompagnant' :     
+                  employee.fonction === 'MAGASINIER' ? 'Magasinier' : 'N/A',      
+            telephone: employee.physical_user_id?.telephone_principal || 'N/A',      
+            email: employee.physical_user_id?.user_id?.email || 'N/A',      
+            cin: employee.cin || 'N/A',  
+            cnss: employee.cnss || 'N/A',  
+            matricule: employee.matricule || 'N/A',  
+            civilite: employee.physical_user_id?.civilite || 'M', // AJOUTÉ  
+            statut: employee.statut || 'ACTIF' // AJOUTÉ  
+          }));  
+          setChauffeurs(transformedEmployees);    
+        } else {    
+          setError("Erreur lors du chargement des employés");    
+        }    
+      } catch (err) {    
+        setError("Erreur de connexion à l'API");    
+        console.error('Erreur:', err);    
+      } finally {    
+        setLoading(false);    
+      }    
+    };    
+    
+    fetchEmployees();    
+  }, []);    
+    
+  // Filtrer les chauffeurs selon le terme de recherche      
+  const filteredChauffeurs = chauffeurs.filter(      
+    (chauffeur) =>      
+      chauffeur.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||      
+      chauffeur.type.toLowerCase().includes(searchTerm.toLowerCase()) ||      
+      chauffeur.email.toLowerCase().includes(searchTerm.toLowerCase()) ||  
+      chauffeur.cin.toLowerCase().includes(searchTerm.toLowerCase()) ||  
+      chauffeur.matricule.toLowerCase().includes(searchTerm.toLowerCase()),      
+  )      
   
-// Données d'exemple pour les chauffeurs et accompagnants  
-const chauffeursData = [  
-  {  
-    id: 1,  
-    nom: "Mohamed Alami",  
-    type: "Chauffeur",  
-    telephone: "+212 6 12 34 56 78",  
-    region: "Casablanca",  
-    email: "mohamed.alami@chronogaz.ma",  
-    permis: "B, C",
-    experience: "5 ans",
-    statut: "Actif"
-  },  
-  {  
-    id: 2,  
-    nom: "Fatima Benali",  
-    type: "Accompagnant",  
-    telephone: "+212 6 22 33 44 55",  
-    region: "Rabat",  
-    email: "fatima.benali@chronogaz.ma",  
-    permis: "B",
-    experience: "2 ans",
-    statut: "Actif"
-  },  
-  {  
-    id: 3,  
-    nom: "Ahmed Tazi",  
-    type: "Chauffeur",  
-    telephone: "+212 6 33 44 55 66",  
-    region: "Tanger",  
-    email: "ahmed.tazi@chronogaz.ma",  
-    permis: "B, C, D",
-    experience: "8 ans",
-    statut: "En congé"
-  },  
-  {  
-    id: 4,  
-    nom: "Youssef Idrissi",  
-    type: "Accompagnant",  
-    telephone: "+212 6 44 55 66 77",  
-    region: "Fès",  
-    email: "youssef.idrissi@chronogaz.ma",  
-    permis: "B",
-    experience: "1 an",
-    statut: "Actif"
-  },  
-  {  
-    id: 5,  
-    nom: "Rachid Bennani",  
-    type: "Chauffeur",  
-    telephone: "+212 6 55 66 77 88",  
-    region: "Marrakech",  
-    email: "rachid.bennani@chronogaz.ma",  
-    permis: "B, C",
-    experience: "10 ans",
-    statut: "Actif"
-  },  
-]  
-  
-export default function GestionChauffeur() {  
-  const [searchTerm, setSearchTerm] = useState("")  
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)  
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)  
-  const [chauffeurs, setChauffeurs] = useState(chauffeursData)  
-  const [editingChauffeur, setEditingChauffeur] = useState(null)  
-  const [formData, setFormData] = useState({  
-    nom: "",  
-    type: "",  
-    telephone: "",  
-    region: "",  
-    email: "",  
-    permis: "",
-    experience: "",
-    statut: "Actif"
-  })  
-  
-  // Filtrer les chauffeurs selon le terme de recherche  
-  const filteredChauffeurs = chauffeurs.filter(  
-    (chauffeur) =>  
-      chauffeur.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||  
-      chauffeur.type.toLowerCase().includes(searchTerm.toLowerCase()) ||  
-      chauffeur.region.toLowerCase().includes(searchTerm.toLowerCase()) ||  
-      chauffeur.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      chauffeur.statut.toLowerCase().includes(searchTerm.toLowerCase()),  
-  )  
-  
-  // Calculer les statistiques  
-  const totalChauffeurs = chauffeurs.length  
-  const chauffeursPrincipaux = chauffeurs.filter((c) => c.type === "Chauffeur").length  
-  const accompagnants = chauffeurs.filter((c) => c.type === "Accompagnant").length  
-  const actifs = chauffeurs.filter((c) => c.statut === "Actif").length  
-  
-  const handleInputChange = (field, value) => {  
-    setFormData((prev) => ({  
-      ...prev,  
-      [field]: value,  
-    }))  
-  }  
-  
-  const handleAddSubmit = (e) => {  
-    e.preventDefault()  
-    const newChauffeur = {  
-      id: chauffeurs.length + 1,  
-      ...formData  
-    }  
-    setChauffeurs([...chauffeurs, newChauffeur])  
-    console.log("Nouveau chauffeur:", newChauffeur)  
-  
-    // Réinitialiser le formulaire et fermer le modal  
-    setFormData({  
-      nom: "",  
-      type: "",  
-      telephone: "",  
-      region: "",  
-      email: "",  
-      permis: "",
-      experience: "",
-      statut: "Actif"
-    })  
-    setIsAddDialogOpen(false)  
-  }  
-
-  const handleAddClick = () => {  
-    // Réinitialiser complètement le formulaire pour l'ajout  
-    setFormData({  
-      nom: "",  
-      type: "",  
-      telephone: "",  
-      region: "",  
-      email: "",  
-      permis: "",
-      experience: "",
-      statut: "Actif"
-    })  
-    setIsAddDialogOpen(true)  
-  }  
-  
-  const handleEditSubmit = (e) => {  
-    e.preventDefault()  
-    const updatedChauffeurs = chauffeurs.map(chauffeur =>   
-      chauffeur.id === editingChauffeur.id ? { ...editingChauffeur, ...formData } : chauffeur  
-    )  
-    setChauffeurs(updatedChauffeurs)  
-    console.log("Chauffeur modifié:", { ...editingChauffeur, ...formData })  
-  
-    // Réinitialiser et fermer  
-    setFormData({  
-      nom: "",  
-      type: "",  
-      telephone: "",  
-      region: "",  
-      email: "",  
-      permis: "",
-      experience: "",
-      statut: "Actif"
-    })  
-    setEditingChauffeur(null)  
-    setIsEditDialogOpen(false)  
-  }  
-  
-  const handleEdit = (chauffeur) => {  
-    setEditingChauffeur(chauffeur)  
-    setFormData({  
-      nom: chauffeur.nom,  
-      type: chauffeur.type,  
-      telephone: chauffeur.telephone,  
-      region: chauffeur.region,  
-      email: chauffeur.email,  
-      permis: chauffeur.permis,
-      experience: chauffeur.experience,
-      statut: chauffeur.statut
-    })  
-    setIsEditDialogOpen(true)  
-  }  
-  
-  const handleDelete = (chauffeurId) => {  
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce chauffeur ?")) {  
-      const updatedChauffeurs = chauffeurs.filter(chauffeur => chauffeur.id !== chauffeurId)  
-      setChauffeurs(updatedChauffeurs)  
-      console.log("Chauffeur supprimé:", chauffeurId)  
-    }  
-  }  
-  
-  const getTypeBadge = (type) => {  
-    switch (type) {  
-      case "Chauffeur":  
-        return <span className="badge badge-chauffeur">Chauffeur</span>  
-      case "Accompagnant":  
-        return <span className="badge badge-accompagnant">Accompagnant</span>  
-      default:  
-        return <span className="badge badge-default">{type}</span>  
-    }  
-  }  
-
-  const getStatutBadge = (statut) => {  
-    switch (statut) {  
-      case "Actif":  
-        return <span className="badge badge-actif">Actif</span>  
-      case "En congé":  
-        return <span className="badge badge-conge">En congé</span>  
-      case "Inactif":  
-        return <span className="badge badge-inactif">Inactif</span>  
-      default:  
-        return <span className="badge badge-default">{statut}</span>  
-    }  
-  }  
-  
-  const getTypeIcon = (type) => {  
-    switch (type) {  
-      case "Chauffeur":  
-        return <Driver className="icon" />  
-      case "Accompagnant":  
-        return <Companion className="icon" />  
-      default:  
-        return <Driver className="icon" />  
-    }  
-  }  
-  
-  return (  
-    <div className="chauffeur-management-layout">  
-      <SidebarNavigation />  
-        
-      <div className="chauffeur-management-wrapper">  
-        <div className="chauffeur-management-container">  
-          <div className="chauffeur-management-content">  
-            {/* En-tête */}  
-            <div className="page-header">  
-              <h1 className="page-title">Gestion des Chauffeurs</h1>  
-              <p className="page-subtitle">Gérez votre équipe de chauffeurs et accompagnants</p>  
-            </div>  
-  
-            {/* 4 Cards en haut avec gradient */}  
-            <div className="stats-grid">  
-              <div className="stat-card gradient-card">  
-                <div className="stat-card-header">  
-                  <div className="stat-content">  
-                    <h3 className="stat-label">Total Personnel</h3>  
-                    <div className="stat-value">{totalChauffeurs}</div>  
-                    <p className="stat-description">Membres de l'équipe</p>  
-                  </div>  
-                </div>  
-              </div>  
-              
-              <div className="stat-card gradient-card">  
-                <div className="stat-card-header">  
-                  <div className="stat-content">  
-                    <h3 className="stat-label">Chauffeurs</h3>  
-                    <div className="stat-value">{chauffeursPrincipaux}</div>  
-                    <p className="stat-description">Chauffeurs principaux</p>  
-                  </div>  
-                </div>  
-              </div>  
-              
-              <div className="stat-card gradient-card">  
-                <div className="stat-card-header">  
-                  <div className="stat-content">  
-                    <h3 className="stat-label">Accompagnants</h3>  
-                    <div className="stat-value">{accompagnants}</div>  
-                    <p className="stat-description">Accompagnants</p>  
-                  </div>  
-                </div>  
-              </div>  
-              
-              <div className="stat-card gradient-card">  
-                <div className="stat-card-header">  
-                  <div className="stat-content">  
-                    <h3 className="stat-label">Actifs</h3>  
-                    <div className="stat-value">{actifs}</div>  
-                    <p className="stat-description">Personnel actif</p>  
-                  </div>  
-                </div>  
-              </div>  
-            </div> 
-  
-            {/* Bouton Ajouter Chauffeur */}  
-            <div className="action-section">  
-              <button className="add-button" onClick={handleAddClick}>  
-                <Plus className="button-icon" />  
-                Ajouter Personnel  
-              </button> 
-            </div>  
-  
-            {/* Barre de recherche */}  
-            <div className="search-section">  
-              <div className="search-container">  
-                <Search className="search-icon" />  
-                <input  
-                  type="text"  
-                  placeholder="Rechercher par nom, type, région, email ou statut..."  
-                  value={searchTerm}  
-                  onChange={(e) => setSearchTerm(e.target.value)}  
-                  className="search-input"  
-                />  
-              </div>  
-            </div>  
-  
-            {/* Tableau */}  
-            <div className="table-card">  
-              <div className="table-header">  
-                <h3 className="table-title">Liste du Personnel</h3>  
-              </div>  
-              <div className="table-content">  
-                <div className="table-container">  
-                  <table className="chauffeurs-table">  
-                    <thead>  
-                      <tr>  
-                        <th>Nom</th>  
-                        <th>Type</th>  
-                        <th>Téléphone</th>  
-                        <th>Région</th>  
-                        <th>Permis</th>  
-                        <th>Expérience</th>  
-                        <th>Statut</th>  
-                        <th>Actions</th>  
-                      </tr>  
-                    </thead>  
-                    <tbody>  
-                      {filteredChauffeurs.map((chauffeur) => (  
-                        <tr key={chauffeur.id}>  
-                          <td className="font-medium">{chauffeur.nom}</td>  
-                          <td>{getTypeBadge(chauffeur.type)}</td>  
-                          <td>{chauffeur.telephone}</td>  
-                          <td>{chauffeur.region}</td>  
-                          <td>{chauffeur.permis}</td>  
-                          <td>{chauffeur.experience}</td>  
-                          <td>{getStatutBadge(chauffeur.statut)}</td>  
-                          <td>  
-                            <div className="action-buttons">  
-                              <button   
-                                className="edit-action-button"  
-                                onClick={() => handleEdit(chauffeur)}  
-                              >  
-                                <Edit className="action-icon" />  
-                              </button>  
-                              <button   
-                                className="delete-action-button"  
-                                onClick={() => handleDelete(chauffeur.id)}  
-                              >  
-                                <Delete className="action-icon" />  
-                              </button>  
-                            </div>  
-                          </td>  
-                        </tr>  
-                      ))}  
-                    </tbody>  
-                  </table>
-                  {filteredChauffeurs.length === 0 && (    
-                    <div className="no-results">    
-                      Aucun chauffeur trouvé pour votre recherche.    
-                    </div>    
-                  )}    
-                </div>    
-              </div>    
-            </div>    
+  // Calculer les statistiques
+  const totalChauffeurs = chauffeurs.length      
+  const chauffeursPrincipaux = chauffeurs.filter((c) => c.type === "Chauffeur").length      
+  const accompagnants = chauffeurs.filter((c) => c.type === "Accompagnant").length      
+  const magasiniers = chauffeurs.filter((c) => c.type === "Magasinier").length  
+      
+  const handleInputChange = (field, value) => {      
+    setFormData((prev) => ({      
+      ...prev,      
+      [field]: value,      
+    }))      
+  }      
+    
+  const handleAddSubmit = async (e) => {        
+    e.preventDefault()        
+    setIsLoading(true)      
+    setError("")      
+    
+    try {      
+      // Logique de division du nom
+      const nameParts = formData.nom.trim().split(' ');  
+      const firstName = nameParts[0];  
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];  
+    
+      const employeeData = {      
+        fonction: formData.type === 'Chauffeur' ? 'CHAUFFEUR' :     
+                formData.type === 'Accompagnant' ? 'ACCOMPAGNANT' :     
+                formData.type === 'Magasinier' ? 'MAGASINIER' : 'CHAUFFEUR',      
+        profile: {      
+          first_name: firstName,      
+          last_name: lastName,      
+          civilite: formData.civilite, // AJOUTÉ
+          telephone_principal: formData.telephone,      
+          email: formData.email,  
+          cin: formData.cin,
+          cnss: formData.cnss
+        },      
+        statut: formData.statut, // AJOUTÉ
+        date_embauche: new Date()  
+      };      
+    
+      const response = await employeeService.create(employeeData);      
+            
+      if (response.success) {      
+        // Recharger la liste des employés      
+        const updatedResponse = await employeeService.getAll();      
+        if (updatedResponse.success) {      
+          const transformedEmployees = updatedResponse.data.map(employee => ({      
+            id: employee._id,      
+            nom: employee.physical_user_id ?       
+              `${employee.physical_user_id.first_name} ${employee.physical_user_id.last_name}` : 'N/A',      
+            type: employee.fonction === 'CHAUFFEUR' ? 'Chauffeur' :     
+                  employee.fonction === 'ACCOMPAGNANT' ? 'Accompagnant' :     
+                  employee.fonction === 'MAGASINIER' ? 'Magasinier' : 'N/A',      
+            telephone: employee.physical_user_id?.telephone_principal || 'N/A',      
+            email: employee.physical_user_id?.user_id?.email || 'N/A',      
+            cin: employee.cin || 'N/A',    
+            cnss: employee.cnss || 'N/A',    
+            matricule: employee.matricule || 'N/A',
+            civilite: employee.physical_user_id?.civilite || 'M',
+            statut: employee.statut || 'ACTIF'
+          }));      
+          setChauffeurs(transformedEmployees);      
+        }      
+            
+        setIsAddDialogOpen(false);      
+        // CORRIGÉ: Réinitialisation avec tous les champs
+        setFormData({      
+          nom: "",      
+          type: "",      
+          telephone: "",      
+          email: "",      
+          cin: "",    
+          cnss: "",    
+          matricule: "",
+          civilite: "M",
+          statut: "ACTIF"
+        });      
+      } else {      
+        setError(response.message || "Erreur lors de l'ajout de l'employé");      
+      }      
+    } catch (err) {      
+      setError("Erreur lors de l'ajout de l'employé");      
+      console.error('Erreur:', err);      
+    } finally {      
+      setIsLoading(false);      
+    }      
+  }   
+    
+  const handleAddClick = () => {      
+    // CORRIGÉ: Réinitialisation avec tous les champs
+    setFormData({      
+      nom: "",      
+      type: "",      
+      telephone: "",      
+      email: "",      
+      cin: "",  
+      cnss: "",  
+      matricule: "",
+      civilite: "M",
+      statut: "ACTIF"
+    })      
+    setIsAddDialogOpen(true)      
+  }      
+    
+  const handleEditSubmit = async (e) => {        
+    e.preventDefault()        
+    setIsLoading(true)      
+    setError("")      
+    
+    try {      
+      // Logique de division du nom
+      const nameParts = formData.nom.trim().split(' ');  
+      const firstName = nameParts[0];  
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];  
+    
+      const employeeData = {      
+        fonction: formData.type === 'Chauffeur' ? 'CHAUFFEUR' :     
+                formData.type === 'Accompagnant' ? 'ACCOMPAGNANT' :     
+                formData.type === 'Magasinier' ? 'MAGASINIER' : 'CHAUFFEUR',      
+        profile: {      
+          first_name: firstName,      
+          last_name: lastName,      
+          civilite: formData.civilite, // AJOUTÉ
+          telephone_principal: formData.telephone,      
+          email: formData.email,  
+          cin: formData.cin,
+          cnss: formData.cnss
+        },
+        statut: formData.statut // AJOUTÉ
+      };      
+    
+      const response = await employeeService.update(editingChauffeur.id, employeeData);      
+            
+      if (response.success) {      
+        // Recharger la liste des employés      
+        const updatedResponse = await employeeService.getAll();      
+        if (updatedResponse.success) {      
+          const transformedEmployees = updatedResponse.data.map(employee => ({      
+            id: employee._id,      
+            nom: employee.physical_user_id ?       
+              `${employee.physical_user_id.first_name} ${employee.physical_user_id.last_name}` : 'N/A',      
+            type: employee.fonction === 'CHAUFFEUR' ? 'Chauffeur' :     
+                  employee.fonction === 'ACCOMPAGNANT' ? 'Accompagnant' :     
+                  employee.fonction === 'MAGASINIER' ? 'Magasinier' : 'N/A',      
+            telephone: employee.physical_user_id?.telephone_principal || 'N/A',      
+            email: employee.physical_user_id?.user_id?.email || 'N/A',      
+            cin: employee.cin || 'N/A',    
+            cnss: employee.cnss || 'N/A',    
+            matricule: employee.matricule || 'N/A',
+            civilite: employee.physical_user_id?.civilite || 'M',
+            statut: employee.statut || 'ACTIF'
+          }));      
+          setChauffeurs(transformedEmployees);      
+        }      
+            
+        setIsEditDialogOpen(false);      
+        setEditingChauffeur(null);      
+        // CORRIGÉ: Réinitialisation avec tous les champs
+        setFormData({      
+          nom: "",      
+          type: "",      
+          telephone: "",      
+          email: "",      
+          cin: "",    
+          cnss: "",    
+          matricule: "",
+          civilite: "M",
+          statut: "ACTIF"
+        });      
+      } else {      
+        setError(response.message || "Erreur lors de la modification de l'employé");      
+      }      
+    } catch (err) {      
+      setError("Erreur lors de la modification de l'employé");      
+      console.error('Erreur:', err);      
+    } finally {      
+      setIsLoading(false);      
+    }      
+  }     
+    
+  // CORRIGÉ: Mapping avec civilité et statut
+  const handleEdit = (chauffeur) => {      
+    setEditingChauffeur(chauffeur)      
+    setFormData({      
+      nom: chauffeur.nom,      
+      type: chauffeur.type,      
+      telephone: chauffeur.telephone,      
+      email: chauffeur.email,      
+      cin: chauffeur.cin,  
+      cnss: chauffeur.cnss,  
+      matricule: chauffeur.matricule,
+      civilite: chauffeur.civilite || "M", // AJOUTÉ
+      statut: chauffeur.statut || "ACTIF" // AJOUTÉ
+    })      
+    setIsEditDialogOpen(true)      
+  }      
+    
+  const handleDelete = async (chauffeurId) => {      
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cet employé ?")) {      
+      try {    
+        setError("");    
+        const response = await employeeService.delete(chauffeurId);    
+            
+        if (response.success) {    
+          setChauffeurs(chauffeurs.filter(chauffeur => chauffeur.id !== chauffeurId));    
+        } else {    
+          setError(response.message || "Erreur lors de la suppression de l'employé");    
+        }    
+      } catch (err) {    
+        setError("Erreur lors de la suppression de l'employé");    
+        console.error('Erreur:', err);    
+      }    
+    }      
+  }      
+    
+  const getTypeBadge = (type) => {      
+    switch (type) {      
+      case "Chauffeur":      
+        return <span className="badge badge-chauffeur">Chauffeur</span>      
+      case "Accompagnant":      
+        return <span className="badge badge-accompagnant">Accompagnant</span>      
+      case "Magasinier":      
+        return <span className="badge badge-magasinier">Magasinier</span>      
+      default:      
+        return <span className="badge badge-default">{type}</span>      
+    }      
+  }      
+    
+  if (loading) {    
+    return (    
+      <div className="chauffeur-management-layout">    
+        <div className="chauffeur-management-wrapper">    
+          <div style={{ padding: '20px', textAlign: 'center' }}>    
+            Chargement des employés...    
           </div>    
         </div>    
       </div>    
+    );    
+  }    
+      
+  return (      
+    <div className="chauffeur-management-layout">  
+      <div className="chauffeur-management-wrapper">      
+        <div className="chauffeur-management-container">      
+          <div className="chauffeur-management-content">      
+            {/* En-tête */}
+            <div className="page-header">      
+              <h1 className="page-title">Gestion des Employés</h1>      
+              <p className="page-subtitle">Gérez votre équipe de chauffeurs, accompagnants et magasiniers</p>      
+            </div>      
     
-      {/* Modal pour ajouter un chauffeur */}    
-      {isAddDialogOpen && (    
-        <div className="modal-overlay" onClick={() => setIsAddDialogOpen(false)}>    
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>    
-            <div className="modal-header">    
-              <h2 className="modal-title">Ajouter Personnel</h2>    
-              <button className="modal-close" onClick={() => setIsAddDialogOpen(false)}>    
-                <X className="close-icon" />    
-              </button>    
-            </div>    
-                
-            <form onSubmit={handleAddSubmit} className="modal-form">    
-              <div className="form-group">    
-                <label htmlFor="nom" className="form-label">Nom complet</label>    
-                <input    
-                  id="nom"    
-                  type="text"    
-                  placeholder="Ex: Mohamed Alami"    
-                  value={formData.nom}    
-                  onChange={(e) => handleInputChange("nom", e.target.value)}    
-                  className="form-input"    
-                  required    
-                />    
+            {/* Affichage des erreurs */}    
+            {error && (    
+              <div className="error-alert" style={{    
+                backgroundColor: '#fee',    
+                color: '#c33',    
+                padding: '10px',    
+                borderRadius: '4px',    
+                marginBottom: '20px'    
+              }}>    
+                {error}    
               </div>    
-    
-              <div className="form-group">    
-                <label htmlFor="type" className="form-label">Type</label>    
-                <select    
-                  id="type"    
-                  value={formData.type}    
-                  onChange={(e) => handleInputChange("type", e.target.value)}    
-                  className="form-select"    
-                  required    
-                >    
-                  <option value="">Sélectionner un type</option>    
-                  <option value="Chauffeur">Chauffeur</option>    
-                  <option value="Accompagnant">Accompagnant</option>    
-                </select>    
-              </div>    
-    
-              <div className="form-group">    
-                <label htmlFor="telephone" className="form-label">Téléphone</label>    
-                <input    
-                  id="telephone"    
-                  type="tel"    
-                  placeholder="Ex: +212 6 12 34 56 78"    
-                  value={formData.telephone}    
-                  onChange={(e) => handleInputChange("telephone", e.target.value)}    
-                  className="form-input"    
-                  required    
-                />    
-              </div>    
-    
-              <div className="form-group">    
-                <label htmlFor="region" className="form-label">Région</label>    
-                <select    
-                  id="region"    
-                  value={formData.region}    
-                  onChange={(e) => handleInputChange("region", e.target.value)}    
-                  className="form-select"    
-                  required    
-                >    
-                  <option value="">Sélectionner une région</option>    
-                  <option value="Casablanca">Casablanca</option>    
-                  <option value="Rabat">Rabat</option>    
-                  <option value="Tanger">Tanger</option>    
-                  <option value="Fès">Fès</option>    
-                  <option value="Marrakech">Marrakech</option>    
-                  <option value="Agadir">Agadir</option>    
-                </select>    
-              </div>    
-    
-              <div className="form-group">    
-                <label htmlFor="email" className="form-label">Email</label>    
-                <input    
-                  id="email"    
-                  type="email"    
-                  placeholder="Ex: mohamed.alami@chronogaz.ma"    
-                  value={formData.email}    
-                  onChange={(e) => handleInputChange("email", e.target.value)}    
-                  className="form-input"    
-                  required    
-                />    
-              </div>    
-    
-              <div className="form-group">    
-                <label htmlFor="permis" className="form-label">Permis de conduire</label>    
-                <input    
-                  id="permis"    
-                  type="text"    
-                  placeholder="Ex: B, C, D"    
-                  value={formData.permis}    
-                  onChange={(e) => handleInputChange("permis", e.target.value)}    
-                  className="form-input"    
-                  required    
-                />    
-              </div>    
-  
-              <div className="form-group">    
-                <label htmlFor="experience" className="form-label">Expérience</label>    
-                <input    
-                  id="experience"    
-                  type="text"    
-                  placeholder="Ex: 5 ans"    
-                  value={formData.experience}    
-                  onChange={(e) => handleInputChange("experience", e.target.value)}    
-                  className="form-input"    
-                  required    
-                />    
-              </div>    
-  
-              <div className="form-group">    
-                <label htmlFor="statut" className="form-label">Statut</label>    
-                <select    
-                  id="statut"    
-                  value={formData.statut}    
-                  onChange={(e) => handleInputChange("statut", e.target.value)}    
-                  className="form-select"    
-                  required    
-                >    
-                  <option value="Actif">Actif</option>    
-                  <option value="En congé">En congé</option>    
-                  <option value="Inactif">Inactif</option>    
-                </select>    
-              </div>    
-    
-              <div className="form-actions">    
-                <button type="button" className="cancel-button" onClick={() => setIsAddDialogOpen(false)}>    
-                  Annuler    
-                </button>    
-                <button type="submit" className="submit-button">    
-                  Ajouter    
-                </button>    
-              </div>    
-            </form>    
-          </div>  
-        </div>    
-      )}    
-    
-      {/* Modal pour modifier un chauffeur */}    
-      {isEditDialogOpen && (    
-        <div className="modal-overlay" onClick={() => setIsEditDialogOpen(false)}>    
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>    
-            <div className="modal-header">    
-              <h2 className="modal-title">Modifier Personnel</h2>    
-              <button className="modal-close" onClick={() => setIsEditDialogOpen(false)}>    
-                <X className="close-icon" />    
-              </button>    
-            </div>    
-                
-            <form onSubmit={handleEditSubmit} className="modal-form">    
-              <div className="form-group">    
-                <label htmlFor="edit-nom" className="form-label">Nom complet</label>    
-                <input    
-                  id="edit-nom"    
-                  type="text"    
-                  placeholder="Ex: Mohamed Alami"    
-                  value={formData.nom}    
-                  onChange={(e) => handleInputChange("nom", e.target.value)}    
-                  className="form-input"    
-                  required    
-                />    
-              </div>    
-    
-              <div className="form-group">    
-                <label htmlFor="edit-type" className="form-label">Type</label>    
-                <select    
-                  id="edit-type"    
-                  value={formData.type}    
-                  onChange={(e) => handleInputChange("type", e.target.value)}    
-                  className="form-select"    
-                  required    
-                >    
-                  <option value="">Sélectionner un type</option>    
-                  <option value="Chauffeur">Chauffeur</option>    
-                  <option value="Accompagnant">Accompagnant</option>    
-                </select>    
-              </div>    
-    
-              <div className="form-group">    
-                <label htmlFor="edit-telephone" className="form-label">Téléphone</label>    
-                <input    
-                  id="edit-telephone"    
-                  type="tel"    
-                  placeholder="Ex: +212 6 12 34 56 78"    
-                  value={formData.telephone}    
-                  onChange={(e) => handleInputChange("telephone", e.target.value)}    
-                  className="form-input"    
-                  required    
-                />    
-              </div>    
-    
-              <div className="form-group">    
-                <label htmlFor="edit-region" className="form-label">Région</label>    
-                <select    
-                  id="edit-region"    
-                  value={formData.region}    
-                  onChange={(e) => handleInputChange("region", e.target.value)}    
-                  className="form-select"    
-                  required    
-                >    
-                  <option value="">Sélectionner une région</option>    
-                  <option value="Casablanca">Casablanca</option>    
-                  <option value="Rabat">Rabat</option>    
-                  <option value="Tanger">Tanger</option>    
-                  <option value="Fès">Fès</option>    
-                  <option value="Marrakech">Marrakech</option>    
-                  <option value="Agadir">Agadir</option>    
-                </select>    
-              </div>    
-    
-              <div className="form-group">    
-                <label htmlFor="edit-email" className="form-label">Email</label>    
-                <input    
-                  id="edit-email"    
-                  type="email"    
-                  placeholder="Ex: mohamed.alami@chronogaz.ma"    
-                  value={formData.email}    
-                  onChange={(e) => handleInputChange("email", e.target.value)}    
-                  className="form-input"    
-                  required    
-                />    
-              </div>    
-    
-              <div className="form-group">    
-                <label htmlFor="edit-permis" className="form-label">Permis de conduire</label>    
-                <input    
-                  id="edit-permis"    
-                  type="text"    
-                  placeholder="Ex: B, C, D"    
-                  value={formData.permis}    
-                  onChange={(e) => handleInputChange("permis", e.target.value)}    
-                  className="form-input"    
-                  required    
-                />    
-              </div>    
-  
-              <div className="form-group">    
-                <label htmlFor="edit-experience" className="form-label">Expérience</label>    
-                <input    
-                  id="edit-experience"    
-                  type="text"    
-                  placeholder="Ex: 5 ans"    
-                  value={formData.experience}    
-                  onChange={(e) => handleInputChange("experience", e.target.value)}    
-                  className="form-input"    
-                  required    
-                />    
-              </div>    
-  
-              <div className="form-group">    
-                <label htmlFor="edit-statut" className="form-label">Statut</label>    
-                <select    
-                  id="edit-statut"    
-                  value={formData.statut}    
-                  onChange={(e) => handleInputChange("statut", e.target.value)}    
-                  className="form-select"    
-                  required    
-                >    
-                  <option value="Actif">Actif</option>    
-                  <option value="En congé">En congé</option>    
-                  <option value="Inactif">Inactif</option>    
-                </select>    
-              </div>    
-    
-              <div className="form-actions">    
-                <button type="button" className="cancel-button" onClick={() => setIsEditDialogOpen(false)}>    
-                  Annuler    
-                </button>    
-                <button type="submit" className="submit-button">    
-                  Sauvegarder    
-                </button>    
-              </div>    
-            </form>    
-          </div>    
-        </div>    
-      )}    
-    </div>    
-  )    
-}
+            )}    
+      
+            {/* 4 Cards avec magasiniers */}      
+            <div className="stats-grid">      
+              <div className="stat-card gradient-card">      
+                <div className="stat-card-header">      
+                  <div className="stat-content">      
+                    <h3 className="stat-label">Total Personnel</h3>      
+                    <div className="stat-value">{totalChauffeurs}</div>      
+                    <p className="stat-description">Membres de l'équipe</p>      
+                  </div>      
+                </div>      
+              </div>      
+                  
+              <div className="stat-card gradient-card">      
+                <div className="stat-card-header">      
+                  <div className="stat-content">      
+                    <h3 className="stat-label">Chauffeurs</h3>      
+                    <div className="stat-value">{chauffeursPrincipaux}</div>      
+                    <p className="stat-description">Chauffeurs principaux</p>      
+                  </div>      
+                </div>      
+              </div>      
+                  
+              <div className="stat-card gradient-card">      
+                <div className="stat-card-header">      
+                  <div className="stat-content">      
+                    <h3 className="stat-label">Accompagnants</h3>      
+                    <div className="stat-value">{accompagnants}</div>      
+                    <p className="stat-description">Accompagnants</p>      
+                  </div>      
+                </div>      
+              </div>      
+                  
+              <div className="stat-card gradient-card">      
+                <div className="stat-card-header">      
+                  <div className="stat-content">      
+                    <h3 className="stat-label">Magasiniers</h3>      
+                    <div className="stat-value">{magasiniers}</div>      
+                    <p className="stat-description">Employés magasin</p>      
+                  </div>      
+                </div>      
+              </div>      
+            </div>     
+      
+            {/* Bouton Ajouter Employé */}      
+            <div className="action-section">      
+              <button className="add-button" onClick={handleAddClick}>      
+                <Plus className="button-icon" />      
+                Ajouter Employé      
+              </button>     
+            </div>      
+      
+            {/* Barre de recherche */}      
+            <div className="search-section">      
+              <div className="search-container">      
+                <Search className="search-icon" />      
+                <input      
+                  type="text"      
+                  placeholder="Rechercher par nom, type, email, CIN ou matricule..."      
+                  value={searchTerm}      
+                  onChange={(e) => setSearchTerm(e.target.value)}      
+                  className="search-input"      
+                />      
+              </div>      
+            </div>      
+      
+            {/* Tableau */}      
+            <div className="table-card">      
+              <div className="table-header">      
+                <h3 className="table-title">Liste du Personnel</h3>      
+              </div>      
+              <div className="table-content">      
+                <div className="table-container">      
+                  <table className="chauffeurs-table">      
+                    <thead>      
+                      <tr>      
+                        <th>Nom</th>      
+                        <th>Type</th>      
+                        <th>Téléphone</th>      
+                        <th>Email</th>      
+                        <th>CIN</th>      
+                        <th>CNSS</th>      
+                        <th>Matricule</th>      
+                        <th>Actions</th>      
+                      </tr>      
+                    </thead>      
+                    <tbody>      
+                      {filteredChauffeurs.map((chauffeur) => (      
+                        <tr key={chauffeur.id}>      
+                          <td className="font-medium">{chauffeur.nom}</td>      
+                          <td>{getTypeBadge(chauffeur.type)}</td>      
+                          <td>{chauffeur.telephone}</td>      
+                          <td>{chauffeur.email}</td>      
+                          <td>{chauffeur.cin}</td>      
+                          <td>{chauffeur.cnss}</td>      
+                          <td className="font-mono">{chauffeur.matricule}</td>      
+                          <td>      
+                            <div className="action-buttons">      
+                              <button       
+                                className="edit-action-button"      
+                                onClick={() => handleEdit(chauffeur)}      
+                              >      
+                                <Edit className="action-icon" />      
+                              </button>      
+                              <button       
+                                className="delete-action-button"      
+                                onClick={() => handleDelete(chauffeur.id)}      
+                              >      
+                                <Delete className="action-icon" />      
+                              </button>      
+                            </div>      
+                          </td>      
+                        </tr>      
+                      ))}      
+                    </tbody>      
+                  </table>      
+                  {filteredChauffeurs.length === 0 && (      
+                    <div className="no-results">      
+                      Aucun employé trouvé pour votre recherche.      
+                    </div>      
+                  )}      
+                </div>      
+              </div>      
+            </div>      
+      
+            {/* Modal d'ajout */}      
+            {isAddDialogOpen && (      
+              <div className="modal-overlay" onClick={() => setIsAddDialogOpen(false)}>      
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>      
+                  <div className="modal-header">      
+                    <h3 className="modal-title">Ajouter un Employé</h3>      
+                    <button       
+                      className="modal-close"      
+                      onClick={() => setIsAddDialogOpen(false)}      
+                    >      
+                      <X className="close-icon" />      
+                    </button>      
+                  </div>      
+                  <form onSubmit={handleAddSubmit} className="modal-form">      
+                    <div className="form-grid">      
+                      <div className="form-group">      
+                        <label htmlFor="add-nom" className="form-label">Nom complet *</label>      
+                        <input      
+                          id="add-nom"      
+                          type="text"      
+                          placeholder="Ex: Ahmed Alami"      
+                          value={formData.nom}      
+                          onChange={(e) => handleInputChange("nom", e.target.value)}      
+                          className="form-input"      
+                          required      
+                        />      
+                      </div>      
+      
+                      <div className="form-group">      
+                        <label htmlFor="add-type" className="form-label">Type *</label>      
+                        <select      
+                          id="add-type"      
+                          value={formData.type}      
+                          onChange={(e) => handleInputChange("type", e.target.value)}      
+                          className="form-select"      
+                          required      
+                        >      
+                          <option value="">Sélectionner un type</option>      
+                          <option value="Chauffeur">Chauffeur</option>      
+                          <option value="Accompagnant">Accompagnant</option>      
+                          <option value="Magasinier">Magasinier</option>      
+                        </select>      
+                      </div>      
+      
+                      <div className="form-group">      
+                        <label htmlFor="add-telephone" className="form-label">Téléphone *</label>      
+                        <input      
+                          id="add-telephone"      
+                          type="tel"      
+                          placeholder="Ex: 0612345678"      
+                          value={formData.telephone}      
+                          onChange={(e) => handleInputChange("telephone", e.target.value)}      
+                          className="form-input"      
+                          required      
+                        />      
+                      </div>      
+      
+                      <div className="form-group">      
+                        <label htmlFor="add-email" className="form-label">Email *</label>      
+                        <input      
+                          id="add-email"      
+                          type="email"      
+                          placeholder="Ex: ahmed.alami@chronogaz.ma"      
+                          value={formData.email}      
+                          onChange={(e) => handleInputChange("email", e.target.value)}      
+                          className="form-input"      
+                          required      
+                        />      
+                      </div>      
+      
+                      <div className="form-group">      
+                        <label htmlFor="add-cin" className="form-label">CIN *</label>      
+                        <input      
+                          id="add-cin"      
+                          type="text"      
+                          placeholder="Ex: AB123456"      
+                          value={formData.cin}      
+                          onChange={(e) => handleInputChange("cin", e.target.value)}      
+                          className="form-input"      
+                          required      
+                        />      
+                      </div>      
+      
+                      <div className="form-group">      
+                        <label htmlFor="add-cnss" className="form-label">CNSS *</label>      
+                        <input      
+                          id="add-cnss"      
+                          type="text"      
+                          placeholder="Ex: 123456789"      
+                          value={formData.cnss}      
+                          onChange={(e) => handleInputChange("cnss", e.target.value)}      
+                          className="form-input"      
+                          required      
+                        />      
+                      </div>  
+
+                      <div className="form-group">        
+                        <label htmlFor="add-civilite" className="form-label">Civilité *</label>        
+                        <select        
+                          id="add-civilite"        
+                          value={formData.civilite}        
+                          onChange={(e) => handleInputChange("civilite", e.target.value)}        
+                          className="form-select"        
+                          required        
+                        >        
+                          <option value="M">M.</option>        
+                          <option value="Mme">Mme</option>        
+                          <option value="Mlle">Mlle</option>        
+                        </select>        
+                      </div>        
+                        
+                      <div className="form-group">        
+                        <label htmlFor="add-statut" className="form-label">Statut *</label>        
+                        <select        
+                          id="add-statut"        
+                          value={formData.statut}        
+                          onChange={(e) => handleInputChange("statut", e.target.value)}        
+                          className="form-select"        
+                          required        
+                        >        
+                          <option value="ACTIF">Actif</option>        
+                          <option value="INACTIF">Inactif</option>        
+                          <option value="SUSPENDU">Suspendu</option>        
+                          <option value="EN_CONGE">En congé</option>        
+                        </select>        
+                      </div>    
+                    </div>      
+      
+                    <div className="form-actions">      
+                      <button       
+                        type="button"       
+                        className="cancel-button"       
+                        onClick={() => setIsAddDialogOpen(false)}      
+                      >      
+                        Annuler      
+                      </button>      
+                      <button       
+                        type="submit"       
+                        className="submit-button"       
+                        disabled={isLoading}      
+                      >      
+                        {isLoading ? "Ajout..." : "Ajouter"}      
+                      </button>      
+                    </div>      
+                  </form>      
+                </div>      
+              </div>      
+            )}      
+      
+            {/* Modal de modification - CORRIGÉ: Avec civilité et statut */}      
+            {isEditDialogOpen && (      
+              <div className="modal-overlay" onClick={() => setIsEditDialogOpen(false)}>      
+                <div className="modal-content" onClick={(e) => e.stopPropagation()}>      
+                  <div className="modal-header">      
+                    <h3 className="modal-title">Modifier l'Employé</h3>      
+                    <button       
+                      className="modal-close"      
+                      onClick={() => setIsEditDialogOpen(false)}      
+                    >      
+                      <X className="close-icon" />      
+                    </button>      
+                  </div>      
+                  <form onSubmit={handleEditSubmit} className="modal-form">      
+                    <div className="form-grid">      
+                      <div className="form-group">      
+                        <label htmlFor="edit-nom" className="form-label">Nom complet *</label>      
+                        <input      
+                          id="edit-nom"      
+                          type="text"      
+                          placeholder="Ex: Ahmed Alami"      
+                          value={formData.nom}      
+                          onChange={(e) => handleInputChange("nom", e.target.value)}      
+                          className="form-input"      
+                          required      
+                        />      
+                      </div>      
+      
+                      <div className="form-group">      
+                        <label htmlFor="edit-type" className="form-label">Type *</label>      
+                        <select      
+                          id="edit-type"      
+                          value={formData.type}      
+                          onChange={(e) => handleInputChange("type", e.target.value)}      
+                          className="form-select"      
+                          required      
+                        >      
+                          <option value="">Sélectionner un type</option>      
+                          <option value="Chauffeur">Chauffeur</option>      
+                          <option value="Accompagnant">Accompagnant</option>      
+                          <option value="Magasinier">Magasinier</option>      
+                        </select>      
+                      </div>      
+      
+                      <div className="form-group">      
+                        <label htmlFor="edit-telephone" className="form-label">Téléphone *</label>      
+                        <input      
+                          id="edit-telephone"      
+                          type="tel"      
+                          placeholder="Ex: 0612345678"      
+                          value={formData.telephone}      
+                          onChange={(e) => handleInputChange("telephone", e.target.value)}      
+                          className="form-input"      
+                          required      
+                        />      
+                      </div>      
+      
+                      <div className="form-group">      
+                        <label htmlFor="edit-email" className="form-label">Email *</label>      
+                        <input      
+                          id="edit-email"      
+                          type="email"      
+                          placeholder="Ex: ahmed.alami@chronogaz.ma"      
+                          value={formData.email}      
+                          onChange={(e) => handleInputChange("email", e.target.value)}      
+                          className="form-input"      
+                          required      
+                        />      
+                      </div>      
+      
+                      <div className="form-group">      
+                        <label htmlFor="edit-cin" className="form-label">CIN *</label>      
+                        <input      
+                          id="edit-cin"      
+                          type="text"      
+                          placeholder="Ex: AB123456"      
+                          value={formData.cin}      
+                          onChange={(e) => handleInputChange("cin", e.target.value)}      
+                          className="form-input"      
+                          required      
+                        />      
+                      </div>      
+      
+                      <div className="form-group">      
+                        <label htmlFor="edit-cnss" className="form-label">CNSS *</label>      
+                        <input      
+                          id="edit-cnss"      
+                          type="text"      
+                          placeholder="Ex: 123456789"      
+                          value={formData.cnss}      
+                          onChange={(e) => handleInputChange("cnss", e.target.value)}      
+                          className="form-input"      
+                          required      
+                        />      
+                      </div>      
+
+                      {/* AJOUTÉ: Champs civilité et statut dans le modal de modification */}
+                      <div className="form-group">      
+                        <label htmlFor="edit-civilite" className="form-label">Civilité *</label>      
+                        <select      
+                          id="edit-civilite"      
+                          value={formData.civilite}      
+                          onChange={(e) => handleInputChange("civilite", e.target.value)}      
+                          className="form-select"      
+                          required      
+                        >      
+                          <option value="M">M.</option>      
+                          <option value="Mme">Mme</option>      
+                          <option value="Mlle">Mlle</option>      
+                        </select>      
+                      </div>      
+
+                      <div className="form-group">      
+                        <label htmlFor="edit-statut" className="form-label">Statut *</label>      
+                        <select      
+                          id="edit-statut"      
+                          value={formData.statut}      
+                          onChange={(e) => handleInputChange("statut", e.target.value)}      
+                          className="form-select"      
+                          required      
+                        >      
+                          <option value="ACTIF">Actif</option>      
+                          <option value="INACTIF">Inactif</option>      
+                          <option value="SUSPENDU">Suspendu</option>      
+                          <option value="EN_CONGE">En congé</option>      
+                        </select>      
+                      </div>
+                    </div>      
+      
+                    <div className="form-actions">      
+                      <button       
+                        type="button"       
+                        className="cancel-button"       
+                        onClick={() => setIsEditDialogOpen(false)}      
+                      >      
+                        Annuler      
+                      </button>      
+                      <button       
+                        type="submit"       
+                        className="submit-button"       
+                        disabled={isLoading}      
+                      >      
+                        {isLoading ? "Modification..." : "Sauvegarder"}      
+                      </button>      
+                    </div>      
+                  </form>      
+                </div>      
+              </div>      
+            )}      
+          </div>      
+        </div>      
+      </div>      
+    </div>      
+  )      
+}      
+      

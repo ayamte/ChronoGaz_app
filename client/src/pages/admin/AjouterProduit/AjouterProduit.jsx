@@ -13,8 +13,7 @@ import {
   MdDescription as FileText,        
   MdLabel as TagLabel      
 } from "react-icons/md"  
-import "./AjouterProduit.css"    
-import SidebarNavigation from '../../../components/admin/Sidebar/Sidebar'    
+import "./AjouterProduit.css"       
     
 // Données d'exemple pour les catégories    
 const mockCategories = [    
@@ -232,8 +231,7 @@ export default function AjouterProduit() {
   
   if (showSuccess) {  
     return (  
-      <div className="product-management-layout">  
-        <SidebarNavigation />  
+      <div className="product-management-layout"> 
           
         <div className="product-management-wrapper">  
           <div className="product-management-container">  
@@ -270,7 +268,6 @@ export default function AjouterProduit() {
   
   return (  
     <div className="product-management-layout">  
-      <SidebarNavigation />  
         
       <div className="product-management-wrapper">  
         <div className="product-management-container">  

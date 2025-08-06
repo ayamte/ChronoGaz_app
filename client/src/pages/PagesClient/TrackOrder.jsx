@@ -7,7 +7,6 @@ import DeliveryDriverInfo from "../../components/client/TrackOrderPage/DeliveryD
 import InteractiveMap from "../../components/client/TrackOrderPage/InteractiveMap";
 import OrderSummary from "../../components/client/TrackOrderPage/OrderSummary";
 import { use } from "react";
-import SidebarNavigation from '../../components/client/SideBar'
 
 const TrackOrder = () => {
   const [orderStatus, setOrderStatus] = useState(2);
@@ -114,7 +113,6 @@ const TrackOrder = () => {
   };
 
   return (
-    <SidebarNavigation userName="Nom du client">
     <div className="min-h-screen bg-gray-50">
       <Title title="Suivre ma Commande" />
 
@@ -145,7 +143,6 @@ const TrackOrder = () => {
         <OrderSummary />
       </div>
     </div>
-    </SidebarNavigation>
   );
 };
 
