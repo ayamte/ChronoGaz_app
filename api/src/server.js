@@ -15,6 +15,7 @@ const Employe = require('./models/Employe');
 const Product = require('./models/Product');    
 const Truck = require('./models/Truck');    
 const Region = require('./models/Region');    
+const usersRouter = require('./routes/usersRouter'); 
   
 // Import du middleware d'authentification  
 const { authenticateToken } = require('./middleware/authMiddleware');  
@@ -29,7 +30,8 @@ connectDB();
 // Middleware    
 app.use(cors());    
 app.use(express.json());    
-app.use(express.urlencoded({ extended: true }));    
+app.use(express.urlencoded({ extended: true }));   
+app.use('/api/users', usersRouter); 
   
 // Routes d'authentification (publiques)  
 app.use('/api/auth', authRoutes);  

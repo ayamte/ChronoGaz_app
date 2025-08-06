@@ -21,6 +21,7 @@ const getProfile = async (req, res) => {
     if (physicalUser) {  
       profileData.profile = {  
         type: 'PHYSIQUE',  
+        email: user.email,
         first_name: physicalUser.first_name,  
         last_name: physicalUser.last_name,  
         civilite: physicalUser.civilite,  
@@ -66,6 +67,7 @@ const getProfile = async (req, res) => {
     if (moralUser) {  
       profileData.profile = {  
         type: 'MORAL',  
+        email: user.email,
         raison_sociale: moralUser.raison_sociale,  
         ice: moralUser.ice,  
         patente: moralUser.patente,  
@@ -116,6 +118,8 @@ const updateProfile = async (req, res) => {
   
     // Validation des régions autorisées  
     const regionsAutorisees = ['2 Mars', 'Maarif', 'Bir Anzarane', 'Boulevard al qods'];  
+
+       let updatedData = {};  
       
     if (profile?.region_principale && !regionsAutorisees.includes(profile.region_principale)) {  
       return res.status(400).json({  
@@ -123,8 +127,11 @@ const updateProfile = async (req, res) => {
         message: `Région invalide. Les régions autorisées sont : ${regionsAutorisees.join(', ')}`  
       });  
     }  
-  
-    let updatedData = {};  
+  if (profile?.email && profile.email !== user.email) {  
+  await User.findByIdAndUpdate(userId, { email: profile.email });  
+  updatedData.email = profile.email;  
+}
+ 
   
     // Mettre à jour selon le type d'utilisateur  
     const physicalUser = await PhysicalUser.findOne({ user_id: userId });  
