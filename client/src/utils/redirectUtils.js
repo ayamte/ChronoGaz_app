@@ -102,11 +102,13 @@ export const hasAccessToRoute = (role, path, userType) => {
   ];      
         
   const clientRoutes = [      
-    '/Command', '/Trackorder', '/Orderhistory', '/Serviceevaluation'      
+    '/Command', '/Trackorder', '/Orderhistory', '/Serviceevaluation',  
+    '/profile'  // AJOUTÉ: Route profile pour tous les clients  
   ];  
   
   const entrepriseRoutes = [  
-    '/entreprise/gestion-clients', '/entreprise/suivi-commandes'  
+    '/entreprise/gestion-clients', '/entreprise/suivi-commandes',  
+    '/profile'  // AJOUTÉ: Route profile pour les entreprises aussi  
   ];      
         
   const employeRoutes = [      

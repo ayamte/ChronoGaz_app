@@ -25,6 +25,7 @@ import RouteHistory from './pages/chauffeur/RouteHistory/RouteHistory';
 import EndOfRoutePage from './pages/chauffeur/EndOfRoute/EndOfRoute';        
 import SupplierVoucher from './pages/chauffeur/SupplierVoucher/SupplierVoucher';        
 import StockManagement from './pages/magasinier/StockManagement/StockManagement';        
+import Profile from './pages/Profile/Profile'; 
         
 // Import depuis ghani-dev        
 import Command from './pages/PagesClient/Command';        
@@ -320,9 +321,18 @@ function App() {
                 <ProtectedRoute>        
                   <ServiceEvaluation />        
                 </ProtectedRoute>        
-              }         
+              }  
+                   
             />        
                     
+            <Route         
+              path="/profile"         
+              element={        
+                <ProtectedRoute>        
+                  <Profile />        
+                </ProtectedRoute>        
+              }         
+            />
             {/* Redirection par défaut */}        
             <Route         
               path="/"         
