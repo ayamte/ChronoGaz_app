@@ -18,8 +18,7 @@ const MoralUserSchema = new mongoose.Schema({
     type: String,       
     enum: ['2 Mars', 'Maarif', 'Bir Anzarane', 'Boulevard al qods'], // Les 4 régions de Casablanca  
     required: false      
-  },      
-  actif: { type: Boolean, default: true },      
+  },         
 }, { timestamps: true });      
       
 MoralUserSchema.index({ user_id: 1 });      

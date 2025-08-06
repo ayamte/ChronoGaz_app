@@ -35,10 +35,10 @@ const LoginPage = () => {
     
       const data = await response.json()    
     
-      if (data.success) {    
-        authService.setToken(data.data.token);    
-        authService.setUser(data.data.user);    
-        redirectUserByRole(data.data.user.role); // Utilise la fonction importée  
+      if (data.success) {      
+        authService.setToken(data.data.token);      
+        authService.setUser(data.data.user);      
+        redirectUserByRole(data.data.user.role, data.data.user.type); // AJOUTÉ: passer le type  
       } else {    
         throw new Error(data.message)    
       }    

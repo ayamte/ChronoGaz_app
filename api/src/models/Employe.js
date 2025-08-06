@@ -8,8 +8,7 @@ const EmployeSchema = new mongoose.Schema({
   fonction: { type: String, enum: ['CHAUFFEUR', 'ACCOMPAGNANT', 'MAGASINIER'], required: true },        
   date_embauche: { type: Date, required: true },        
   date_sortie: Date,        
-  salaire_base: Number,        
-  actif: { type: Boolean, default: true },  
+  salaire_base: Number,         
   statut: { type: String, enum: ['ACTIF', 'INACTIF', 'SUSPENDU', 'EN_CONGE'], default: 'ACTIF' }, // AJOUTÉ  
 }, { timestamps: true });
     
