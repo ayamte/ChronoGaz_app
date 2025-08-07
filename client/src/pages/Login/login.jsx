@@ -3,6 +3,7 @@ import { Eye, EyeOff, Mail, Lock, AlertCircle, User } from "lucide-react"
 import "./login.css"     
 import { authService } from '../../services/authService';    
 import { redirectUserByRole } from '../../utils/redirectUtils';  
+import { Link } from "react-router-dom"  // AJOUTÉ  
     
 const LoginPage = () => {    
   const [formData, setFormData] = useState({    
@@ -129,9 +130,9 @@ const LoginPage = () => {
                 />    
                 <span className="checkbox-text">Se souvenir de moi</span>    
               </label>    
-              <button type="button" className="forgot-password">    
-                Mot de passe oublié ?    
-              </button>    
+              <Link to="/forgot-password" className="forgot-password-link">  
+                Mot de passe oublié ?  
+              </Link>   
             </div>    
     
             <button type="submit" className={`login-button ${isLoading ? "loading" : ""}`} disabled={isLoading}>    
@@ -142,9 +143,9 @@ const LoginPage = () => {
           <div className="login-footer">    
             <p>    
               Pas encore de compte ?{" "}    
-              <a href="/signup" className="signup-link">    
-                S'inscrire    
-              </a>    
+              <Link to="/signup" className="signup-link">      
+                S'inscrire      
+              </Link>   
             </p>    
           </div>    
         </div>    
