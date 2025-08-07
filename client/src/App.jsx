@@ -14,9 +14,13 @@ import GestionRegion from './pages/admin/gestionRegion/gestionRegion';
 import GestionBon from './pages/admin/gestionBon/gestionBon';        
 import AjouterProduit from './pages/admin/AjouterProduit/AjouterProduit';        
 import SuiviCommande from './pages/admin/suiviCommande/suiviCommande';        
-import OrderManagement from './pages/admin/OrderManagement/OrderManagement';        
+import OrderManagement from './pages/admin/OrderManagement/OrderManagement';       
+
 import LoginPage from './pages/Login/login';        
 import SignupPage from './pages/Signup/signup';        
+import ForgotPassword from './pages/ForgotPassword/ForgotPassword';  
+import ResetPassword from './pages/ResetPassword/ResetPassword';  
+
 import DailyRoutePage from './pages/chauffeur/DailyRoutePage/DailyRoutePage';        
 import NextOrderMap from './pages/chauffeur/NextOrderMap/NextOrderMap';        
 import TruckUnloading from './pages/magasinier/TruckUnloading/TruckUnloading';        
@@ -134,6 +138,8 @@ function App() {
             {/* Routes publiques */}        
             <Route path="/login" element={<LoginPage />} />        
             <Route path="/signup" element={<SignupPage />} />        
+            <Route path="/forgot-password" element={<ForgotPassword />} />  
+            <Route path="/reset-password" element={<ResetPassword />} />
                     
             {/* Routes protégées pour admin */}        
             <Route         
