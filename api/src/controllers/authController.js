@@ -234,6 +234,8 @@ const login = async (req, res) => {
         message: 'Email ou mot de passe incorrect'        
       });        
     }        
+
+    
       
     // Vérifier le mot de passe        
     const isPasswordValid = await comparePassword(password, user.password_hash);        
@@ -243,6 +245,9 @@ const login = async (req, res) => {
         message: 'Email ou mot de passe incorrect'        
       });        
     }        
+
+    const requiresPasswordChange = (user.password_temporary || user.first_login) &&   
+                              (user.role_id.code === 'EMPLOYE' || user.role_id.code === 'EMPLOYE_MAGASIN');  
     
     // CORRIGÉ: Récupérer les informations utilisateur AVANT la vérification des statuts  
     const physicalUser = await PhysicalUser.findOne({ user_id: user._id });    
@@ -316,8 +321,9 @@ const login = async (req, res) => {
           id: user._id,        
           email: user.email,        
           role: user.role_id.code,        
-          // SUPPRIMÉ: statut: user.statut,    
+          statut: user.statut,    
           type: userType,  
+          requiresPasswordChange,
           ...additionalInfo  
         }        
       }        

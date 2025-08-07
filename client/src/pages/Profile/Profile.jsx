@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';  
-import {   
-  MdEdit as Edit,   
-  MdSave as Save,   
-  MdClose as X,   
+import {  
+  MdEdit as Edit,  
+  MdSave as Save,  
+  MdClose as X,  
   MdAdd as Plus,  
   MdLock as Lock,  
-  MdLocationOn as LocationOn  
+  MdLocationOn as LocationOn,  
+  MdVisibility as Eye,  
+  MdVisibilityOff as EyeOff  
 } from 'react-icons/md';  
 import { authService } from '../../services/authService';  
 import './Profile.css';  
@@ -21,6 +23,22 @@ export default function Profile() {
   const [profile, setProfile] = useState({});  
   const [editedProfile, setEditedProfile] = useState({});  
   
+  // États pour le modal de changement de mot de passe  
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);  
+  const [passwordLoading, setPasswordLoading] = useState(false);  
+  const [passwordError, setPasswordError] = useState('');  
+  const [passwordSuccess, setPasswordSuccess] = useState('');  
+  const [passwordData, setPasswordData] = useState({  
+    currentPassword: '',  
+    newPassword: '',  
+    confirmPassword: ''  
+  });  
+  const [showPasswords, setShowPasswords] = useState({  
+    current: false,  
+    new: false,  
+    confirm: false  
+  });  
+  
   // Régions autorisées selon votre système  
   const regions = ['2 Mars', 'Maarif', 'Bir Anzarane', 'Boulevard al qods'];  
   
@@ -33,7 +51,7 @@ export default function Profile() {
       setLoading(true);  
       const currentUser = authService.getUser();  
       setUser(currentUser);  
-          
+  
       const token = authService.getToken();  
       const response = await fetch(`${API_BASE_URL}/api/users/profile`, {  
         method: 'GET',  
@@ -42,18 +60,18 @@ export default function Profile() {
           'Content-Type': 'application/json'  
         }  
       });  
-    
+  
       if (response.status === 401) {  
         authService.logout();  
         return;  
       }  
-    
+  
       const data = await response.json();  
       if (data.success) {  
         setProfile(data.data.profile);  
         setEditedProfile(data.data.profile);  
-          
-        // AJOUTÉ: Mettre à jour l'état user avec l'email frais de l'API  
+  
+        // Mettre à jour l'état user avec l'email frais de l'API  
         if (data.data.profile.email && data.data.profile.email !== currentUser?.email) {  
           const updatedUser = { ...currentUser, email: data.data.profile.email };  
           authService.setUser(updatedUser);  
@@ -68,7 +86,7 @@ export default function Profile() {
     } finally {  
       setLoading(false);  
     }  
-  }; 
+  };  
   
   const handleEdit = () => {  
     setIsEditing(true);  
@@ -91,15 +109,14 @@ export default function Profile() {
           profile: editedProfile  
         })  
       });  
-    
+  
       if (response.status === 401) {  
         authService.logout();  
         return;  
       }  
-    
+  
       const data = await response.json();  
       if (data.success) {  
-        // SOLUTION: Recharger complètement le profil depuis l'API  
         await loadProfile();  
         setIsEditing(false);  
         setSuccess('Profil mis à jour avec succès');  
@@ -112,7 +129,7 @@ export default function Profile() {
     } finally {  
       setLoading(false);  
     }  
-  };
+  };  
   
   const handleCancel = () => {  
     setEditedProfile({ ...profile });  
@@ -126,6 +143,100 @@ export default function Profile() {
       ...prev,  
       [field]: value  
     }));  
+  };  
+  
+  // Fonctions pour le changement de mot de passe  
+  const handlePasswordModalOpen = () => {  
+    setIsPasswordModalOpen(true);  
+    setPasswordError('');  
+    setPasswordSuccess('');  
+    setPasswordData({  
+      currentPassword: '',  
+      newPassword: '',  
+      confirmPassword: ''  
+    });  
+  };  
+  
+  const handlePasswordModalClose = () => {  
+    setIsPasswordModalOpen(false);  
+    setPasswordData({  
+      currentPassword: '',  
+      newPassword: '',  
+      confirmPassword: ''  
+    });  
+    setPasswordError('');  
+    setPasswordSuccess('');  
+  };  
+  
+  const handlePasswordInputChange = (field, value) => {  
+    setPasswordData(prev => ({  
+      ...prev,  
+      [field]: value  
+    }));  
+  };  
+  
+  const togglePasswordVisibility = (field) => {  
+    setShowPasswords(prev => ({  
+      ...prev,  
+      [field]: !prev[field]  
+    }));  
+  };  
+  
+  const handlePasswordSubmit = async (e) => {  
+    e.preventDefault();  
+    setPasswordError('');  
+  
+    // Validation  
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {  
+      setPasswordError('Tous les champs sont requis');  
+      return;  
+    }  
+  
+    if (passwordData.newPassword !== passwordData.confirmPassword) {  
+      setPasswordError('Les nouveaux mots de passe ne correspondent pas');  
+      return;  
+    }  
+  
+    if (passwordData.newPassword.length < 8) {  
+      setPasswordError('Le nouveau mot de passe doit contenir au moins 8 caractères');  
+      return;  
+    }  
+  
+    try {  
+      setPasswordLoading(true);  
+      const token = authService.getToken();  
+      const response = await fetch(`${API_BASE_URL}/api/users/change-password`, {  
+        method: 'PUT',  
+        headers: {  
+          'Authorization': `Bearer ${token}`,  
+          'Content-Type': 'application/json'  
+        },  
+        body: JSON.stringify({  
+          currentPassword: passwordData.currentPassword,  
+          newPassword: passwordData.newPassword  
+        })  
+      });  
+  
+      if (response.status === 401) {  
+        authService.logout();  
+        return;  
+      }  
+  
+      const data = await response.json();  
+      if (data.success) {  
+        setPasswordSuccess('Mot de passe modifié avec succès');  
+        setTimeout(() => {  
+          handlePasswordModalClose();  
+        }, 2000);  
+      } else {  
+        setPasswordError(data.message || 'Erreur lors du changement de mot de passe');  
+      }  
+    } catch (err) {  
+      setPasswordError('Erreur de connexion');  
+      console.error('Erreur:', err);  
+    } finally {  
+      setPasswordLoading(false);  
+    }  
   };  
   
   if (loading && !profile.type) {  
@@ -147,8 +258,8 @@ export default function Profile() {
         <div className="profile-header">  
           <h1 className="profile-title">Mon Profil</h1>  
           <p className="profile-subtitle">  
-            {isCompany   
-              ? 'Gérez les informations de votre entreprise'   
+            {isCompany  
+              ? 'Gérez les informations de votre entreprise'  
               : 'Gérez vos informations personnelles'  
             }  
           </p>  
@@ -403,22 +514,22 @@ export default function Profile() {
             </div>  
   
             <div className="form-grid">  
-                <div className="form-group">  
+              <div className="form-group">  
                 <label className="form-label">Ville</label>  
                 {isEditing ? (  
-                    <select  
+                  <select  
                     value={editedProfile.ville || 'Casablanca'}  
                     onChange={(e) => handleInputChange('ville', e.target.value)}  
                     className="form-select"  
-                    >  
+                  >  
                     <option value="Casablanca">Casablanca</option>  
-                    </select>  
+                  </select>  
                 ) : (  
-                    <div className="form-display">  
+                  <div className="form-display">  
                     {profile.ville || 'Casablanca'}  
-                    </div>  
+                  </div>  
                 )}  
-                </div>
+              </div>  
               <div className="form-group">  
                 <label className="form-label">Région</label>  
                 {isEditing ? (  
@@ -457,13 +568,128 @@ export default function Profile() {
                 <LocationOn className="btn-icon" />  
                 Ajouter une adresse secondaire  
               </button>  
-              <button className="btn btn-outline action-btn">  
+              <button   
+                className="btn btn-outline action-btn"  
+                onClick={handlePasswordModalOpen}  
+              >  
                 <Lock className="btn-icon" />  
                 Modifier le mot de passe  
               </button>  
             </div>  
           </div>  
         </div>  
+  
+        {/* Modal de changement de mot de passe */}  
+        {isPasswordModalOpen && (  
+          <div className="modal-overlay" onClick={handlePasswordModalClose}>  
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>  
+              <div className="modal-header">  
+                <h3 className="modal-title">Modifier le mot de passe</h3>  
+                <button   
+                  className="modal-close-btn"  
+                  onClick={handlePasswordModalClose}  
+                >  
+                  <X className="modal-close-icon" />  
+                </button>  
+              </div>  
+  
+              <form onSubmit={handlePasswordSubmit} className="modal-body">  
+                {passwordError && (  
+                  <div className="alert alert-error">  
+                    {passwordError}  
+                  </div>  
+                )}  
+                {passwordSuccess && (  
+                  <div className="alert alert-success">  
+                    {passwordSuccess}  
+                  </div>  
+                )}  
+  
+                <div className="form-group">  
+                  <label className="form-label">Mot de passe actuel</label>  
+                  <div className="password-input-container">  
+                    <input  
+                      type={showPasswords.current ? 'text' : 'password'}  
+                      value={passwordData.currentPassword}  
+                      onChange={(e) => handlePasswordInputChange('currentPassword', e.target.value)}  
+                      className="form-input password-input"  
+                      required  
+                    />  
+                    <button  
+                      type="button"  
+                      className="password-toggle-btn"  
+                      onClick={() => togglePasswordVisibility('current')}  
+                    >  
+                      {showPasswords.current ? <EyeOff /> : <Eye />}  
+                    </button>  
+                  </div>  
+                </div>  
+  
+                <div className="form-group">  
+                  <label className="form-label">Nouveau mot de passe</label>  
+                  <div className="password-input-container">  
+                    <input  
+                      type={showPasswords.new ? 'text' : 'password'}  
+                      value={passwordData.newPassword}  
+                      onChange={(e) => handlePasswordInputChange('newPassword', e.target.value)}  
+                      className="form-input password-input"  
+                      required  
+                      minLength="8"  
+                    />  
+                    <button  
+                      type="button"  
+                      className="password-toggle-btn"  
+                      onClick={() => togglePasswordVisibility('new')}  
+                    >  
+                      {showPasswords.new ? <EyeOff /> : <Eye />}  
+                    </button>  
+                  </div>  
+                  <small className="form-help">  
+                    Le mot de passe doit contenir au moins 8 caractères  
+                  </small>  
+                </div>  
+  
+                <div className="form-group">  
+                  <label className="form-label">Confirmer le nouveau mot de passe</label>  
+                  <div className="password-input-container">  
+                    <input  
+                      type={showPasswords.confirm ? 'text' : 'password'}  
+                      value={passwordData.confirmPassword}  
+                      onChange={(e) => handlePasswordInputChange('confirmPassword', e.target.value)}  
+                      className="form-input password-input"  
+                      required  
+                    />  
+                    <button  
+                      type="button"  
+                      className="password-toggle-btn"  
+                      onClick={() => togglePasswordVisibility('confirm')}  
+                    >  
+                      {showPasswords.confirm ? <EyeOff /> : <Eye />}  
+                    </button>  
+                  </div>  
+                </div>  
+  
+                <div className="modal-footer">  
+                  <button  
+                    type="button"  
+                    className="btn btn-outline"  
+                    onClick={handlePasswordModalClose}  
+                    disabled={passwordLoading}  
+                  >  
+                    Annuler  
+                  </button>  
+                  <button  
+                    type="submit"  
+                    className="btn btn-primary"  
+                    disabled={passwordLoading}  
+                  >  
+                    {passwordLoading ? 'Modification...' : 'Modifier le mot de passe'}  
+                  </button>  
+                </div>  
+              </form>  
+            </div>  
+          </div>  
+        )}  
       </div>  
     </div>  
   );  
