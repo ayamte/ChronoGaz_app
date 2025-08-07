@@ -365,3 +365,14 @@ body.sidebar-collapsed .client-page-wrapper {
   margin-left: 64px;  
   width: calc(100vw - 64px);  
 }
+
+
+.dropdown-separator {  
+  height: 1px;  
+  background-color: #e9ecef;  
+  margin: 8px 0;  
+}  
+  
+.dropdownItem:hover {  
+  background-color: #f8f9fa;  
+}

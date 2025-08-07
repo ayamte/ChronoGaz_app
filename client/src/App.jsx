@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';        
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';        
 import { authService } from './services/authService';        
-import { hasAccessToRoute } from './utils/redirectUtils'; // AJOUTÉ: Import de hasAccessToRoute  
-        
+import FirstLoginModal from './components/FirstLoginModal/FirstLoginModal';  
+  
 // Import depuis main        
 import Home from './components/Home';        
 import Dashboard from './pages/admin/Dashboard/Dashboard';        
@@ -25,7 +25,6 @@ import RouteHistory from './pages/chauffeur/RouteHistory/RouteHistory';
 import EndOfRoutePage from './pages/chauffeur/EndOfRoute/EndOfRoute';        
 import SupplierVoucher from './pages/chauffeur/SupplierVoucher/SupplierVoucher';        
 import StockManagement from './pages/magasinier/StockManagement/StockManagement';        
-import Profile from './pages/Profile/Profile'; 
         
 // Import depuis ghani-dev        
 import Command from './pages/PagesClient/Command';        
@@ -33,18 +32,20 @@ import TrackOrder from './pages/PagesClient/TrackOrder';
 import OrderHistory from './pages/PagesClient/OrderHistory';        
 import ServiceEvaluation from './pages/PagesClient/ServiceEvaluation';        
     
-// AJOUTÉ: Import des pages entreprise    
+// Import des pages entreprise    
 import EntrepriseGestionClient from './pages/entreprise/gestionClient/gestionClient';    
 import EntrepriseSuiviCommande from './pages/entreprise/suiviCommande/suiviCommande';    
     
-import SidebarWrapper from './components/SidebarWrapper';         
+import SidebarWrapper from './components/SidebarWrapper';   
+import Profile from './pages/Profile/Profile';      
         
 import './App.css';        
         
 function App() {        
   const [isAuthenticated, setIsAuthenticated] = useState(false);        
   const [user, setUser] = useState(null);        
-  const [loading, setLoading] = useState(true);        
+  const [loading, setLoading] = useState(true);  
+  const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);        
         
   useEffect(() => {        
     // Vérifier l'authentification au démarrage avec gestion d'erreur      
@@ -54,7 +55,13 @@ function App() {
         const userData = authService.getUser();        
                 
         setIsAuthenticated(authenticated);        
-        setUser(userData);        
+        setUser(userData);  
+          
+        // AJOUTÉ: Vérifier si l'utilisateur doit changer son mot de passe  
+        if (authenticated && userData?.requiresPasswordChange &&   
+            (userData?.role === 'EMPLOYE' || userData?.role === 'EMPLOYE_MAGASIN')) {  
+          setShowFirstLoginModal(true);  
+        }
       } catch (error) {      
         console.error('Erreur lors de la vérification auth:', error);      
         setIsAuthenticated(false);      
@@ -80,22 +87,28 @@ function App() {
             
       return () => clearInterval(interval);      
     }      
-  }, [isAuthenticated]);      
+  }, [isAuthenticated]);  
+  
+  // AJOUTÉ: Gérer la fermeture du modal après changement de mot de passe  
+  const handlePasswordChanged = () => {  
+    setShowFirstLoginModal(false);  
+    // Recharger les données utilisateur pour supprimer le flag requiresPasswordChange  
+    const updatedUser = { ...user, requiresPasswordChange: false };  
+    setUser(updatedUser);  
+  };  
         
-  // CORRIGÉ: Composant pour protéger les routes avec hasAccessToRoute  
-  const ProtectedRoute = ({ children }) => {        
+  // Composant pour protéger les routes        
+  const ProtectedRoute = ({ children, allowedRoles = [] }) => {        
     if (!isAuthenticated) {        
       window.location.href = '/login';        
       return null;        
     }        
         
-    // CORRIGÉ: Utiliser hasAccessToRoute au lieu de la vérification simple des rôles  
-    const currentPath = window.location.pathname;  
-    if (!hasAccessToRoute(user?.role, currentPath, user?.type)) {  
+    if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {        
       return (      
         <div style={{ padding: '20px', textAlign: 'center' }}>      
           <h2>Accès non autorisé</h2>      
-          <p>Votre rôle ({user?.role}) et type ({user?.type}) ne permettent pas d'accéder à cette page.</p>      
+          <p>Votre rôle ({user?.role}) ne permet pas d'accéder à cette page.</p>      
           <button onClick={() => window.location.href = '/'}>      
             Retour à l'accueil      
           </button>      
@@ -126,7 +139,7 @@ function App() {
             <Route         
               path="/dashboard"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <Dashboard />        
                 </ProtectedRoute>        
               }         
@@ -134,7 +147,7 @@ function App() {
             <Route         
               path="/gestioncamion"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <GestionCamion />        
                 </ProtectedRoute>        
               }         
@@ -142,7 +155,7 @@ function App() {
             <Route         
               path="/infoCamion"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <InfoCamion />        
                 </ProtectedRoute>        
               }         
@@ -150,7 +163,7 @@ function App() {
             <Route         
               path="/gestionclient"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <GestionClient />        
                 </ProtectedRoute>        
               }         
@@ -158,7 +171,7 @@ function App() {
             <Route         
               path="/gestion-chauffeur"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <GestionChauffeur />        
                 </ProtectedRoute>        
               }         
@@ -166,7 +179,7 @@ function App() {
             <Route         
               path="/gestionregion"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <GestionRegion />        
                 </ProtectedRoute>        
               }         
@@ -174,7 +187,7 @@ function App() {
             <Route         
               path="/gestionbon"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <GestionBon />        
                 </ProtectedRoute>        
               }         
@@ -182,7 +195,7 @@ function App() {
             <Route         
               path="/ajouter-produit"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <AjouterProduit />        
                 </ProtectedRoute>        
               }         
@@ -190,7 +203,7 @@ function App() {
             <Route         
               path="/suivicommande"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <SuiviCommande />        
                 </ProtectedRoute>        
               }         
@@ -198,7 +211,7 @@ function App() {
             <Route         
               path="/gerer-commande"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <OrderManagement />        
                 </ProtectedRoute>        
               }         
@@ -208,7 +221,7 @@ function App() {
             <Route         
               path="/chauffeur/dailyroutepage"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['EMPLOYE']}>        
                   <DailyRoutePage />        
                 </ProtectedRoute>        
               }         
@@ -216,7 +229,7 @@ function App() {
             <Route         
               path="/chauffeur/next-order"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['EMPLOYE']}>        
                   <NextOrderMap />        
                 </ProtectedRoute>        
               }         
@@ -224,15 +237,15 @@ function App() {
             <Route         
               path="/chauffeur/historique"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['EMPLOYE']}>        
                   <RouteHistory />        
                 </ProtectedRoute>        
               }         
             />        
             <Route         
-              path="/chauffeur/end-route"         
+              path="/chauffeur/end-of-route"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['EMPLOYE']}>        
                   <EndOfRoutePage />        
                 </ProtectedRoute>        
               }         
@@ -240,17 +253,17 @@ function App() {
             <Route         
               path="/chauffeur/supplier-voucher"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['EMPLOYE']}>        
                   <SupplierVoucher />        
                 </ProtectedRoute>        
               }         
             />        
-      
-            {/* Routes protégées pour employés magasin */}        
+        
+            {/* Routes protégées pour magasiniers */}        
             <Route         
               path="/magasin/gestion-stock"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>        
                   <StockManagement />        
                 </ProtectedRoute>        
               }         
@@ -258,7 +271,7 @@ function App() {
             <Route         
               path="/magasin/chargement"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>        
                   <TruckLoading />        
                 </ProtectedRoute>        
               }         
@@ -266,35 +279,17 @@ function App() {
             <Route         
               path="/magasin/dechargement"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>        
                   <TruckUnloading />        
                 </ProtectedRoute>        
               }         
             />        
         
-            {/* Routes protégées pour entreprises */}    
-            <Route         
-              path="/entreprise/gestion-clients"         
-              element={        
-                <ProtectedRoute>        
-                  <EntrepriseGestionClient />        
-                </ProtectedRoute>        
-              }         
-            />        
-            <Route         
-              path="/entreprise/suivi-commandes"         
-              element={        
-                <ProtectedRoute>        
-                  <EntrepriseSuiviCommande />        
-                </ProtectedRoute>        
-              }         
-            />        
-    
-            {/* Routes protégées pour clients particuliers */}        
+            {/* Routes protégées pour clients */}        
             <Route         
               path="/Command"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['CLIENT']}>        
                   <Command />        
                 </ProtectedRoute>        
               }         
@@ -302,7 +297,7 @@ function App() {
             <Route         
               path="/Trackorder"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['CLIENT']}>        
                   <TrackOrder />        
                 </ProtectedRoute>        
               }         
@@ -310,7 +305,7 @@ function App() {
             <Route         
               path="/Orderhistory"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['CLIENT']}>        
                   <OrderHistory />        
                 </ProtectedRoute>        
               }         
@@ -318,28 +313,50 @@ function App() {
             <Route         
               path="/Serviceevaluation"         
               element={        
-                <ProtectedRoute>        
+                <ProtectedRoute allowedRoles={['CLIENT']}>        
                   <ServiceEvaluation />        
                 </ProtectedRoute>        
-              }  
-                   
-            />        
-                    
+              }         
+            />  
+             <Route   
+              path="/profile"   
+              element={  
+                <ProtectedRoute allowedRoles={['CLIENT']}>  
+                  <Profile />  
+                </ProtectedRoute>  
+              }   
+            />
+  
+            {/* Routes protégées pour entreprises */}  
             <Route         
-              path="/profile"         
+              path="/entreprise/gestion-clients"         
               element={        
-                <ProtectedRoute>        
-                  <Profile />        
+                <ProtectedRoute allowedRoles={['CLIENT']}>        
+                  <EntrepriseGestionClient />        
                 </ProtectedRoute>        
               }         
-            />
+            />  
+            <Route         
+              path="/entreprise/suivi-commandes"         
+              element={        
+                <ProtectedRoute allowedRoles={['CLIENT']}>        
+                  <EntrepriseSuiviCommande />        
+                </ProtectedRoute>        
+              }         
+            />  
+                    
             {/* Redirection par défaut */}        
             <Route         
               path="/"         
               element={isAuthenticated ? <Home /> : <LoginPage />}         
             />        
           </Routes>        
-        </div>        
+        </div>  
+  
+        {/* AJOUTÉ: Modal de première connexion */}  
+        {showFirstLoginModal && (  
+          <FirstLoginModal onPasswordChanged={handlePasswordChanged} />  
+        )}  
       </div>        
     </Router>        
   );        

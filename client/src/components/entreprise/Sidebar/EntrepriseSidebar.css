@@ -321,3 +321,14 @@
     left: 64px;  
   }  
 }
+
+
+.dropdown-separator {  
+  height: 1px;  
+  background-color: #e9ecef;  
+  margin: 8px 0;  
+}  
+  
+.dropdownItem:hover {  
+  background-color: #f8f9fa;  
+}

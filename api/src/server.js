@@ -547,11 +547,13 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
     const saltRounds = 10;      
     const hashedPassword = await bcrypt.hash(defaultPassword, saltRounds);      
           
-    const newUser = new User({      
-      email: profile.email,      
-      password_hash: hashedPassword,      
-      role_id: roleEmploye._id,        
-    });     
+    const newUser = new User({        
+      email: profile.email,        
+      password_hash: hashedPassword,        
+      role_id: roleEmploye._id,  
+      password_temporary: true, // AJOUTÉ  
+      first_login: true // AJOUTÉ  
+    });    
     const savedUser = await newUser.save();    
     
     // Créer l'utilisateur physique avec région    

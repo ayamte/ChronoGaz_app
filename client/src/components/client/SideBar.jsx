@@ -140,14 +140,22 @@ function SidebarNavigation({ userName = "Utilisateur", children }) {
                 <MdExpandMore className={`dropdownIcon ${dropdownOpen ? 'rotated' : ''}`} />      
               </div>      
                     
-              {dropdownOpen && (      
-                <div className="dropdown">      
-                  <div className="dropdownItem" onClick={handleLogout}>      
-                    <LogOut className="dropdownItemIcon" />      
-                    <span>Déconnexion</span>      
-                  </div>      
-                </div>      
-              )}      
+              {dropdownOpen && (  
+                <div className="dropdown">  
+                  {/* NOUVELLE SECTION AJOUTÉE */}  
+                  <div className="dropdownItem" onClick={() => window.location.href = '/profile'}>  
+                    <MdPerson className="dropdownItemIcon" />  
+                    <span>Mon Profil</span>  
+                  </div>  
+                  <div className="dropdown-separator"></div>  
+                    
+                  {/* Section déconnexion existante */}  
+                  <div className="dropdownItem" onClick={handleLogout}>  
+                    <LogOut className="dropdownItemIcon" />  
+                    <span>Déconnexion</span>  
+                  </div>  
+                </div>  
+              )}     
             </div>      
           </div>      
         </div>      
