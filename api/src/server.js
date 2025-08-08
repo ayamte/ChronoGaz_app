@@ -19,6 +19,9 @@ const usersRouter = require('./routes/usersRouter');
   
 // Import du middleware d'authentification  
 const { authenticateToken } = require('./middleware/authMiddleware');  
+
+const passport = require('passport');  
+require('./config/passport'); 
   
 require('dotenv').config();    
   
@@ -35,6 +38,8 @@ app.use('/api/users', usersRouter);
   
 // Routes d'authentification (publiques)  
 app.use('/api/auth', authRoutes);  
+
+app.use(passport.initialize());
   
 // Routes de test et santé    
 app.get('/api/health', (req, res) => {    
