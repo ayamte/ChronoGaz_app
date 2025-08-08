@@ -20,6 +20,8 @@ import LoginPage from './pages/Login/login';
 import SignupPage from './pages/Signup/signup';        
 import ForgotPassword from './pages/ForgotPassword/ForgotPassword';  
 import ResetPassword from './pages/ResetPassword/ResetPassword';  
+import EmailVerification from './pages/EmailVerification/EmailVerification';  
+
 
 import DailyRoutePage from './pages/chauffeur/DailyRoutePage/DailyRoutePage';        
 import NextOrderMap from './pages/chauffeur/NextOrderMap/NextOrderMap';        
@@ -140,6 +142,7 @@ function App() {
             <Route path="/signup" element={<SignupPage />} />        
             <Route path="/forgot-password" element={<ForgotPassword />} />  
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<EmailVerification />} />
                     
             {/* Routes protégées pour admin */}        
             <Route         
