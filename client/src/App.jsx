@@ -21,7 +21,8 @@ import SignupPage from './pages/Signup/signup';
 import ForgotPassword from './pages/ForgotPassword/ForgotPassword';  
 import ResetPassword from './pages/ResetPassword/ResetPassword';  
 import EmailVerification from './pages/EmailVerification/EmailVerification';  
-
+import AuthCallback from './pages/AuthCallback/AuthCallback';
+import CompleteProfile from './pages/CompleteProfile/CompleteProfile';
 
 import DailyRoutePage from './pages/chauffeur/DailyRoutePage/DailyRoutePage';        
 import NextOrderMap from './pages/chauffeur/NextOrderMap/NextOrderMap';        
@@ -143,7 +144,9 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />  
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email" element={<EmailVerification />} />
-                    
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/complete-profile" element={<CompleteProfile />} />
+     
             {/* Routes protégées pour admin */}        
             <Route         
               path="/dashboard"         
