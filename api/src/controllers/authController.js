@@ -8,6 +8,8 @@ const Customer = require('../models/Customer');
 const Employe = require('../models/Employe');        
 const { hashPassword, comparePassword } = require('../utils/password');        
 const { generateCustomerCode } = require('../utils/customerCode');      
+const crypto = require('crypto');  
+const { sendVerificationEmail } = require('../services/emailService');  
       
 const register = async (req, res) => {        
   try {        
@@ -58,21 +60,40 @@ const register = async (req, res) => {
     // Hacher le mot de passe        
     const password_hash = await hashPassword(password);        
       
-    // CORRIGÉ: Créer l'utilisateur principal sans statut  
-    const newUser = new User({        
-      email,        
-      password_hash,        
-      role_id: role._id  
-      // SUPPRIMÉ: statut: 'ACTIF'        
+    // Créer l'utilisateur principal 
+    const newUser = new User({    
+      email,    
+      password_hash,    
+      role_id: role._id,    
+      // MODIFIÉ: Statut conditionnel selon le rôle  
+      statut: (role_code === 'ADMIN' || role_code === 'EMPLOYE' || role_code === 'EMPLOYE_MAGASIN') ? 'ACTIF' : 'EN_ATTENTE',  
+      email_verified: (role_code === 'ADMIN' || role_code === 'EMPLOYE' || role_code === 'EMPLOYE_MAGASIN') ? true : false  
     });        
-    await newUser.save();        
+    
+    // Générer un code de vérification
+   if (role_code === 'CLIENT') {  
+    const verificationCode = crypto.randomInt(100000, 999999).toString();    
+    const verificationExpires = new Date(Date.now() + 15 * 60 * 1000);  
+    
+    newUser.verification_code = verificationCode;    
+    newUser.verification_code_expires = verificationExpires;   
+    
+    await newUser.save();  
+      
+    // Envoyer l'email de vérification seulement aux clients  
+    await sendVerificationEmail(email, verificationCode);  
+  } else {  
+    // Pour admin et employés, sauvegarder directement sans code de vérification  
+    await newUser.save();  
+  }
+
+   
       
     let responseData = {        
       user: {        
         id: newUser._id,        
         email: newUser.email,        
-        role: role.code  
-        // SUPPRIMÉ: statut: newUser.statut        
+        role: role.code        
       }        
     };        
       
@@ -103,7 +124,8 @@ const register = async (req, res) => {
         const customer = new Customer({        
           customer_code,        
           type_client: 'PHYSIQUE',        
-          physical_user_id: physicalUser._id        
+          physical_user_id: physicalUser._id,
+          statut: 'EN_ATTENTE'      
         });        
         await customer.save();        
         responseData.customer = customer;        
@@ -178,18 +200,24 @@ const register = async (req, res) => {
         const customer = new Customer({        
           customer_code,        
           type_client: 'MORAL',        
-          moral_user_id: moralUser._id        
+          moral_user_id: moralUser._id,
+          statut: 'EN_ATTENTE' 
         });        
         await customer.save();        
         responseData.customer = customer;        
       }        
     }        
       
-    res.status(201).json({        
-      success: true,        
-      message: 'Utilisateur créé avec succès',        
-      data: responseData        
-    });        
+    res.status(201).json({          
+      success: true,          
+      message: (role_code === 'CLIENT') ?   
+        'Compte créé avec succès. Vérifiez votre email pour l\'activer.' :   
+        'Utilisateur créé avec succès',  
+      requiresVerification: (role_code === 'CLIENT'),  
+      email: (role_code === 'CLIENT') ? email : undefined,  
+      data: responseData          
+    });
+       
       
   } catch (error) {        
     console.error('Erreur lors de l\'inscription:', error);        
@@ -207,7 +235,8 @@ const register = async (req, res) => {
     res.status(500).json({        
       success: false,        
       message: 'Erreur interne du serveur',        
-      error: error.message        
+      error: error.message,  
+      
     });        
   }        
 };        
@@ -235,7 +264,22 @@ const login = async (req, res) => {
       });        
     }        
 
-    
+    // Vérifier le statut de l'utilisateur AVANT la vérification du mot de passe
+    if (user.statut === 'EN_ATTENTE') {
+      return res.status(401).json({
+        success: false,
+        message: 'Compte en attente de vérification. Vérifiez votre email.',
+        requiresVerification: true,
+        email: user.email
+      });
+    }
+
+    if (user.statut !== 'ACTIF') {
+      return res.status(401).json({
+        success: false,
+        message: 'Compte non activé ou suspendu'
+      });
+    }
       
     // Vérifier le mot de passe        
     const isPasswordValid = await comparePassword(password, user.password_hash);        
@@ -249,11 +293,11 @@ const login = async (req, res) => {
     const requiresPasswordChange = (user.password_temporary || user.first_login) &&   
                               (user.role_id.code === 'EMPLOYE' || user.role_id.code === 'EMPLOYE_MAGASIN');  
     
-    // CORRIGÉ: Récupérer les informations utilisateur AVANT la vérification des statuts  
+    // Récupérer les informations utilisateur  
     const physicalUser = await PhysicalUser.findOne({ user_id: user._id });    
     const moralUser = await MoralUser.findOne({ user_id: user._id });    
       
-    // AJOUTÉ: Vérification du statut selon le rôle  
+    // Vérification du statut selon le rôle  
     if (user.role_id.code === 'CLIENT') {    
       const customer = await Customer.findOne({    
         $or: [{ physical_user_id: physicalUser?._id }, { moral_user_id: moralUser?._id }]    
@@ -311,7 +355,6 @@ const login = async (req, res) => {
       last_login: new Date()         
     });        
       
-    // CORRIGÉ: Réponse sans user.statut  
     res.json({        
       success: true,        
       message: 'Connexion réussie',        
@@ -343,4 +386,3 @@ module.exports = {
   register,        
   login        
 };
-

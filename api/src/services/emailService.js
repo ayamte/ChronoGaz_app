@@ -33,5 +33,26 @@ const sendPasswordResetEmail = async (email, resetToken) => {
   
   await transporter.sendMail(mailOptions);  
 };  
+
+const sendVerificationEmail = async (email, verificationCode) => {  
+  const mailOptions = {  
+    from: process.env.SMTP_USER,  
+    to: email,  
+    subject: 'ChronoGaz - Vérification de votre compte',  
+    html: `  
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">  
+        <h2 style="color: #1f55a3;">Bienvenue sur ChronoGaz !</h2>  
+        <p>Merci de vous être inscrit sur ChronoGaz. Pour activer votre compte, veuillez utiliser le code de vérification suivant :</p>  
+        <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">  
+          <h1 style="color: #1f55a3; font-size: 32px; letter-spacing: 5px; margin: 0;">${verificationCode}</h1>  
+        </div>  
+        <p>Ce code expire dans 15 minutes.</p>  
+        <p>Si vous n'avez pas créé de compte, ignorez cet email.</p>  
+      </div>  
+    `  
+  };  
   
-module.exports = { sendPasswordResetEmail };
+  await transporter.sendMail(mailOptions);  
+};  
+  
+module.exports = { sendPasswordResetEmail, sendVerificationEmail  };
