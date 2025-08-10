@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Title from '../../components/client/CommandPage/Title';
 import StepsIndicator from '../../components/client/CommandPage/StepsIndicator';
 import QuantityStep from '../../components/client/CommandPage/QuantityStep';
@@ -6,6 +6,7 @@ import AddressStep from '../../components/client/CommandPage/AddressStep';
 import SummaryStep from '../../components/client/CommandPage/SummaryStep';
 import butaButane from '../../assets/svg/buta-gaz-butane.svg';
 import butaPropane from '../../assets/svg/buta-gaz-propane.svg';
+import { getClientById, getClientAddresses } from '../../services/clientService';
 
 
 const Command = () => {
@@ -13,22 +14,37 @@ const Command = () => {
   const [quantities, setQuantities] = useState({});
   const [useGPS, setUseGPS] = useState(false);
   const [address, setAddress] = useState({
+    num_appt: '',
+    num_immeuble: '',
+    rue: '',
+    quartier: '',
+    ville: 'Casablanca',
+    code_postal: '',
+    region_id: '',
+    telephone: '',
+    instructions_livraison: '',
+    // Anciens champs pour compatibilité
     fullAddress: 'immeuble 122, Apartement 12',
     phone: '0674563411',
     instructions: ''
   });
   const [gpsLocation, setGpsLocation] = useState(null);
 
+  const [clientData, setClientData] = useState(null);
+const [clientAddresses, setClientAddresses] = useState([]);
+const [loadingClient, setLoadingClient] = useState(false);
+
   // Produits disponibles (normalement depuis votre API)
   const products = [
     // Butane 12 kg
       {
-        id: 1,
+        id: '688bec6361019bd9d174e3ac',
         reference: 'BUT-12KG-AFRIQUIA',
         nom_court: 'Butane 12kg Afriquia',
         nom_long: 'Bouteille de Gaz Butane 12kg Afriquia - Gamme Économique',
         type_gaz: 'BUTANE',
         capacite: 12,
+        um_id: "688bec6361019bd9d174e3ab",
         marque: 'Afriquia',
         gamme: 'Économique',
         description: 'Bouteille de gaz butane de 12kg de la marque Afriquia. Idéale pour un usage domestique quotidien avec un excellent rapport qualité-prix. Parfaite pour la cuisine, le chauffage d\'appoint et l\'eau chaude.',
@@ -79,12 +95,13 @@ const Command = () => {
     
       // Propane 34 kg
       {
-        id: 4,
+        id: '688bec6361019bd9d174e3ae',
         reference: 'PROP-34KG-AFRIQUIA',
         nom_court: 'Propane 34kg Afriquia',
         nom_long: 'Bouteille de Gaz Propane 34kg Afriquia - Usage Professionnel',
         type_gaz: 'PROPANE',
         capacite: 34,
+        um_id: "688bec6361019bd9d174e3ab",
         marque: 'Afriquia',
         gamme: 'Économique',
         description: 'Grande bouteille de propane 34kg Afriquia, parfaite pour les besoins professionnels et industriels. Résistance aux basses températures et performance constante.',
@@ -135,10 +152,10 @@ const Command = () => {
   ];
 
   const prices = {
-    1: 120,  // Butane 12kg Afriquia (Économique)
+    "688bec6361019bd9d174e3ac": 120,  // Butane 12kg Afriquia (Économique)
     2: 130,  // Butane 12kg Shell (Standard)
     3: 140,  // Butane 12kg Total (Premium)
-    4: 350,  // Propane 34kg Afriquia (Économique)
+    "688bec6361019bd9d174e3ae": 350,  // Propane 34kg Afriquia (Économique)
     5: 370,  // Propane 34kg Shell (Standard)
     6: 390   // Propane 34kg Total (Premium)
   };
@@ -180,9 +197,55 @@ const Command = () => {
     }
   };
 
-  const canProceedToStep2 = Object.values(quantities).some(qty => qty > 0);
-  const canProceedToStep3 = useGPS ? gpsLocation : address.fullAddress && address.phone;
+  const loadClientData = async (clientId) => {
+    setLoadingClient(true);
+    try {
+      const [client, addressesResponse] = await Promise.all([
+        getClientById(clientId),
+        getClientAddresses(clientId)
+      ]);
+      console.log('Adresses récupérées:', addressesResponse);
+console.log('Client data:', client);
+      setClientData(client);
+      
+      // CORRECTION : Vérifier la structure des données retournées
+      const addresses = addressesResponse || [];
+      setClientAddresses(addresses);
+      
+      // Pré-remplir avec la première adresse ou adresse par défaut
+      if (addresses.length > 0) {
+        const defaultAddress = addresses.find(addr => addr.is_principal) || addresses[0];
+        setAddress(prev => ({
+          ...prev,
+          num_appt: defaultAddress.num_appt || '',
+          num_immeuble: defaultAddress.num_immeuble || '',
+          rue: defaultAddress.rue || '',
+          quartier: defaultAddress.quartier || '',
+          ville: defaultAddress.ville || 'Casablanca',
+          code_postal: defaultAddress.code_postal || '',
+          region_id: defaultAddress.region_id || '',
+          telephone: defaultAddress.telephone || client.telephone || '',
+          instructions_livraison: defaultAddress.instructions_livraison || ''
+        }));
+      } else {
+        // Juste le téléphone du client
+        setAddress(prev => ({
+          ...prev,
+          telephone: client.telephone || '',
+          ville: 'Casablanca'
+        }));
+      }
+    } catch (error) {
+      console.error('Erreur chargement client:', error);
+    } finally {
+      setLoadingClient(false);
+    }
+  };
+  
 
+  const canProceedToStep2 = Object.values(quantities).some(qty => qty > 0);
+  const canProceedToStep3 = useGPS ? gpsLocation : (address.rue && address.ville && address.region_id && address.telephone);
+  
   const subtotal = Object.entries(quantities).reduce((total, [productId, qty]) => {
     return total + (qty * (prices[productId] || 0));
   }, 0);
@@ -206,6 +269,11 @@ const Command = () => {
     alert('Commande confirmée avec succès !');
     window.location.href = "/TrackOrder";
   };
+
+  useEffect(() => {
+    const clientId = '688bec637e0be4e53374e39e'; // Votre ID client
+    loadClientData(clientId);
+  }, []);
 
   const orderData = {
     products,
@@ -236,16 +304,18 @@ const Command = () => {
         )}
         {currentStep === 2 && (
           <AddressStep
-            useGPS={useGPS}
-            setUseGPS={setUseGPS}
-            address={address}
-            setAddress={setAddress}
-            gpsLocation={gpsLocation}
-            onGPSLocation={handleGPSLocation}
-            onBack={() => setCurrentStep(1)}
-            onNext={() => setCurrentStep(3)}
-            canProceed={canProceedToStep3}
-          />
+          useGPS={useGPS}
+          setUseGPS={setUseGPS}
+          address={address}
+          setAddress={setAddress}
+          gpsLocation={gpsLocation}
+          onGPSLocation={handleGPSLocation}
+          onBack={() => setCurrentStep(1)}
+          onNext={() => setCurrentStep(3)}
+          canProceed={canProceedToStep3}
+          clientAddresses={clientAddresses}
+          loadingClient={loadingClient}
+        />
         )}
         {currentStep === 3 && (
           <SummaryStep

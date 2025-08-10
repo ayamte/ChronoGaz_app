@@ -1,4 +1,7 @@
 const mongoose = require('mongoose');  
+require('../models/Address');
+require('../models/StatutCommande');
+require('../models/Customer');
   
 const CommandeSchema = new mongoose.Schema({  
   numero_commande: { type: String, required: true, unique: true },  

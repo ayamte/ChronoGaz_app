@@ -154,7 +154,8 @@ db.createCollection('trucks', {
 // Collection Depots  
 db.createCollection('depots');  
 db.createCollection('regions');  
-db.createCollection('addresses');  
+db.createCollection('addresses'); 
+db.createCollection('useraddresses');
 db.createCollection('categories');  
 db.createCollection('ums');  
 db.createCollection('statutcommandes');  
