@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { authService } from './services/authService';        
 import FirstLoginModal from './components/FirstLoginModal/FirstLoginModal';  
   
-// Import depuis main        
+
 import Home from './components/Home';        
 import Dashboard from './pages/admin/Dashboard/Dashboard';        
 import GestionCamion from './pages/admin/gestionCamion/gestionCamion';        
@@ -44,7 +44,11 @@ import EntrepriseGestionClient from './pages/entreprise/gestionClient/gestionCli
 import EntrepriseSuiviCommande from './pages/entreprise/suiviCommande/suiviCommande';    
     
 import SidebarWrapper from './components/SidebarWrapper';   
-import Profile from './pages/Profile/Profile';      
+import Profile from './pages/Profile/Profile';   
+
+import GestionStocksDepot from './pages/admin/GestionStocksDepot/GestionStocksDepot'
+import GestionStock from './pages/admin/gestionStock/gestionStock'
+import GestionDepot from './pages/admin/GestionDepot/GestionDepot'
         
 import './App.css';        
         
@@ -163,7 +167,35 @@ function App() {
                   <GestionCamion />        
                 </ProtectedRoute>        
               }         
-            />        
+            />       
+            <Route   
+              path="/admin/stocks-depot"   
+              element={  
+                <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYE_MAGASIN']}>  
+                  <GestionStocksDepot />  
+                </ProtectedRoute>  
+              }   
+            /> 
+            <Route   
+              path="/admin/stocks"   
+              element={  
+                <ProtectedRoute allowedRoles={['ADMIN', 'EMPLOYE_MAGASIN']}>  
+                  <GestionStock />  
+                </ProtectedRoute>  
+              }   
+            /> 
+            <Route   
+              path="/admin/gestion-depots"   
+              element={  
+                <ProtectedRoute allowedRoles={['ADMIN']}>  
+                  <GestionDepot />  
+                </ProtectedRoute>  
+              }   
+            />
+
+            
+
+            
             <Route         
               path="/infoCamion"         
               element={        

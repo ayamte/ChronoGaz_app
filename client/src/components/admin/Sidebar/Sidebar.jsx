@@ -8,7 +8,9 @@ import {
   MdLogout as LogOut,    
   MdMenu as Menu,    
   MdClose as X,    
-  MdDashboard as LayoutDashboard,  
+  MdDashboard as LayoutDashboard,
+  MdWarehouse as Warehouse,
+  MdInventory as Inventory,
   MdPerson,    
   MdExpandMore    
     
@@ -39,6 +41,16 @@ const menuItems = [
     label: "Gestion des employés",    
     href: "/gestion-chauffeur",    
   }, 
+    {    
+    icon: Inventory,    
+    label: "Gestion des stocks",    
+    href: "/admin/stocks",    
+  },
+  {    
+    icon: Warehouse,    
+    label: "Stocks par dépôt",    
+    href: "/admin/stocks-depot",    
+  },
   {    
     icon: MapPin,    
     label: "Gestion des régions",    
@@ -53,7 +65,12 @@ const menuItems = [
     icon: Receipt,    
     label: "Ajouter produit",    
     href: "/ajouter-produit",    
-  },    
+  }, 
+  {    
+    icon: Warehouse,    
+    label: "Gestion Stocks",    
+    href: "/admin/gestion-depots",    
+  },  
   {    
     icon: Package,    
     label: "Suivre les commandes",    

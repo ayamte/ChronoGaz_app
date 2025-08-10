@@ -14,11 +14,16 @@ import "./magasinierSidebar.css"
 import { authService } from '../../services/authService'; 
   
 const menuItems = [  
-  {  
-    icon: Inventory,  
-    label: "Gérer le stock",  
-    href: "/magasin/gestion-stock",  
-  },  
+  {    
+    icon: Inventory,    
+    label: "Gestion des stocks",    
+    href: "/admin/stocks",    
+  },
+  {    
+    icon: Warehouse,    
+    label: "Stocks par dépôt",    
+    href: "/admin/stocks-depot",    
+  },   
   {  
     icon: Truck,  
     label: "Chargement camions",  

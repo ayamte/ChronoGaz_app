@@ -136,6 +136,25 @@ db.createCollection('commandes', {
     }  
   }  
 });  
+
+db.createCollection('depots', {    
+  validator: {    
+    $jsonSchema: {    
+      bsonType: 'object',    
+      required: ['reference', 'short_name', 'long_name'],  
+      properties: {    
+        reference: { bsonType: 'string' },    
+        short_name: { bsonType: 'string' },    
+        long_name: { bsonType: 'string' },    
+        description: { bsonType: 'string' },    
+        surface_area: { bsonType: 'number', minimum: 0 },    
+        address: { bsonType: 'string' },  
+        actif: { bsonType: 'bool' }    
+      }    
+    }    
+  }    
+});
+
   
 // Collection Trucks  
 db.createCollection('trucks', {  
@@ -152,7 +171,7 @@ db.createCollection('trucks', {
 });  
   
 // Collection Depots  
-db.createCollection('depots');  
+
 db.createCollection('regions');  
 db.createCollection('addresses');  
 db.createCollection('categories');  
@@ -543,19 +562,20 @@ db.trucks.insertMany([
 ]);  
   
 // Insérer les dépôts  
+// Insérer les dépôts avec la nouvelle structure  
 db.depots.insertMany([  
   {  
-    code: 'DEP-CASA-01',  
-    nom: 'Dépôt Casablanca Centre',  
+    reference: 'DEP-CASA-01',  
+    short_name: 'Dépôt Casa Centre',   
+    long_name: 'Dépôt Casablanca Centre',  
     description: 'Dépôt principal de Casablanca',  
-    address_id: addressCasa.insertedId,  
-    region_id: regionCasa.insertedId,  
-    capacite_max: 10000,  
+    surface_area: 2500.0,  
+    address: '123 Rue Mohammed V, Casablanca',  
     actif: true,  
     createdAt: new Date(),  
     updatedAt: new Date()  
   }  
-]);  
+]);
   
 // ===== INDEX POUR PERFORMANCES =====  
   
@@ -587,6 +607,10 @@ db.trucks.createIndex({ region_id: 1 });
   
 // Index Roles  
 db.roles.createIndex({ code: 1 }, { unique: true });  
+
+// Index Depots  
+db.depots.createIndex({ reference: 1 }, { unique: true });  
+db.depots.createIndex({ actif: 1 });
   
 print('✅ Base de données ChronoGaz complète initialisée avec succès!');  
 print('📊 Collections créées avec validation');  
