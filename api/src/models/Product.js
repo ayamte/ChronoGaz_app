@@ -1,12 +1,13 @@
 const mongoose = require('mongoose');  
   
 const ProductSchema = new mongoose.Schema({  
-  reference: { type: String, required: true, unique: true },  
-  nom_court: { type: String, required: true },  
-  nom_long: String,  
-  type_gaz: { type: String, enum: ['BUTANE', 'PROPANE', 'MIXTE'], required: true },  
-  capacite: { type: Number, required: true },  
-  prix_unitaire: Number,  
+  ref: { type: String, required: true, unique: true }, // au lieu de 'reference'  
+  long_name: { type: String, required: true }, // au lieu de 'nom_long'  
+  short_name: { type: String, required: true }, // au lieu de 'nom_court'  
+  gamme: { type: String }, // nouveau champ  
+  brand: { type: String }, // nouveau champ  
+  description: { type: String },  
+  image: { type: Buffer }, // pour LONGBLOB  
   actif: { type: Boolean, default: true }  
 }, {  
   timestamps: true  

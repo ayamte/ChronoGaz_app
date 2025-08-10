@@ -1,13 +1,26 @@
-const express = require('express');
-const router = express.Router();
-const productController = require('../controllers/productController');
-
-// Routes pour les produits
-router.get('/', productController.getAllProducts);
-router.get('/search', productController.searchProducts);
-router.get('/:id', productController.getProductById);
-router.post('/', productController.createProduct);
-router.put('/:id', productController.updateProduct);
-router.delete('/:id', productController.deleteProduct);
-
+const express = require('express');  
+const router = express.Router();  
+const productController = require('../controllers/productController');  
+const { authenticateToken } = require('../middleware/authMiddleware');  
+  
+// Routes publiques  
+router.get('/', productController.getAllProducts);  
+router.get('/:id', productController.getProductById);  
+router.get('/:id/image', productController.getProductImage);  
+  
+// Routes protégées (nécessitent authentification)  
+router.post('/',   
+  authenticateToken,   
+  productController.upload.single('image'),   
+  productController.createProduct  
+);  
+  
+router.put('/:id',   
+  authenticateToken,   
+  productController.upload.single('image'),   
+  productController.updateProduct  
+);  
+  
+router.delete('/:id', authenticateToken, productController.deleteProduct);  
+  
 module.exports = router;

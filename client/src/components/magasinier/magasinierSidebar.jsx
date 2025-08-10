@@ -17,7 +17,7 @@ const menuItems = [
   {    
     icon: Inventory,    
     label: "Gestion des stocks",    
-    href: "/admin/stocks",    
+    href: "/magasinier/inventaires",    
   },
   {    
     icon: Warehouse,    

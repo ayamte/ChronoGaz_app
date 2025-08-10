@@ -21,11 +21,14 @@ const usersRouter = require('./routes/usersRouter');
 
   
 const depotsRoutes = require('./routes/depots');    
-const stockRoutes = require('./routes/stock');    
-const productsRoutes = require('./routes/products');    
+const stockRoutes = require('./routes/stock');     
 const trucksRoutes = require('./routes/trucks');    
 const adminRoutes = require('./routes/adminRouter'); 
 const reportsRoutes = require('./routes/reports');
+const stockDepotRoutes = require('./routes/stockDepots');  
+const stockLineRoutes = require('./routes/stockLines'); 
+const productRoutes = require('./routes/products');  
+const umRoutes = require('./routes/ums'); 
 
     
 // Import du middleware d'authentification    
@@ -55,9 +58,12 @@ app.use(passport.initialize());
 // Routes des modules métier  
 app.use('/api/depots', depotsRoutes);  
 app.use('/api/stock', stockRoutes);  
-app.use('/api/products', productsRoutes);  
 app.use('/api/trucks', trucksRoutes); 
 app.use('/api/reports', reportsRoutes);
+app.use('/api/stock-depots', stockDepotRoutes);  
+app.use('/api/stock-lines', stockLineRoutes);
+app.use('/api/products', productRoutes);  
+app.use('/api/ums', umRoutes);
   
 // Routes admin (AJOUTÉ)  
 app.use('/api/admin', adminRoutes);  
@@ -68,11 +74,12 @@ app.get('/api/health', (req, res) => {
     message: 'ChronoGaz API is running with MongoDB!',      
     database: 'chronogaz_db',      
     timestamp: new Date().toISOString(),      
-    collections: [      
-      'users', 'roles', 'physicalusers', 'moralusers',       
-      'customers', 'employes', 'products', 'trucks',       
-      'regions', 'addresses', 'commandes', 'depots', 'stocks'      
-    ]      
+    collections: [  
+      'users', 'roles', 'physicalusers', 'moralusers',  
+      'customers', 'employes', 'products', 'trucks',  
+      'regions', 'addresses', 'commandes', 'depots',   
+      'stockdepots', 'stocklines', 'ums' 
+    ]     
   });      
 });      
     
@@ -723,8 +730,7 @@ app.use('*', (req, res) => {
       'POST /api/auth/register',        
       'POST /api/auth/login',        
       'GET /api/health',          
-      'GET /api/users (protégée)',          
-      'GET /api/products',          
+      'GET /api/users (protégée)',    
       'GET /api/customers (protégée)',      
       'POST /api/customers (protégée)',      
       'PUT /api/customers/:id (protégée)',      
@@ -749,7 +755,10 @@ app.use('*', (req, res) => {
       'GET/POST/PUT/DELETE /api/reports (protégée)',  
       'GET /api/reports/dashboard (protégée)',  
       'GET /api/reports/inventory (protégée)',  
-      'GET /api/reports/export/products (protégée)',        
+      'GET /api/reports/export/products (protégée)',  
+      'GET/POST/PUT/DELETE /api/stock-depots (protégée)',  
+      'GET/POST/PUT/DELETE /api/stock-lines (protégée)',  
+      'GET/POST/PUT/DELETE /api/ums (protégée)',        
     ]          
   });          
 });          

@@ -49,6 +49,10 @@ import Profile from './pages/Profile/Profile';
 import GestionStocksDepot from './pages/admin/GestionStocksDepot/GestionStocksDepot'
 import GestionStock from './pages/admin/gestionStock/gestionStock'
 import GestionDepot from './pages/admin/GestionDepot/GestionDepot'
+import StockDepotManagement from './pages/magasinier/StockDepotManagement/StockDepotManagement';  
+import StockLineManagement from './pages/magasinier/StockLineManagement/StockLineManagement';  
+
+  
         
 import './App.css';        
         
@@ -328,6 +332,22 @@ function App() {
                 </ProtectedRoute>        
               }         
             />        
+            <Route   
+              path="/magasinier/inventaires"   
+              element={  
+                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>  
+                  <StockDepotManagement />  
+                </ProtectedRoute>  
+              }   
+            />  
+            <Route   
+              path="/magasinier/stock-lines/:stockDepotId"   
+              element={  
+                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>  
+                  <StockLineManagement />  
+                </ProtectedRoute>  
+              }   
+            />
         
             {/* Routes protégées pour clients */}        
             <Route         
