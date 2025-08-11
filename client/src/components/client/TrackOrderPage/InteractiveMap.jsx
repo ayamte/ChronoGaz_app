@@ -1,5 +1,5 @@
 // chronogaz_front/src/components/client/trackorderpage/InteractiveMap.jsx
-import React, { useEffect, useRef, useCallback, useState } from "react";
+import React, { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { useDeliveryTracking } from "../../../hooks/useDeliveryTracking";
 import { createCustomIcon, getMapStyles, fitMapBounds } from "../../../utils/mapUtils";
 
@@ -19,12 +19,16 @@ const InteractiveMap = ({
   const driverMarkerRef = useRef(null);
   const destinationMarkerRef = useRef(null);
   const routePolylineRef = useRef(null);
+  const lastRouteUpdateRef = useRef(null);
 
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState(null);
+  const [graphHopperError, setGraphHopperError] = useState(null);
 
+  // Mémorisation des callbacks pour éviter les re-renders
   const memoizedOnPositionUpdate = useCallback((position) => {
+    console.log('Position mise à jour:', position);
     if (onPositionUpdate) onPositionUpdate(position);
   }, [onPositionUpdate]);
 
@@ -33,6 +37,7 @@ const InteractiveMap = ({
     if (onStatusChange) onStatusChange(status);
   }, [onStatusChange]);
 
+  // Hook de tracking avec callbacks mémorisés
   const {
     deliveryData,
     driverPosition,
@@ -50,23 +55,24 @@ const InteractiveMap = ({
     realTimeUpdates: true
   });
 
-  // Gérer les erreurs de tracking du hook
+  // Gestion des erreurs
   useEffect(() => {
     if (trackingError) {
       console.error('❌ Erreur de tracking:', trackingError);
-      setError(trackingError);
+      setError('Erreur lors de la récupération des données de tracking');
     } else {
       setError(null);
     }
   }, [trackingError]);
 
-  // ✅ PREMIER useEffect : Charger la bibliothèque Leaflet une seule fois
+  // Chargement de Leaflet (une seule fois)
   useEffect(() => {
     const loadLeaflet = async () => {
       if (window.L) {
         setLeafletLoaded(true);
         return;
       }
+
       try {
         console.log('🗺️ Chargement de Leaflet...');
         
@@ -80,10 +86,7 @@ const InteractiveMap = ({
         await new Promise((resolve, reject) => {
           const script = document.createElement('script');
           script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.min.js';
-          script.onload = () => {
-            console.log('✅ Leaflet JS chargé avec succès');
-            resolve();
-          };
+          script.onload = resolve;
           script.onerror = reject;
           document.head.appendChild(script);
         });
@@ -104,6 +107,7 @@ const InteractiveMap = ({
     
     loadLeaflet();
 
+    // Nettoyage
     return () => {
       if (mapInstanceRef.current) {
         try {
@@ -117,10 +121,9 @@ const InteractiveMap = ({
     };
   }, []);
 
-  // ✅ DEUXIÈME useEffect : Initialiser la carte quand Leaflet est prêt et les données sont là
+  // Initialisation de la carte (une seule fois)
   useEffect(() => {
-    if (mapReady || !leafletLoaded || !mapRef.current || !driverPosition || !destinationPosition) {
-      console.log('⏳ En attente des conditions pour initialiser la carte...');
+    if (mapReady || !leafletLoaded || !driverPosition || !destinationPosition) {
       return;
     }
 
@@ -131,10 +134,12 @@ const InteractiveMap = ({
         zoom: 13,
         zoomControl: true
       });
+
       window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19
       }).addTo(mapInstanceRef.current);
+
       setMapReady(true);
       console.log('✅ Carte initialisée avec succès');
     } catch (err) {
@@ -143,8 +148,8 @@ const InteractiveMap = ({
     }
   }, [leafletLoaded, mapReady, driverPosition, destinationPosition]);
 
-  // Fonction pour décoder les points GraphHopper
-  const decodePolyline = (encoded) => {
+  // Fonction de décodage polyline
+  const decodePolyline = useCallback((encoded) => {
     if (!encoded) return [];
     
     let index = 0;
@@ -152,16 +157,16 @@ const InteractiveMap = ({
     let lng = 0;
     const coordinates = [];
 
-    while (index < encoded.length) {
+    const len = encoded.length;
+    while (index < len) {
       let b, shift = 0, result = 0;
       do {
         b = encoded.charCodeAt(index++) - 63;
         result |= (b & 0x1f) << shift;
         shift += 5;
       } while (b >= 0x20);
-
-      const deltaLat = ((result & 1) ? ~(result >> 1) : (result >> 1));
-      lat += deltaLat;
+      const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
 
       shift = 0;
       result = 0;
@@ -170,86 +175,95 @@ const InteractiveMap = ({
         result |= (b & 0x1f) << shift;
         shift += 5;
       } while (b >= 0x20);
-
-      const deltaLng = ((result & 1) ? ~(result >> 1) : (result >> 1));
-      lng += deltaLng;
+      const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
 
       coordinates.push([lat / 1e5, lng / 1e5]);
     }
-
     return coordinates;
-  };
+  }, []);
 
-  // ✅ TROISIÈME useEffect : Gérer les mises à jour de la carte (marqueurs et route)
+  // Création/mise à jour des marqueurs (optimisé)
   useEffect(() => {
-    if (!mapReady || !leafletLoaded) return;
+    if (!mapReady || !leafletLoaded || !driverPosition || !destinationPosition) return;
 
-    try {
-      // Mettre à jour les marqueurs
-      const createOrUpdateMarkers = () => {
-        if (!mapInstanceRef.current || !window.L || !driverPosition || !destinationPosition) return;
-        
-        // Logique de création des marqueurs si elle n'existe pas
+    const createOrUpdateMarkers = () => {
+      try {
+        // Marqueur du livreur
         if (!driverMarkerRef.current) {
           const driverIcon = createCustomIcon('driver', '#4DAEBD');
-          driverMarkerRef.current = window.L.marker([driverPosition.lat, driverPosition.lng], { icon: driverIcon }).addTo(mapInstanceRef.current);
-          driverMarkerRef.current.bindPopup(`<h4>Livreur</h4><p>Position en temps réel</p>`).openPopup();
-        }
-        if (!destinationMarkerRef.current) {
-          const destinationIcon = createCustomIcon('destination', '#1F55A3');
-          destinationMarkerRef.current = window.L.marker([destinationPosition.lat, destinationPosition.lng], { icon: destinationIcon }).addTo(mapInstanceRef.current);
-          destinationMarkerRef.current.bindPopup(`<h4>Destination</h4><p>${deliveryData?.destination?.rue || 'Adresse'}</p>`);
-        }
-
-        // Logique de mise à jour des positions
-        if (driverMarkerRef.current && driverPosition) {
+          driverMarkerRef.current = window.L.marker([driverPosition.lat, driverPosition.lng], { icon: driverIcon })
+            .addTo(mapInstanceRef.current)
+            .bindPopup(`<h4>Livreur</h4><p>Position en temps réel</p>`);
+        } else {
           driverMarkerRef.current.setLatLng([driverPosition.lat, driverPosition.lng]);
         }
-        if (destinationMarkerRef.current && destinationPosition) {
+
+        // Marqueur de destination
+        if (!destinationMarkerRef.current) {
+          const destinationIcon = createCustomIcon('destination', '#1F55A3');
+          destinationMarkerRef.current = window.L.marker([destinationPosition.lat, destinationPosition.lng], { icon: destinationIcon })
+            .addTo(mapInstanceRef.current)
+            .bindPopup(`<h4>Destination</h4><p>${deliveryData?.destination?.rue || 'Adresse'}</p>`);
+        } else {
           destinationMarkerRef.current.setLatLng([destinationPosition.lat, destinationPosition.lng]);
         }
-      };
 
-      // Mettre à jour la route avec GraphHopper
-      const updateRoute = async () => {
-        if (!showRoute || !driverPosition || !destinationPosition) return;
-        try {
-          const url = `https://graphhopper.com/api/1/route?point=${driverPosition.lat},${driverPosition.lng}&point=${destinationPosition.lat},${destinationPosition.lng}&vehicle=car&locale=fr&calc_points=true&key=${GRAPHHOPPER_API_KEY}`;
-          const response = await fetch(url);
-          const data = await response.json();
-          
-          if (data.paths && data.paths.length > 0) {
-            const route = data.paths[0];
-            // GraphHopper renvoie les points encodés dans route.points
-            const coords = decodePolyline(route.points);
-            
-            if (routePolylineRef.current) {
-              mapInstanceRef.current.removeLayer(routePolylineRef.current);
-            }
-            routePolylineRef.current = window.L.polyline(coords, { 
-              color: '#4DAEBD', 
-              weight: 4, 
-              opacity: 0.8 
-            }).addTo(mapInstanceRef.current);
-          }
-        } catch (err) {
-          console.error('❌ Erreur route GraphHopper:', err);
+        // Centrage automatique
+        if (autoCenter && fitMapBounds) {
+          fitMapBounds(mapInstanceRef.current, [driverPosition, destinationPosition]);
         }
-      };
+      } catch (err) {
+        console.error('❌ Erreur création marqueurs:', err);
+      }
+    };
 
-      createOrUpdateMarkers();
-      updateRoute();
+    createOrUpdateMarkers();
+  }, [mapReady, leafletLoaded, driverPosition, destinationPosition, autoCenter, deliveryData]);
 
-      if (autoCenter && fitMapBounds && driverPosition && destinationPosition) {
-        fitMapBounds(mapInstanceRef.current, [driverPosition, destinationPosition]);
+  // Mise à jour de la route avec routeInfo du hook (plus d'appels API directs)
+  useEffect(() => {
+    if (!showRoute || !mapReady || !routeInfo?.geometry) {
+      // Supprimer la route existante si pas de géométrie
+      if (routePolylineRef.current) {
+        mapInstanceRef.current.removeLayer(routePolylineRef.current);
+        routePolylineRef.current = null;
+      }
+      setGraphHopperError(null);
+      return;
+    }
+
+    try {
+      // Vérifier si on doit mettre à jour la route
+      const routeKey = `${driverPosition?.lat},${driverPosition?.lng}-${destinationPosition?.lat},${destinationPosition?.lng}`;
+      if (lastRouteUpdateRef.current === routeKey) {
+        return; // Route déjà affichée pour ces positions
       }
 
-    } catch (err) {
-      console.error('❌ Erreur mise à jour carte:', err);
-    }
-  }, [mapReady, leafletLoaded, driverPosition, destinationPosition, showRoute, autoCenter, deliveryData]);
+      console.log('🗺️ Mise à jour de la route sur la carte...');
+      
+      const coords = decodePolyline(routeInfo.geometry);
+      
+      if (routePolylineRef.current) {
+        mapInstanceRef.current.removeLayer(routePolylineRef.current);
+      }
+      
+      routePolylineRef.current = window.L.polyline(coords, { 
+        color: '#4DAEBD', 
+        weight: 4, 
+        opacity: 0.8 
+      }).addTo(mapInstanceRef.current);
 
-  // Fonctions de contrôle (déjà bien écrites, pas besoin de les modifier)
+      lastRouteUpdateRef.current = routeKey;
+      setGraphHopperError(null);
+
+    } catch (err) {
+      console.error('❌ Erreur affichage route:', err);
+      setGraphHopperError("Erreur lors de l'affichage de l'itinéraire.");
+    }
+  }, [mapReady, showRoute, routeInfo, driverPosition, destinationPosition, decodePolyline]);
+
+  // Fonctions de contrôle de la carte
   const centerOnDriver = useCallback(() => {
     if (mapInstanceRef.current && driverPosition) {
       mapInstanceRef.current.setView([driverPosition.lat, driverPosition.lng], 15, { animate: true, duration: 1 });
@@ -268,6 +282,15 @@ const InteractiveMap = ({
     }
   }, [driverPosition, destinationPosition]);
 
+  // Mémorisation des infos de debug pour éviter les re-renders
+  const debugInfo = useMemo(() => ({
+    deliveryData: !!deliveryData,
+    driverPosition: !!driverPosition,
+    destinationPosition: !!destinationPosition,
+    leafletLoaded,
+    isConnected
+  }), [deliveryData, driverPosition, destinationPosition, leafletLoaded, isConnected]);
+
   if (!isVisible) return null;
 
   if (error) {
@@ -284,11 +307,11 @@ const InteractiveMap = ({
           
           <div className="bg-gray-100 p-4 rounded mb-4 text-left text-sm">
             <p><strong>Debug Info:</strong></p>
-            <p>DeliveryData: {deliveryData ? '✅' : '❌'}</p>
-            <p>DriverPosition: {driverPosition ? '✅' : '❌'}</p>
-            <p>DestinationPosition: {destinationPosition ? '✅' : '❌'}</p>
-            <p>Leaflet: {leafletLoaded ? '✅' : '❌'}</p>
-            <p>Connected: {isConnected ? '✅' : '❌'}</p>
+            <p>DeliveryData: {debugInfo.deliveryData ? '✅' : '❌'}</p>
+            <p>DriverPosition: {debugInfo.driverPosition ? '✅' : '❌'}</p>
+            <p>DestinationPosition: {debugInfo.destinationPosition ? '✅' : '❌'}</p>
+            <p>Leaflet: {debugInfo.leafletLoaded ? '✅' : '❌'}</p>
+            <p>Connected: {debugInfo.isConnected ? '✅' : '❌'}</p>
           </div>
           
           <button 
@@ -302,7 +325,7 @@ const InteractiveMap = ({
     );
   }
 
-  if (loading || !deliveryData) {
+  if (loading || !deliveryData || !driverPosition || !destinationPosition) {
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="text-center">
@@ -311,10 +334,10 @@ const InteractiveMap = ({
           <p className="text-gray-600">Récupération des données en cours...</p>
           
           <div className="mt-4 text-sm text-gray-500">
-            <p>Leaflet: {leafletLoaded ? '✅' : '⏳'}</p>
-            <p>Données: {deliveryData ? '✅' : '⏳'}</p>
-            <p>Position livreur: {driverPosition ? '✅' : '⏳'}</p>
-            <p>Position destination: {destinationPosition ? '✅' : '⏳'}</p>
+            <p>Leaflet: {debugInfo.leafletLoaded ? '✅' : '⏳'}</p>
+            <p>Données: {debugInfo.deliveryData ? '✅' : '⏳'}</p>
+            <p>Position livreur: {debugInfo.driverPosition ? '✅' : '⏳'}</p>
+            <p>Position destination: {debugInfo.destinationPosition ? '✅' : '⏳'}</p>
           </div>
         </div>
       </div>
@@ -347,7 +370,7 @@ const InteractiveMap = ({
               title="Actualiser"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.001 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
           </div>
@@ -361,6 +384,12 @@ const InteractiveMap = ({
           style={{ minHeight: '400px' }}
         />
         
+        {graphHopperError && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 p-2 bg-red-500 text-white text-sm rounded-lg shadow-lg z-10">
+            {graphHopperError}
+          </div>
+        )}
+
         {!mapReady && (
           <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
             <div className="text-center">
@@ -401,7 +430,10 @@ const InteractiveMap = ({
           <div className="text-center">
             <p className="text-sm text-gray-600">Dernière MAJ</p>
             <p className="text-sm font-medium text-gray-800">
-              {new Date().toLocaleTimeString()}
+              {driverPosition?.timestamp ? 
+                new Date(driverPosition.timestamp).toLocaleTimeString() : 
+                new Date().toLocaleTimeString()
+              }
             </p>
           </div>
         </div>
@@ -416,7 +448,7 @@ const InteractiveMap = ({
               <div className="w-3 h-3 rounded-full bg-blue-800"></div>
               <span className="text-sm text-gray-600">Destination</span>
             </div>
-            {showRoute && (
+            {showRoute && routeInfo && (
               <div className="flex items-center space-x-2">
                 <div className="w-3 h-1 bg-blue-400"></div>
                 <span className="text-sm text-gray-600">Itinéraire</span>
@@ -427,21 +459,21 @@ const InteractiveMap = ({
           <div className="flex space-x-2">
             <button 
               onClick={centerOnDriver}
-              className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!mapReady || !driverPosition}
             >
               Livreur
             </button>
             <button 
               onClick={centerOnDestination}
-              className="px-3 py-1 bg-blue-800 text-white rounded-lg hover:bg-blue-900 transition-colors text-sm"
+              className="px-3 py-1 bg-blue-800 text-white rounded-lg hover:bg-blue-900 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!mapReady || !destinationPosition}
             >
               Destination
             </button>
             <button 
               onClick={fitAllMarkers}
-              className="px-3 py-1 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+              className="px-3 py-1 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!mapReady}
             >
               Vue globale
@@ -453,4 +485,4 @@ const InteractiveMap = ({
   );
 };
 
-export default InteractiveMap;
+export default React.memo(InteractiveMap);
