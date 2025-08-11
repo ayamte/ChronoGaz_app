@@ -66,6 +66,19 @@ exports.createStockDepot = async (req, res) => {
         error: 'Dépôt non trouvé'  
       });  
     }  
+
+    // Vérifier qu'il n'existe pas déjà un inventaire actif pour ce dépôt  
+    const existingActiveInventory = await StockDepot.findOne({  
+      depot_id,  
+      archive: false  
+    });  
+      
+    if (existingActiveInventory) {  
+      return res.status(400).json({  
+        success: false,  
+        error: 'Un inventaire actif existe déjà pour ce dépôt. Veuillez l\'archiver avant d\'en créer un nouveau.'  
+      });  
+}
       
     const stockDepot = await StockDepot.create({  
       depot_id,  

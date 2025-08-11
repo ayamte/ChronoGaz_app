@@ -7,8 +7,13 @@ const StockDepotSchema = new mongoose.Schema({
   archive: { type: Boolean, default: false }  
 }, { timestamps: true });  
   
-StockDepotSchema.index({ depot_id: 1 });  
-StockDepotSchema.index({ stock_date: -1 });  
-StockDepotSchema.index({ archive: 1 });  
+
+StockDepotSchema.index({ depot_id: 1 });    
+StockDepotSchema.index({ stock_date: -1 });    
+StockDepotSchema.index({ archive: 1 });    
+StockDepotSchema.index(    
+  { depot_id: 1 },     
+  { unique: true, partialFilterExpression: { archive: false } }    
+);
   
 module.exports = mongoose.model('StockDepot', StockDepotSchema);

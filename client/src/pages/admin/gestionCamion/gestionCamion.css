@@ -25,13 +25,13 @@
   padding: 24px;  
   transition: margin-left 0.3s ease, width 0.3s ease;  
   width: calc(100vw - 256px);  
-}  
-  
+} 
+
 /* Quand le body a la classe sidebar-collapsed */  
 body.sidebar-collapsed .truck-management-wrapper {  
   margin-left: 64px;  
   width: calc(100vw - 64px);  
-}  
+} 
   
 .truck-management-container {  
   width: 100%;  
@@ -416,16 +416,16 @@ body.sidebar-collapsed .truck-management-wrapper {
   animation: fadeIn 0.2s ease-out;  
 }  
   
-.modal-content {  
-  background-color: var(--white);  
-  border-radius: 12px;  
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);  
-  width: 95%;  
-  max-width: 600px; /* Augmenté de 425px à 600px */  
-  max-height: 90vh;  
-  overflow-y: auto;  
-  animation: slideIn 0.3s ease-out;  
-}  
+.modal-content {      
+  background-color: var(--white);      
+  border-radius: 12px;      
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);      
+  width: 95%;      
+  max-width: 1200px; /* Augmenté de 900px à 1200px */      
+  max-height: 90vh;      
+  overflow-y: auto;      
+  animation: slideIn 0.3s ease-out;      
+}
   
 .modal-header {  
   display: flex;  
@@ -827,5 +827,271 @@ body.sidebar-collapsed .truck-management-wrapper {
   .table-card {  
     box-shadow: none;  
     border: 1px solid #000;  
+  }  
+}
+
+/* Styles spécifiques pour le modal de détails */  
+.detail-modal {    
+  max-width: 1200px; /* Augmenté de 800px à 1200px */    
+} 
+  
+.detail-content {  
+  padding: 24px;  
+}  
+  
+.detail-image-section {  
+  text-align: center;  
+  margin-bottom: 24px;  
+  padding: 20px;  
+  background-color: #f9fafb;  
+  border-radius: 8px;  
+}  
+  
+.detail-truck-image {  
+  max-width: 300px;  
+  max-height: 200px;  
+  width: 100%;  
+  height: auto;  
+  border-radius: 8px;  
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);  
+}  
+  
+.no-image-placeholder {  
+  display: flex;  
+  flex-direction: column;  
+  align-items: center;  
+  justify-content: center;  
+  padding: 40px;  
+  color: #6b7280;  
+}  
+  
+.no-image-icon-large {  
+  width: 4rem;  
+  height: 4rem;  
+  margin-bottom: 8px;  
+  color: #9ca3af;  
+}  
+  
+.detail-info-grid {  
+  display: grid;  
+  grid-template-columns: 1fr 1fr;  
+  gap: 24px;  
+  margin-bottom: 24px;  
+}  
+  
+.detail-section {  
+  background-color: #f9fafb;  
+  padding: 20px;  
+  border-radius: 8px;  
+}  
+  
+.detail-section h3 {  
+  font-size: 1.125rem;  
+  font-weight: 600;  
+  color: #111827;  
+  margin: 0 0 16px 0;  
+  border-bottom: 2px solid var(--primary-blue);  
+  padding-bottom: 8px;  
+}  
+  
+.detail-item {  
+  display: flex;  
+  justify-content: space-between;  
+  align-items: flex-start;  
+  margin-bottom: 12px;  
+  padding: 8px 0;  
+  border-bottom: 1px solid #e5e7eb;  
+}  
+  
+.detail-item:last-child {  
+  border-bottom: none;  
+  margin-bottom: 0;  
+}  
+  
+.detail-label {  
+  font-weight: 500;  
+  color: #374151;  
+  min-width: 120px;  
+  flex-shrink: 0;  
+}  
+  
+.detail-value {  
+  color: #111827;  
+  text-align: right;  
+  flex: 1;  
+}  
+  
+.detail-description {  
+  background-color: #f9fafb;  
+  padding: 16px;  
+  border-radius: 8px;  
+  color: #374151;  
+  line-height: 1.5;  
+  margin: 0;  
+}  
+  
+.employee-info {  
+  display: flex;  
+  align-items: center;  
+  gap: 8px;  
+}  
+  
+.employee-icon {  
+  width: 1rem;  
+  height: 1rem;  
+  color: var(--primary-blue);  
+  flex-shrink: 0;  
+}  
+  
+.employee-name {  
+  font-weight: 500;  
+  color: #111827;  
+}  
+  
+.employee-email {  
+  font-size: 0.75rem;  
+  color: #6b7280;  
+  margin-top: 2px;  
+}  
+  
+/* Styles pour les images dans le tableau */  
+.truck-image-cell {  
+  display: flex;  
+  align-items: center;  
+  justify-content: center;  
+  width: 60px;  
+  height: 40px;  
+}  
+  
+.truck-image {  
+  max-width: 50px;  
+  max-height: 35px;  
+  width: 100%;  
+  height: auto;  
+  border-radius: 4px;  
+  object-fit: cover;  
+}  
+  
+.no-image-icon {  
+  width: 1.5rem;  
+  height: 1.5rem;  
+  color: #9ca3af;  
+}  
+  
+/* Styles pour les boutons d'action */  
+.action-buttons {  
+  display: flex;  
+  gap: 8px;  
+  align-items: center;  
+}  
+  
+.edit-button,  
+.delete-button {  
+  display: flex;  
+  align-items: center;  
+  justify-content: center;  
+  padding: 6px;  
+  border: none;  
+  border-radius: 4px;  
+  cursor: pointer;  
+  transition: background-color 0.2s ease;  
+}  
+  
+.edit-button {  
+  background-color: #dbeafe;  
+  color: #1d4ed8;  
+}  
+  
+.edit-button:hover {  
+  background-color: #bfdbfe;  
+}  
+  
+.delete-button {  
+  background-color: #fee2e2;  
+  color: #dc2626;  
+}  
+  
+.delete-button:hover {  
+  background-color: #fecaca;  
+}  
+  
+.action-icon {  
+  width: 1rem;  
+  height: 1rem;  
+}  
+  
+/* Badge pour "Hors service" */  
+.badge-out-of-service {  
+  background-color: #f3f4f6;  
+  color: #374151;  
+  border: 1px solid #d1d5db;  
+}  
+  
+/* Styles pour le formulaire en grille */  
+.form-grid {  
+  display: grid;  
+  grid-template-columns: 1fr 1fr;  
+  gap: 16px;  
+}  
+  
+.form-group.full-width {  
+  grid-column: 1 / -1;  
+}  
+  
+.form-textarea {  
+  width: 100%;  
+  min-width: 0;  
+  padding: 14px 16px;  
+  border: 1px solid #d1d5db;  
+  border-radius: 8px;  
+  font-size: 0.875rem;  
+  background-color: var(--white);  
+  transition: border-color 0.2s ease;  
+  box-sizing: border-box;  
+  resize: vertical;  
+  font-family: inherit;  
+}  
+  
+.form-textarea:focus {  
+  outline: none;  
+  border-color: var(--primary-blue);  
+  box-shadow: 0 0 0 3px rgba(31, 85, 163, 0.1);  
+}  
+  
+.image-preview {  
+  margin-top: 8px;  
+  text-align: center;  
+}  
+  
+.preview-image {  
+  max-width: 200px;  
+  max-height: 150px;  
+  border-radius: 8px;  
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);  
+}  
+  
+/* Responsive pour les modals de détails */  
+@media (max-width: 768px) {  
+  .detail-info-grid {  
+    grid-template-columns: 1fr;  
+    gap: 16px;  
+  }  
+    
+  .detail-item {  
+    flex-direction: column;  
+    align-items: flex-start;  
+    gap: 4px;  
+  }  
+    
+  .detail-label {  
+    min-width: auto;  
+  }  
+    
+  .detail-value {  
+    text-align: left;  
+  }  
+    
+  .form-grid {  
+    grid-template-columns: 1fr;  
   }  
 }

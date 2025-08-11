@@ -29,7 +29,12 @@ const menuItems = [
   {    
     icon: Truck,    
     label: "Gestion des Camions",    
-    href: "/gestioncamion",    
+    href: "/admin/gestion-camions",    
+  },
+  {    
+    icon: Truck,    
+    label: "Ajouter camion",    
+    href: "/admin/ajouter-camion",    
   },    
   {    
     icon: Users,    
@@ -40,17 +45,7 @@ const menuItems = [
     icon: Users,    
     label: "Gestion des employés",    
     href: "/gestion-chauffeur",    
-  }, 
-    {    
-    icon: Inventory,    
-    label: "Gestion des stocks",    
-    href: "/admin/stocks",    
-  },
-  {    
-    icon: Warehouse,    
-    label: "Stocks par dépôt",    
-    href: "/admin/stocks-depot",    
-  },
+  },    
   {    
     icon: MapPin,    
     label: "Gestion des régions",    
@@ -65,6 +60,11 @@ const menuItems = [
     icon: Receipt,    
     label: "Ajouter produit",    
     href: "/ajouter-produit",    
+  },
+  {    
+    icon: Receipt,    
+    label: "Gestion des produit",    
+    href: "/admin/gestion-produits",    
   }, 
   {    
     icon: Warehouse,    

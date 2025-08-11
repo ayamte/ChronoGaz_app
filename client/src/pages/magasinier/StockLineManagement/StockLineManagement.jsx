@@ -68,8 +68,8 @@ export default function StockLineManagement() {
   }  
   
   const filteredStockLines = stockLines.filter(line =>  
-    line.product_id?.nom_court?.toLowerCase().includes(searchTerm.toLowerCase()) ||  
-    line.product_id?.reference?.toLowerCase().includes(searchTerm.toLowerCase())  
+    line.product_id?.short_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||  
+    line.product_id?.ref?.toLowerCase().includes(searchTerm.toLowerCase()) 
   )  
   
   const handleInputChange = (field, value) => {  
@@ -218,8 +218,8 @@ export default function StockLineManagement() {
                     ) : (  
                       filteredStockLines.map((line) => (  
                         <tr key={line._id}>  
-                          <td>{line.product_id?.reference}</td>  
-                          <td>{line.product_id?.nom_court}</td>  
+                          <td>{line.product_id?.ref}</td>  
+                          <td>{line.product_id?.short_name}</td> 
                           <td>{line.um_id?.symbole || line.um_id?.nom}</td>  
                           <td className="quantity-cell">{line.quantity}</td>  
                           <td>  
@@ -275,7 +275,7 @@ export default function StockLineManagement() {
                   <option value="">Sélectionner un produit</option>  
                   {products.map(product => (  
                     <option key={product._id} value={product._id}>  
-                      {product.nom_court} ({product.reference})  
+                      {product.short_name} ({product.ref}) 
                     </option>  
                   ))}  
                 </select>  

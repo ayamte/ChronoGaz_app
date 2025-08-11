@@ -9,7 +9,7 @@ exports.getStockLinesByDepot = async (req, res) => {
     const { stockDepotId } = req.params;  
       
     const stockLines = await StockLine.find({ stock_depot_id: stockDepotId })  
-      .populate('product_id', 'reference nom_court type_gaz capacite prix_unitaire')  
+      .populate('product_id', 'ref short_name long_name gamme brand description') 
       .populate('um_id', 'code nom symbole')  
       .sort({ 'product_id.nom_court': 1 });  
       

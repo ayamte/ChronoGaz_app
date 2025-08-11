@@ -680,46 +680,46 @@ app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
 });      
       
 // Route protégée pour tester les camions          
-app.get('/api/trucks', authenticateToken, async (req, res) => {          
-  try {          
-    const trucks = await Truck.find({ actif: true })          
-      .populate('region_id', 'code nom');          
-    res.json({          
-      success: true,          
-      count: trucks.length,          
-      data: trucks          
-    });          
-  } catch (error) {          
-    res.status(500).json({           
-      success: false,          
-      error: error.message           
-    });          
-  }          
+app.get('/api/trucks', authenticateToken, async (req, res) => {            
+  try {            
+    const trucks = await Truck.find({ status: { $ne: 'Hors service' } }) // Remplace actif: true  
+      .populate('region_id', 'code nom');            
+    res.json({            
+      success: true,            
+      count: trucks.length,            
+      data: trucks            
+    });            
+  } catch (error) {            
+    res.status(500).json({             
+      success: false,            
+      error: error.message             
+    });            
+  }            
 });          
         
 // Route protégée pour les statistiques générales          
-app.get('/api/stats', authenticateToken, async (req, res) => {          
-  try {          
-    const stats = {          
-      users: await User.countDocuments(),          
-      customers: await Customer.countDocuments(),          
-      products: await Product.countDocuments({ actif: true }),          
-      trucks: await Truck.countDocuments({ actif: true }),          
-      roles: await Role.countDocuments({ actif: true })          
-    };          
-              
-    res.json({          
-      success: true,          
-      data: stats,          
-      timestamp: new Date().toISOString()          
-    });          
-  } catch (error) {          
-    res.status(500).json({           
-      success: false,          
-      error: error.message           
-    });          
-  }          
-});          
+app.get('/api/stats', authenticateToken, async (req, res) => {            
+  try {            
+    const stats = {            
+      users: await User.countDocuments(),            
+      customers: await Customer.countDocuments(),            
+      products: await Product.countDocuments({ actif: true }),            
+      trucks: await Truck.countDocuments({ status: { $ne: 'Hors service' } }), // Modifié  
+      roles: await Role.countDocuments({ actif: true })            
+    };            
+                
+    res.json({            
+      success: true,            
+      data: stats,            
+      timestamp: new Date().toISOString()            
+    });            
+  } catch (error) {            
+    res.status(500).json({             
+      success: false,            
+      error: error.message             
+    });            
+  }            
+});         
         
 // Gestion des erreurs 404          
 app.use('*', (req, res) => {          

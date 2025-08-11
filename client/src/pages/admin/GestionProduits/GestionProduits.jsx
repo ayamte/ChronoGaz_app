@@ -1,456 +1,547 @@
 import { useState, useEffect } from "react"
-import {
-  MdLocalGasStation as GasStation,
-  MdAdd as Plus,
-  MdSearch as Search,
-  MdEdit as Edit,
+import { useNavigate } from "react-router-dom"
+import {     
+  MdSearch as Search,     
+  MdAdd as Plus,     
+  MdInventory as Package,     
+  MdCategory as Category,     
+  MdLocalGasStation as GasStation,     
+  MdVisibility as Eye,  
+  MdEdit as Edit,  
   MdDelete as Delete,
-  MdClose as X,
-  MdCategory as Category
-} from "react-icons/md"
-import "./GestionProduits.css"
+  MdImage as ImageIcon,
+  MdPerson as Person,
+  MdClose as X
+} from "react-icons/md"    
+import "./GestionProduits.css"  
 import productService from '../../../services/productService'
 
-export default function GestionProduits() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
+export default function ProductManagement() {  
+  const navigate = useNavigate()    
+  const [searchTerm, setSearchTerm] = useState("")  
+  const [products, setProducts] = useState([])  
+  const [loading, setLoading] = useState(true)  
   const [error, setError] = useState(null)
-  const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedProduct, setSelectedProduct] = useState(null)
-
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [formData, setFormData] = useState({
-    code: "",
-    name: "",
-    category: "",
-    capacity: "",
-    weight: "",
-    price: "",
+    ref: "",
+    short_name: "",
+    long_name: "",
+    gamme: "",
+    brand: "",
     description: "",
-    specifications: "",
-    actif: true
+    image: null
   })
+  const [imagePreview, setImagePreview] = useState(null)
 
-  // Catégories de produits
-  const categories = [
-    { value: "BUTANE", label: "Butane" },
-    { value: "PROPANE", label: "Propane" },
-    { value: "ACCESSOIRE", label: "Accessoires" }
-  ]
+  useEffect(() => {  
+    loadData()  
+  }, [])  
 
-  // Charger les produits au montage
-  useEffect(() => {
-    loadProducts()
-  }, [])
-
-  const loadProducts = async () => {
-    try {
-      setLoading(true)
+  const loadData = async () => {      
+    try {      
+      setLoading(true)      
       const response = await productService.getAllProducts()
       setProducts(response.data || [])
-      setError(null)
-    } catch (err) {
-      console.error("Erreur lors du chargement des produits:", err)
-      setError("Erreur lors du chargement des produits")
-      // Données de test
-      setProducts([
-        {
-          _id: "1",
-          code: "BUT13",
-          name: "Butane 13kg",
-          category: "BUTANE",
-          capacity: 13,
-          weight: 13,
-          price: 125,
-          description: "Bouteille de butane 13kg pour usage domestique",
-          actif: true
-        },
-        {
-          _id: "2",
-          code: "PROP35",
-          name: "Propane 35kg",
-          category: "PROPANE",
-          capacity: 35,
-          weight: 35,
-          price: 350,
-          description: "Bouteille de propane 35kg pour usage industriel",
-          actif: true
-        }
-      ])
-    } finally {
-      setLoading(false)
+      setError(null)      
+    } catch (err) {      
+      console.error("Erreur lors du chargement des données:", err)      
+      setError("Erreur lors du chargement des données")      
+      setProducts([])      
+    } finally {      
+      setLoading(false)      
+    }      
+  }
+
+  const getStatusBadge = (actif) => {    
+    return actif ? 
+      <span className="badge badge-available">Actif</span> :
+      <span className="badge badge-maintenance">Inactif</span>
+  }
+
+  const handleViewDetails = async (productId) => {
+    try {
+      const response = await productService.getProductById(productId)
+      if (response.success) {
+        setSelectedProduct(response.data)
+        setIsDetailModalOpen(true)
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement des détails:", error)
+      alert("Erreur lors du chargement des détails")
     }
   }
 
-  // Filtrer les produits
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = 
-      product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory
-    
-    return matchesSearch && matchesCategory
-  })
-
-  // Calculer les statistiques
-  const totalProducts = products.length
-  const activeProducts = products.filter(p => p.actif).length
-  const inactiveProducts = products.filter(p => !p.actif).length
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+  const handleEdit = async (productId) => {
+    try {
+      const response = await productService.getProductById(productId)
+      if (response.success) {
+        const product = response.data
+        setFormData({
+          ref: product.ref || "",
+          short_name: product.short_name || "",
+          long_name: product.long_name || "",
+          gamme: product.gamme || "",
+          brand: product.brand || "",
+          description: product.description || "",
+          image: null
+        })
+        setSelectedProduct(product)
+        setIsEditModalOpen(true)
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement:", error)
+      alert("Erreur lors du chargement")
+    }
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmitEdit = async (e) => {
     e.preventDefault()
-    
     try {
-      const productData = {
-        ...formData,
-        capacity: parseFloat(formData.capacity),
-        weight: parseFloat(formData.weight),
-        price: parseFloat(formData.price)
-      }
-
-      if (isEditDialogOpen && selectedProduct) {
-        await productService.updateProduct(selectedProduct._id, productData)
-      } else {
-        await productService.createProduct(productData)
-      }
-      
-      await loadProducts()
+      await productService.updateProduct(selectedProduct._id, formData)
+      await loadData()
+      setIsEditModalOpen(false)
+      setSelectedProduct(null)
       resetForm()
     } catch (error) {
-      console.error("Erreur lors de l'enregistrement du produit:", error)
-      alert("Erreur lors de l'enregistrement du produit")
+      console.error("Erreur lors de la modification:", error)
+      alert("Erreur lors de la modification")
     }
   }
 
-  const handleEdit = (product) => {
-    setSelectedProduct(product)
-    setFormData({
-      code: product.code,
-      name: product.name,
-      category: product.category,
-      capacity: product.capacity,
-      weight: product.weight,
-      price: product.price,
-      description: product.description || "",
-      specifications: product.specifications || "",
-      actif: product.actif
-    })
-    setIsEditDialogOpen(true)
+  const handleDelete = async (id) => {  
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce produit ?")) {  
+      try {  
+        await productService.deleteProduct(id)  
+        await loadData()  
+      } catch (error) {  
+        console.error("Erreur lors de la suppression:", error)  
+        alert("Erreur lors de la suppression")  
+      }  
+    }  
   }
 
-  const handleDelete = async (productId) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce produit ?")) {
-      try {
-        await productService.deleteProduct(productId)
-        await loadProducts()
-      } catch (error) {
-        console.error("Erreur lors de la suppression:", error)
-        alert("Erreur lors de la suppression du produit")
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setFormData(prev => ({ ...prev, image: file }))
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result)
       }
+      reader.readAsDataURL(file)
     }
   }
 
   const resetForm = () => {
     setFormData({
-      code: "",
-      name: "",
-      category: "",
-      capacity: "",
-      weight: "",
-      price: "",
+      ref: "",
+      short_name: "",
+      long_name: "",
+      gamme: "",
+      brand: "",
       description: "",
-      specifications: "",
-      actif: true
+      image: null
     })
-    setSelectedProduct(null)
-    setIsAddDialogOpen(false)
-    setIsEditDialogOpen(false)
+    setImagePreview(null)
   }
 
-  if (loading) {
-    return (
-      <div className="product-management-layout">
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Chargement des produits...</p>
-        </div>
-      </div>
-    )
+  const renderProductImage = (product) => {
+    if (product.image && product.image.data) {
+      const base64String = btoa(
+        new Uint8Array(product.image.data).reduce((data, byte) => data + String.fromCharCode(byte), '')
+      )
+      return (
+        <img 
+          src={`data:image/png;base64,${base64String}`} 
+          alt="Produit" 
+          className="product-image"
+        />
+      )
+    }
+    return <ImageIcon className="no-image-icon" />
   }
-
-  return (
-    <div className="product-management-layout">
-      
-      <div className="product-management-wrapper">
-        <div className="product-management-container">
-          <div className="product-management-content">
-            {/* En-tête */}
-            <div className="product-header">
-              <div className="header-content">
-                <h1 className="page-title">
-                  <GasStation className="icon" />
-                  Gestion des Produits
-                </h1>
-                <p className="page-subtitle">
-                  Gérez votre catalogue de bouteilles de gaz et accessoires
-                </p>
-              </div>
-              <button 
-                className="btn btn-primary"
-                onClick={() => setIsAddDialogOpen(true)}
-              >
-                <Plus className="icon" />
-                Nouveau Produit
-              </button>
-            </div>
-
-            {/* Cartes de statistiques */}
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-icon blue">
-                  <GasStation />
-                </div>
-                <div className="stat-content">
-                  <h3>{totalProducts}</h3>
-                  <p>Total Produits</p>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon green">
-                  <Category />
-                </div>
-                <div className="stat-content">
-                  <h3>{activeProducts}</h3>
-                  <p>Produits Actifs</p>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon orange">
-                  <Category />
-                </div>
-                <div className="stat-content">
-                  <h3>{inactiveProducts}</h3>
-                  <p>Produits Inactifs</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Filtres */}
-            <div className="filters-section">
-              <div className="search-box">
-                <Search className="search-icon" />
-                <input
-                  type="text"
-                  placeholder="Rechercher par nom, code ou description..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <select 
-                className="filter-select"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-              >
-                <option value="all">Toutes les catégories</option>
-                {categories.map(cat => (
-                  <option key={cat.value} value={cat.value}>{cat.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Tableau des produits */}
-            <div className="products-table-container">
-              <table className="products-table">
-                <thead>
-                  <tr>
-                    <th>Code</th>
-                    <th>Nom</th>
-                    <th>Catégorie</th>
-                    <th>Capacité</th>
-                    <th>Poids</th>
-                    <th>Prix</th>
-                    <th>Statut</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.map(product => (
-                    <tr key={product._id}>
-                      <td className="font-medium">{product.code}</td>
-                      <td>{product.name}</td>
-                      <td>
-                        <span className={`category-badge ${product.category?.toLowerCase()}`}>
-                          {product.category}
-                        </span>
-                      </td>
-                      <td>{product.capacity} kg</td>
-                      <td>{product.weight} kg</td>
-                      <td>{product.price} DH</td>
-                      <td>
-                        <span className={`badge ${product.actif ? 'badge-success' : 'badge-danger'}`}>
-                          {product.actif ? 'Actif' : 'Inactif'}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button 
-                            className="btn-icon btn-edit"
-                            onClick={() => handleEdit(product)}
-                            title="Modifier"
-                          >
-                            <Edit />
-                          </button>
-                          <button 
-                            className="btn-icon btn-delete"
-                            onClick={() => handleDelete(product._id)}
-                            title="Supprimer"
-                          >
-                            <Delete />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredProducts.length === 0 && (
-                <div className="empty-state">
-                  <GasStation className="empty-icon" />
-                  <p>Aucun produit trouvé</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Dialog Ajouter/Modifier Produit */}
-      {(isAddDialogOpen || isEditDialogOpen) && (
-        <div className="dialog-overlay" onClick={resetForm}>
-          <div className="dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="dialog-header">
-              <h2>{isEditDialogOpen ? 'Modifier le produit' : 'Nouveau produit'}</h2>
-              <button className="btn-close" onClick={resetForm}>
-                <X />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="product-form">
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Code produit</label>
-                  <input
-                    type="text"
-                    value={formData.code}
-                    onChange={(e) => handleInputChange('code', e.target.value)}
-                    placeholder="Ex: BUT13"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Nom du produit</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="Ex: Butane 13kg"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Catégorie</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => handleInputChange('category', e.target.value)}
-                    required
-                  >
-                    <option value="">Sélectionner...</option>
-                    {categories.map(cat => (
-                      <option key={cat.value} value={cat.value}>{cat.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Capacité (kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.capacity}
-                    onChange={(e) => handleInputChange('capacity', e.target.value)}
-                    placeholder="Ex: 13"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Poids (kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.weight}
-                    onChange={(e) => handleInputChange('weight', e.target.value)}
-                    placeholder="Ex: 13"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Prix (DH)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) => handleInputChange('price', e.target.value)}
-                    placeholder="Ex: 125"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="form-group full-width">
-                <label>Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="Description du produit..."
-                  rows="3"
-                />
-              </div>
-              <div className="form-group full-width">
-                <label>Spécifications techniques</label>
-                <textarea
-                  value={formData.specifications}
-                  onChange={(e) => handleInputChange('specifications', e.target.value)}
-                  placeholder="Spécifications techniques..."
-                  rows="3"
-                />
-              </div>
-              <div className="form-group checkbox-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={formData.actif}
-                    onChange={(e) => handleInputChange('actif', e.target.checked)}
-                  />
-                  Produit actif
-                </label>
-              </div>
-              <div className="dialog-footer">
-                <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                  Annuler
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  {isEditDialogOpen ? 'Enregistrer' : 'Créer'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+    
+  // Filtrer les produits selon le terme de recherche    
+  const filteredProducts = products.filter(  
+    (product) =>    
+      product.ref?.toLowerCase().includes(searchTerm.toLowerCase()) ||    
+      product.short_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||    
+      product.long_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.brand?.toLowerCase().includes(searchTerm.toLowerCase())
+  )    
+    
+  // Calculer les statistiques    
+  const totalProducts = products.length      
+  const activeProducts = products.filter((product) => product.actif).length
+  const inactiveProducts = products.filter((product) => !product.actif).length
+    
+  return (    
+    <div className="product-management-layout">    
+      <div className="product-management-wrapper">    
+        <div className="product-management-container">    
+          <div className="product-management-content">    
+            {/* En-tête */}    
+            <div className="page-header">    
+              <h1 className="page-title">Gestion des Produits</h1>    
+            </div>    
+    
+            {/* 3 Cards en haut avec gradient */}    
+            <div className="produit-stats-grid">    
+              <div className="stat-card gradient-card">    
+                <div className="stat-card-header">    
+                  <div className="stat-content">    
+                    <h3 className="stat-label">Total Produits</h3>    
+                    <div className="stat-value">{totalProducts}</div>    
+                    <p className="stat-description">Produits dans le catalogue</p>    
+                  </div>    
+                  <div className="stat-icon-container">    
+                    <div className="stat-icon blue">    
+                      <Package className="icon" />    
+                    </div>    
+                  </div>    
+                </div>    
+              </div>    
+    
+              <div className="stat-card gradient-card">    
+                <div className="stat-card-header">    
+                  <div className="stat-content">    
+                    <h3 className="stat-label">Actifs</h3>    
+                    <div className="stat-value">{activeProducts}</div>    
+                    <p className="stat-description">Produits disponibles</p>    
+                  </div>    
+                  <div className="stat-icon-container">    
+                    <div className="stat-icon green">    
+                      <GasStation className="icon" />    
+                    </div>    
+                  </div>    
+                </div>    
+              </div>    
+    
+              <div className="stat-card gradient-card">    
+                <div className="stat-card-header">    
+                  <div className="stat-content">    
+                    <h3 className="stat-label">Inactifs</h3>    
+                    <div className="stat-value">{inactiveProducts}</div>    
+                    <p className="stat-description">Produits désactivés</p>    
+                  </div>    
+                  <div className="stat-icon-container">    
+                    <div className="stat-icon orange">    
+                      <Category className="icon" />    
+                    </div>    
+                  </div>    
+                </div>    
+              </div>    
+            </div>    
+    
+            {/* Bouton Ajouter Produit */}    
+            <div className="action-section">    
+              <button   
+                className="add-button"   
+                onClick={() => navigate('/ajouter-produit')}  
+              >    
+                <Plus className="button-icon" />    
+                Ajouter Produit    
+              </button>    
+            </div>    
+    
+            {/* Barre de recherche */}    
+            <div className="search-section">    
+              <div className="search-container">    
+                <Search className="search-icon" />    
+                <input    
+                  type="text"    
+                  placeholder="Rechercher par référence, nom ou marque..."    
+                  value={searchTerm}    
+                  onChange={(e) => setSearchTerm(e.target.value)}    
+                  className="search-input"    
+                />    
+              </div>    
+            </div>    
+    
+            {/* Tableau */}    
+            <div className="table-card">    
+              <div className="table-header">    
+                <h3 className="table-title">Liste des Produits</h3>    
+              </div>    
+              <div className="table-content">    
+                <div className="table-container">    
+                  {loading ? (  
+                    <div className="text-center">Chargement...</div>  
+                  ) : (  
+                    <table className="products-table">    
+                      <thead>  
+                        <tr>  
+                          <th>Image</th>
+                          <th>Référence</th>  
+                          <th>Nom Court</th>  
+                          <th>Nom Complet</th>  
+                          <th>Marque</th>  
+                          <th>Gamme</th>  
+                          <th>Statut</th>
+                          <th>Actions</th>  
+                        </tr>  
+                      </thead>  
+                      <tbody>  
+                        {filteredProducts.map((product) => (  
+                          <tr key={product._id}>  
+                            <td>
+                              <div className="product-image-cell">
+                                {renderProductImage(product)}
+                              </div>
+                            </td>
+                            <td>{product.ref}</td>  
+                            <td>{product.short_name}</td>  
+                            <td>{product.long_name}</td>  
+                            <td>{product.brand || 'N/A'}</td>  
+                            <td>{product.gamme || 'N/A'}</td>  
+                            <td>{getStatusBadge(product.actif)}</td>
+                             <td>  
+                              <div className="action-buttons">  
+                                <button     
+                                  className="details-button"    
+                                  onClick={() => handleViewDetails(product._id)}  
+                                  title="Voir détails"  
+                                >    
+                                  <Eye className="details-icon" />    
+                                </button>  
+                                <button  
+                                  className="edit-button"  
+                                  onClick={() => handleEdit(product._id)}  
+                                  title="Modifier"  
+                                >  
+                                  <Edit className="action-icon" />  
+                                </button>  
+                                <button  
+                                  className="delete-button"  
+                                  onClick={() => handleDelete(product._id)}  
+                                  title="Supprimer"  
+                                >  
+                                  <Delete className="action-icon" />  
+                                </button>  
+                              </div>  
+                            </td> 
+                          </tr>  
+                        ))}  
+                      </tbody>   
+                    </table>  
+                  )}  
+    
+                  {!loading && filteredProducts.length === 0 && (    
+                    <div className="no-results">    
+                      Aucun produit trouvé pour votre recherche.    
+                    </div>    
+                  )}    
+                </div>      
+              </div>      
+            </div>      
+          </div>      
+        </div>      
+      </div>      
+  
+      {/* Modal de détails */}  
+      {isDetailModalOpen && selectedProduct && (  
+        <div className="modal-overlay" onClick={() => setIsDetailModalOpen(false)}>  
+          <div className="modal-content detail-modal" onClick={(e) => e.stopPropagation()}>  
+            <div className="modal-header">  
+              <h2 className="modal-title">Détails du Produit - {selectedProduct.ref}</h2>  
+              <button className="modal-close" onClick={() => setIsDetailModalOpen(false)}>  
+                <X className="close-icon" />  
+              </button>  
+            </div>  
+              
+            <div className="detail-content">  
+              {/* Image du produit */}  
+              <div className="detail-image-section">  
+                {selectedProduct.image && selectedProduct.image.data ? (  
+                  <img   
+                    src={`data:image/png;base64,${btoa(  
+                      new Uint8Array(selectedProduct.image.data).reduce((data, byte) => data + String.fromCharCode(byte), '')  
+                    )}`}  
+                    alt="Produit"   
+                    className="detail-product-image"  
+                  />  
+                ) : (  
+                  <div className="no-image-placeholder">  
+                    <ImageIcon className="no-image-icon-large" />  
+                    <p>Aucune image disponible</p>  
+                  </div>  
+                )}  
+              </div>  
+  
+              {/* Informations détaillées */}  
+             <div className="detail-info-grid">    
+                <div className="detail-section">    
+                  <h3>Informations Générales</h3>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Référence:</span>    
+                    <span className="detail-value">{selectedProduct.ref}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Nom Court:</span>    
+                    <span className="detail-value">{selectedProduct.short_name}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Nom Complet:</span>    
+                    <span className="detail-value">{selectedProduct.long_name}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Marque:</span>    
+                    <span className="detail-value">{selectedProduct.brand || 'Non spécifié'}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Gamme:</span>    
+                    <span className="detail-value">{selectedProduct.gamme || 'Non spécifié'}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Statut:</span>    
+                    <span className="detail-value">{getStatusBadge(selectedProduct.actif)}</span>    
+                  </div>    
+                </div>    
+    
+                <div className="detail-section">    
+                  <h3>Informations Système</h3>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Date de création:</span>    
+                    <span className="detail-value">  
+                      {selectedProduct.createdAt ? new Date(selectedProduct.createdAt).toLocaleDateString("fr-FR") : 'N/A'}  
+                    </span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Dernière modification:</span>    
+                    <span className="detail-value">  
+                      {selectedProduct.updatedAt ? new Date(selectedProduct.updatedAt).toLocaleDateString("fr-FR") : 'N/A'}  
+                    </span>    
+                  </div>    
+                </div>    
+              </div>    
+    
+              {/* Description */}    
+              {selectedProduct.description && (    
+                <div className="detail-section">    
+                  <h3>Description</h3>    
+                  <p className="detail-description">{selectedProduct.description}</p>    
+                </div>    
+              )}    
+            </div>    
+          </div>    
+        </div>    
+      )}    
+    
+      {/* Modal de modification */}    
+      {isEditModalOpen && (    
+        <div className="modal-overlay" onClick={() => setIsEditModalOpen(false)}>    
+          <div className="modal-content edit-modal" onClick={(e) => e.stopPropagation()}>    
+            <div className="modal-header">    
+              <h2 className="modal-title">Modifier le Produit</h2>    
+              <button className="modal-close" onClick={() => setIsEditModalOpen(false)}>    
+                <X className="close-icon" />    
+              </button>    
+            </div>    
+                
+            <form onSubmit={handleSubmitEdit} className="modal-form">    
+              <div className="form-grid">    
+                <div className="form-group">    
+                  <label className="form-label">Référence</label>    
+                  <input    
+                    type="text"    
+                    value={formData.ref}    
+                    onChange={(e) => handleInputChange("ref", e.target.value)}    
+                    className="form-input"    
+                    required    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Nom Court</label>    
+                  <input    
+                    type="text"    
+                    value={formData.short_name}    
+                    onChange={(e) => handleInputChange("short_name", e.target.value)}    
+                    className="form-input"    
+                    required    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Nom Complet</label>    
+                  <input    
+                    type="text"    
+                    value={formData.long_name}    
+                    onChange={(e) => handleInputChange("long_name", e.target.value)}    
+                    className="form-input"    
+                    required    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Marque</label>    
+                  <input    
+                    type="text"    
+                    value={formData.brand}    
+                    onChange={(e) => handleInputChange("brand", e.target.value)}    
+                    className="form-input"    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Gamme</label>    
+                  <input    
+                    type="text"    
+                    value={formData.gamme}    
+                    onChange={(e) => handleInputChange("gamme", e.target.value)}    
+                    className="form-input"    
+                  />    
+                </div>    
+    
+                <div className="form-group full-width">    
+                  <label className="form-label">Image</label>    
+                  <input    
+                    type="file"    
+                    accept="image/*"    
+                    onChange={handleImageChange}    
+                    className="form-input"    
+                  />    
+                  {imagePreview && (    
+                    <div className="image-preview">    
+                      <img src={imagePreview} alt="Aperçu" className="preview-image" />    
+                    </div>    
+                  )}    
+                </div>    
+    
+                <div className="form-group full-width">    
+                  <label className="form-label">Description</label>    
+                  <textarea    
+                    value={formData.description}    
+                    onChange={(e) => handleInputChange("description", e.target.value)}    
+                    className="form-textarea"    
+                    rows="3"    
+                  />    
+                </div>    
+              </div>    
+    
+              <div className="form-actions">    
+                <button type="button" className="cancel-button" onClick={() => setIsEditModalOpen(false)}>    
+                  Annuler    
+                </button>    
+                <button type="submit" className="submit-button">    
+                  Sauvegarder    
+                </button>    
+              </div>    
+            </form>    
+          </div>    
+        </div>    
+      )}    
+    </div>        
+  )        
 }
+

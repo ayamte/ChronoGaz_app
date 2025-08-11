@@ -107,19 +107,23 @@ db.createCollection('employes', {
 });  
   
 // Collection Products  
-db.createCollection('products', {  
-  validator: {  
-    $jsonSchema: {  
-      bsonType: 'object',  
-      required: ['reference', 'nom_court', 'type_gaz', 'capacite'],  
-      properties: {  
-        reference: { bsonType: 'string' },  
-        nom_court: { bsonType: 'string' },  
-        type_gaz: { enum: ['BUTANE', 'PROPANE', 'MIXTE'] },  
-        capacite: { bsonType: 'number', minimum: 0 }  
-      }  
-    }  
-  }  
+db.createCollection('products', {    
+  validator: {    
+    $jsonSchema: {    
+      bsonType: 'object',    
+      required: ['ref', 'short_name', 'long_name'],    
+      properties: {    
+        ref: { bsonType: 'string' },    
+        short_name: { bsonType: 'string' },    
+        long_name: { bsonType: 'string' },  
+        gamme: { bsonType: 'string' },  
+        brand: { bsonType: 'string' },  
+        description: { bsonType: 'string' },  
+        image: { bsonType: 'binData' },  
+        actif: { bsonType: 'bool' }  
+      }    
+    }    
+  }    
 });  
   
 // Collection Commandes  
@@ -393,42 +397,41 @@ const umKg = db.ums.insertOne({
 });  
   
 // Insérer les produits  
-db.products.insertMany([  
-  {  
-    reference: 'BUT-13KG',  
-    nom_court: 'Butane 13kg',  
-    nom_long: 'Bouteille de gaz butane 13kg',  
-    type_gaz: 'BUTANE',  
-    capacite: 13.0,  
-    category_id: categoryButane.insertedId,  
-    actif: true,  
-    createdAt: new Date(),  
-    updatedAt: new Date()  
-  },  
-  {  
-    reference: 'BUT-6KG',  
-    nom_court: 'Butane 6kg',  
-    nom_long: 'Bouteille de gaz butane 6kg',  
-    type_gaz: 'BUTANE',  
-    capacite: 6.0,  
-    category_id: categoryButane.insertedId,  
-    actif: true,  
-    createdAt: new Date(),  
-    updatedAt: new Date()  
-  },  
-  {  
-    reference: 'PROP-13KG',  
-    nom_court: 'Propane 13kg',  
-    nom_long: 'Bouteille de gaz propane 13kg',  
-    type_gaz: 'PROPANE',  
-    capacite: 13.0,  
-    category_id: categoryPropane.insertedId,  
-    actif: true,  
-    createdAt: new Date(),  
-    updatedAt: new Date()  
-  }  
-]);  
-
+db.products.insertMany([    
+  {    
+    ref: 'BUT-13KG',    
+    short_name: 'Butane 13kg',    
+    long_name: 'Bouteille de gaz butane 13kg',    
+    gamme: 'BUTANE',  
+    brand: 'ChronoGaz',  
+    description: 'Bouteille de gaz butane pour usage domestique',  
+    actif: true,    
+    createdAt: new Date(),    
+    updatedAt: new Date()    
+  },    
+  {    
+    ref: 'BUT-6KG',    
+    short_name: 'Butane 6kg',    
+    long_name: 'Bouteille de gaz butane 6kg',    
+    gamme: 'BUTANE',  
+    brand: 'ChronoGaz',  
+    description: 'Bouteille de gaz butane pour usage domestique',  
+    actif: true,    
+    createdAt: new Date(),    
+    updatedAt: new Date()    
+  },    
+  {    
+    ref: 'PROP-13KG',    
+    short_name: 'Propane 13kg',    
+    long_name: 'Bouteille de gaz propane 13kg',    
+    gamme: 'PROPANE',  
+    brand: 'ChronoGaz',  
+    description: 'Bouteille de gaz propane pour usage domestique',  
+    actif: true,    
+    createdAt: new Date(),    
+    updatedAt: new Date()    
+  }    
+]);
 
 const region2Mars = db.regions.insertOne({  
   code: '2MARS',  
@@ -532,33 +535,33 @@ db.statutcommandes.insertMany([
 ]);  
   
 // Insérer les camions  
-db.trucks.insertMany([  
-  {  
-    matricule: 'CAM001',  
-    marque: 'Mercedes',  
-    modele: 'Sprinter',  
-    annee_construction: 2022,  
-    capacite_charge: 3500.00,  
-    carburant: 'DIESEL',  
-    gps_actif: true,  
-    region_id: regionCasa.insertedId,  
-    actif: true,  
-    createdAt: new Date(),  
-    updatedAt: new Date()  
-  },  
-  {  
-    matricule: 'CAM002',  
-    marque: 'Renault',  
-    modele: 'Master',  
-    annee_construction: 2021,  
-    capacite_charge: 3000.00,  
-    carburant: 'DIESEL',  
-    gps_actif: true,  
-    region_id: regionRabat.insertedId,  
-    actif: true,  
-    createdAt: new Date(),  
-    updatedAt: new Date()  
-  }  
+db.trucks.insertMany([    
+  {    
+    matricule: 'CAM001',    
+    marque: 'Mercedes',    
+    modele: 'Sprinter',    
+    annee_construction: 2022,    
+    capacite_charge: 3500.00,    
+    carburant: 'DIESEL',    
+    gps_actif: true,    
+    region_id: regionCasa.insertedId,    
+    status: 'Disponible', // Ajouté  
+    createdAt: new Date(),    
+    updatedAt: new Date()    
+  },    
+  {    
+    matricule: 'CAM002',    
+    marque: 'Renault',    
+    modele: 'Master',    
+    annee_construction: 2021,    
+    capacite_charge: 3000.00,    
+    carburant: 'DIESEL',    
+    gps_actif: true,    
+    region_id: regionRabat.insertedId,    
+    status: 'Disponible', // Ajouté  
+    createdAt: new Date(),    
+    updatedAt: new Date()    
+  }    
 ]);  
   
 // Insérer les dépôts  
@@ -597,9 +600,10 @@ db.employes.createIndex({ matricule: 1 }, { unique: true });
 db.employes.createIndex({ physical_user_id: 1 }, { unique: true });  
   
 // Index Products  
-db.products.createIndex({ reference: 1 }, { unique: true });  
-db.products.createIndex({ type_gaz: 1 });  
+db.products.createIndex({ ref: 1 }, { unique: true });    
+db.products.createIndex({ gamme: 1 });    
 db.products.createIndex({ actif: 1 });  
+db.products.createIndex({ brand: 1 }); 
   
 // Index Trucks  
 db.trucks.createIndex({ matricule: 1 }, { unique: true });  

@@ -6,8 +6,8 @@ import FirstLoginModal from './components/FirstLoginModal/FirstLoginModal';
 
 import Home from './components/Home';        
 import Dashboard from './pages/admin/Dashboard/Dashboard';        
-import GestionCamion from './pages/admin/gestionCamion/gestionCamion';        
-import InfoCamion from './pages/admin/infoCamion/infoCamion';        
+import GestionCamion from './pages/admin/gestionCamion/gestionCamion'; 
+import AjouterCamion from './pages/admin/AjouterCamion/AjouterCamion';        
 import GestionClient from './pages/admin/gestionClient/gestionClient';        
 import GestionChauffeur from './pages/admin/GestionChauffeur/GestionChauffeur';        
 import GestionRegion from './pages/admin/gestionRegion/gestionRegion';        
@@ -49,6 +49,7 @@ import Profile from './pages/Profile/Profile';
 import GestionStocksDepot from './pages/admin/GestionStocksDepot/GestionStocksDepot'
 import GestionStock from './pages/admin/gestionStock/gestionStock'
 import GestionDepot from './pages/admin/GestionDepot/GestionDepot'
+import GestionProduits from './pages/admin/GestionProduits/GestionProduits'
 import StockDepotManagement from './pages/magasinier/StockDepotManagement/StockDepotManagement';  
 import StockLineManagement from './pages/magasinier/StockLineManagement/StockLineManagement';  
 
@@ -165,13 +166,22 @@ function App() {
               }         
             />        
             <Route         
-              path="/gestioncamion"         
+              path="/admin/gestion-camions"         
               element={        
                 <ProtectedRoute allowedRoles={['ADMIN']}>        
                   <GestionCamion />        
                 </ProtectedRoute>        
               }         
-            />       
+            />  
+            <Route         
+              path="/admin/ajouter-camion"         
+              element={        
+                <ProtectedRoute allowedRoles={['ADMIN']}>        
+                  <AjouterCamion />        
+                </ProtectedRoute>        
+              }         
+            />   
+ 
             <Route   
               path="/admin/stocks-depot"   
               element={  
@@ -196,18 +206,19 @@ function App() {
                 </ProtectedRoute>  
               }   
             />
+            <Route   
+              path="/admin/gestion-produits"   
+              element={  
+                <ProtectedRoute allowedRoles={['ADMIN']}>  
+                  <GestionProduits />  
+                </ProtectedRoute>  
+              }   
+            />
 
             
 
             
-            <Route         
-              path="/infoCamion"         
-              element={        
-                <ProtectedRoute allowedRoles={['ADMIN']}>        
-                  <InfoCamion />        
-                </ProtectedRoute>        
-              }         
-            />        
+      
             <Route         
               path="/gestionclient"         
               element={        

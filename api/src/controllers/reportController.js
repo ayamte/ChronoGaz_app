@@ -158,54 +158,51 @@ exports.getStockMovements = async (req, res) => {
 };
 
 // Rapport d'utilisation des camions
-exports.getTruckUtilizationReport = async (req, res) => {
-  try {
-    const { startDate, endDate, region } = req.query;
-    
-    let matchQuery = { active: true };
-    if (region) matchQuery.region = region;
-
-    const utilization = await Truck.aggregate([
-      { $match: matchQuery },
-      {
-        $group: {
-          _id: '$region',
-          trucks: {
-            $push: {
-              registrationNumber: '$registrationNumber',
-              brand: '$brand',
-              model: '$model',
-              status: '$status',
-              mileage: '$mileage',
-              capacity: '$capacity'
-            }
-          },
-          total: { $sum: 1 },
-          disponible: {
-            $sum: { $cond: [{ $eq: ['$status', 'Disponible'] }, 1, 0] }
-          },
-          enLivraison: {
-            $sum: { $cond: [{ $eq: ['$status', 'En livraison'] }, 1, 0] }
-          },
-          enMaintenance: {
-            $sum: { $cond: [{ $eq: ['$status', 'En maintenance'] }, 1, 0] }
-          },
-          totalCapacity: { $sum: '$capacity' },
-          avgMileage: { $avg: '$mileage' }
-        }
-      }
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: utilization
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
+exports.getTruckUtilizationReport = async (req, res) => {  
+  try {  
+    const { startDate, endDate, region } = req.query;  
+      
+    let matchQuery = { status: { $ne: 'Hors service' } }; // Remplace active: true  
+    if (region) matchQuery.region = region;  
+  
+    const utilization = await Truck.aggregate([  
+      { $match: matchQuery },  
+      {  
+        $group: {  
+          _id: '$region',  
+          trucks: {  
+            $push: {  
+              matricule: '$matricule',  
+              brand: '$brand',  
+              modele: '$modele',  
+              status: '$status',  
+              capacite: '$capacite'  
+            }  
+          },  
+          total: { $sum: 1 },  
+          disponible: {  
+            $sum: { $cond: [{ $eq: ['$status', 'Disponible'] }, 1, 0] }  
+          },  
+          enLivraison: {  
+            $sum: { $cond: [{ $eq: ['$status', 'En livraison'] }, 1, 0] }  
+          },  
+          enMaintenance: {  
+            $sum: { $cond: [{ $eq: ['$status', 'En maintenance'] }, 1, 0] }  
+          }  
+        }  
+      }  
+    ]);  
+  
+    res.status(200).json({  
+      success: true,  
+      data: utilization  
+    });  
+  } catch (error) {  
+    res.status(500).json({  
+      success: false,  
+      error: error.message  
+    });  
+  }  
 };
 
 // Rapport de maintenance des camions
