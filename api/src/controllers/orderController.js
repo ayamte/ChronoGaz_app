@@ -8,7 +8,46 @@ const mongoose = require('mongoose');
 
 const getCommands = async (req, res) => {
   try {
-    const commandes = await Command.find({})
+    const { page = 1, limit = 20, status, search, priority, dateFrom, dateTo } = req.query;
+    
+    // Définir le filtre de base
+    const filter = {};
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // 1. Gérer le filtre de statut
+    if (status && status !== 'all') {
+      const statutFilter = await Statut.findOne({ code: status.toUpperCase() });
+      if (statutFilter) {
+        filter.statut_id = statutFilter._id;
+      }
+    }
+    
+    // 2. Gérer la recherche (si nécessaire)
+    if (search) {
+      filter.$or = [
+        { numero_commande: { $regex: search, $options: 'i' } },
+        // Vous pouvez ajouter d'autres champs ici pour la recherche
+      ];
+    }
+    
+    // 3. Gérer les filtres de date (si nécessaire)
+    if (dateFrom || dateTo) {
+      filter.date_commande = {};
+      if (dateFrom) {
+        filter.date_commande.$gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        filter.date_commande.$lte = new Date(dateTo);
+      }
+    }
+    
+    // 4. Gérer le filtre de priorité (si nécessaire)
+    if (priority && priority !== 'all') {
+      filter.urgent = (priority === 'urgent');
+    }
+
+    // Récupérer les commandes avec les filtres, le tri et la pagination
+    const commandes = await Command.find(filter)
       .populate({
           path: 'customer_id',
           select: 'customer_code type_client physical_user_id',
@@ -19,9 +58,13 @@ const getCommands = async (req, res) => {
       })
       .populate('address_livraison_id', 'rue ville')
       .populate('statut_id', 'code nom') 
-      .sort({ date_commande: -1 });
+      .sort({ date_commande: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+      
+    // Récupérer le nombre total de documents pour la pagination
+    const count = await Command.countDocuments(filter);
 
-    // ✅ AJOUTEZ CETTE LOGIQUE POUR RÉCUPÉRER LA PLANIFICATION POUR CHAQUE COMMANDE
     const commandesComplete = await Promise.all(
       commandes.map(async (commande) => {
         const planification = await Planification.findOne({ commande_id: commande._id })
@@ -44,9 +87,10 @@ const getCommands = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      count: commandesComplete.length,
+      count: count,
       data: commandesComplete
     });
+
   } catch (error) {
     console.error('Erreur lors de la récupération des commandes:', error);
     res.status(500).json({
@@ -55,7 +99,6 @@ const getCommands = async (req, res) => {
     });
   }
 };
-
   const getCommandById = async (req, res) => {
     try{
       const { id } = req.params;

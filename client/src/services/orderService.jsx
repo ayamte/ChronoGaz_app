@@ -130,12 +130,16 @@ export const orderService = {
       page = 1,
       limit = 20,
       search,
-      status,
+      status, // Le statut local (e.g., 'assigned')
       priority,
       dateFrom,
       dateTo,
       customerId
     } = params;
+    
+    // ✅ CORRECTION : Mappage du statut local au code de statut du backend
+    const backendStatus = status ? this.mapLocalStatusToBackend(status) : null;
+    console.log('➡️ Statut local converti en statut backend:', status, '->', backendStatus);
 
     try {
       const response = await api.get('/commands', { 
@@ -143,7 +147,7 @@ export const orderService = {
           page,
           limit,
           search,
-          status,
+          status: backendStatus, // ✅ Utilisation du statut converti
           priority,
           dateFrom,
           dateTo,
@@ -321,6 +325,7 @@ export const orderService = {
     return statusMap[backendStatus] || 'pending';
   },
 
+  // ✅ NOUVELLE FONCTION : Mappe le statut local au code du backend
   mapLocalStatusToBackend(localStatus) {
     const statusMap = {
       'pending': 'EN_ATTENTE',
@@ -329,7 +334,7 @@ export const orderService = {
       'delivered': 'LIVREE',
       'cancelled': 'ANNULEE'
     };
-    return statusMap[localStatus] || 'EN_ATTENTE';
+    return statusMap[localStatus] || null;
   },
 
   async getStatusId(statusCode) {
