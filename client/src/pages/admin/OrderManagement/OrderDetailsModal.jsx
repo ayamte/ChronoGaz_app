@@ -134,15 +134,29 @@ const OrderDetailsModal = ({ order, onClose }) => {
                 </h3>
                 <div className="space-y-2">
                   {order.products.length > 0 ? (
-                    order.products.map(product => (
+                  <>
+                    {order.products.map(product => (
                       <div key={product._id} className="flex justify-between border-b border-gray-200 last:border-b-0 py-2">
-                        <span className="text-sm text-gray-700">{product.nom_produit}</span>
+                        <span className="text-sm text-gray-700">{product.product_id.nom_long}</span>
                         <span className="text-sm text-gray-900 font-semibold">
                           {product.quantite} x {product.prix_unitaire} DH
                         </span>
                       </div>
-                    ))
-                  ) : (
+                      
+                    ))}
+                    {/* Ligne Total */}
+                  <div className="flex justify-between mt-2 pt-2 border-t border-gray-300 font-bold">
+                    <span>Total</span>
+                    <span>
+                    {order?.total_ttc !== undefined && order?.total_ttc !== null
+                      ? `${order.total_ttc} DH`
+                      : `${order?.products?.reduce((total, product) => total + product.quantite * product.prix_unitaire, 0 )} DH`
+                    }
+                    </span>
+                  </div>
+                </>
+                  ) 
+                  : (
                     <p className="text-sm text-gray-500 italic">Aucun produit listé.</p>
                   )}
                 </div>
