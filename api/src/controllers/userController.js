@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');  
 const PhysicalUser = require('../models/PhysicalUser');  
 const MoralUser = require('../models/MoralUser');  
@@ -16,8 +17,11 @@ const getProfile = async (req, res) => {
       last_login: user.last_login  
     };  
   
-    // Récupérer les données spécifiques selon le type d'utilisateur  
-    const physicalUser = await PhysicalUser.findOne({ user_id: userId });  
+    // Récupérer les données spécifiques selon le type d'utilisateur avec population des régions
+    const physicalUser = await PhysicalUser.findOne({ user_id: userId })
+      .populate('region_principale', 'nom code')
+      .populate('city_id', 'name code');
+      
     if (physicalUser) {  
       profileData.profile = {  
         type: 'PHYSIQUE',  
@@ -28,7 +32,7 @@ const getProfile = async (req, res) => {
         cin: physicalUser.cin,  
         telephone_principal: physicalUser.telephone_principal,  
         adresse_principale: physicalUser.adresse_principale,  
-        ville: physicalUser.ville,  
+        city_id: physicalUser.city_id,
         region_principale: physicalUser.region_principale,  
         date_naissance: physicalUser.date_naissance  
       };  
@@ -48,7 +52,7 @@ const getProfile = async (req, res) => {
       }  
         
       // Si c'est un employé, récupérer les infos employé  
-      if (user.role_id.code === 'EMPLOYE') {  
+      if (user.role_id.code === 'EMPLOYE' || user.role_id.code === 'EMPLOYE_MAGASIN') {  
         const employe = await Employe.findOne({ physical_user_id: physicalUser._id });  
         if (employe) {  
           profileData.employee_info = {  
@@ -62,8 +66,11 @@ const getProfile = async (req, res) => {
       }  
     }  
       
-    // Vérifier s'il s'agit d'une personne morale  
-    const moralUser = await MoralUser.findOne({ user_id: userId });  
+    // Vérifier s'il s'agit d'une personne morale avec population des régions
+    const moralUser = await MoralUser.findOne({ user_id: userId })
+      .populate('region_principale', 'nom code')
+      .populate('city_id', 'name code');
+      
     if (moralUser) {  
       profileData.profile = {  
         type: 'MORAL',  
@@ -77,7 +84,7 @@ const getProfile = async (req, res) => {
         secteur_activite: moralUser.secteur_activite,  
         telephone_principal: moralUser.telephone_principal,  
         adresse_principale: moralUser.adresse_principale,  
-        ville: moralUser.ville,  
+        city_id: moralUser.city_id,
         region_principale: moralUser.region_principale  
       };  
         
@@ -116,23 +123,29 @@ const updateProfile = async (req, res) => {
     const user = req.user;  
     const { profile, customer_info } = req.body;  
   
-    // Validation des régions autorisées  
-    const regionsAutorisees = ['2 Mars', 'Maarif', 'Bir Anzarane', 'Boulevard al qods'];  
+    // Validation des régions avec ObjectId
+    if (profile?.region_principale && !mongoose.Types.ObjectId.isValid(profile.region_principale)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de région invalide'
+      });
+    }
 
-       let updatedData = {};  
+    // Validation des villes avec ObjectId
+    if (profile?.city_id && !mongoose.Types.ObjectId.isValid(profile.city_id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de ville invalide'
+      });
+    }
+
+    let updatedData = {};  
       
-    if (profile?.region_principale && !regionsAutorisees.includes(profile.region_principale)) {  
-      return res.status(400).json({  
-        success: false,  
-        message: `Région invalide. Les régions autorisées sont : ${regionsAutorisees.join(', ')}`  
-      });  
-    }  
-  if (profile?.email && profile.email !== user.email) {  
-  await User.findByIdAndUpdate(userId, { email: profile.email });  
-  updatedData.email = profile.email;  
-}
+    if (profile?.email && profile.email !== user.email) {  
+      await User.findByIdAndUpdate(userId, { email: profile.email });  
+      updatedData.email = profile.email;  
+    }
  
-  
     // Mettre à jour selon le type d'utilisateur  
     const physicalUser = await PhysicalUser.findOne({ user_id: userId });  
     if (physicalUser && profile) {  
@@ -140,7 +153,7 @@ const updateProfile = async (req, res) => {
       const allowedFields = [  
         'first_name', 'last_name', 'civilite',   
         'telephone_principal', 'adresse_principale',   
-        'ville', 'region_principale', 'date_naissance'  
+        'city_id', 'region_principale', 'date_naissance'  
       ];  
         
       const updateFields = {};  
@@ -188,7 +201,7 @@ const updateProfile = async (req, res) => {
       const allowedFields = [  
         'raison_sociale', 'ice', 'patente', 'rc', 'ville_rc',  
         'forme_juridique', 'secteur_activite', 'telephone_principal',  
-        'adresse_principale', 'ville', 'region_principale'  
+        'adresse_principale', 'city_id', 'region_principale'  
       ];  
         
       const updateFields = {};  

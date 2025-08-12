@@ -8,16 +8,16 @@ const PhysicalUserSchema = new mongoose.Schema({
   date_naissance: Date,        
   telephone_principal: String,        
   adresse_principale: String,  
-  ville: {       
-    type: String,       
-    enum: ['Casablanca'],  
-    required: false      
+  region_principale: {   
+    type: mongoose.Schema.Types.ObjectId,   
+    ref: 'Region',  
+    required: false   
   },  
-  region_principale: {         
-    type: String,         
-    enum: ['2 Mars', 'Maarif', 'Bir Anzarane', 'Boulevard al qods'],  
-    required: false        
-  },        
+  city_id: {  
+    type: mongoose.Schema.Types.ObjectId,  
+    ref: 'City',   
+    required: false  
+},      
   moral_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'MoralUser' },  
 }, { timestamps: true });
     

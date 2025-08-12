@@ -1,245 +1,381 @@
-import { useState } from "react"  
-import {   
-  MdSearch as Search,   
-  MdAdd as Plus,   
+import { useState, useEffect } from "react"  
+import { useNavigate } from "react-router-dom"  
+import {  
+  MdSearch as Search,  
+  MdAdd as Plus,  
   MdEdit as Edit,  
   MdDelete as Delete,  
-  MdClose as X  
+  MdClose as X,  
+  MdExpandMore as ExpandMore,  
+  MdExpandLess as ExpandLess,  
+  MdLocationCity as LocationCity,  
+  MdPlace as Place,  
+  MdSave as Save  
 } from "react-icons/md"  
 import "./gestionRegion.css"  
+import locationService from '../../../services/locationService'  
   
-// Données d'exemple pour les régions  
-const regionsData = [  
-  {  
-    id: 1,  
-    nom: "Casablanca",  
-    nombreCommandes: 245  
-  },  
-  {  
-    id: 2,  
-    nom: "Rabat",  
-    nombreCommandes: 189  
-  },  
-  {  
-    id: 3,  
-    nom: "Marrakech",  
-    nombreCommandes: 156  
-  },  
-  {  
-    id: 4,  
-    nom: "Fès",  
-    nombreCommandes: 134  
-  },  
-  {  
-    id: 5,  
-    nom: "Tanger",  
-    nombreCommandes: 98  
-  },  
-  {  
-    id: 6,  
-    nom: "Agadir",  
-    nombreCommandes: 87  
-  },  
-]  
-  
-export default function RegionManagement() {  
+export default function GestionRegion() {  
+  const navigate = useNavigate()  
+  const [cities, setCities] = useState([])  
+  const [expandedCities, setExpandedCities] = useState(new Set())  
+  const [loading, setLoading] = useState(true)  
   const [searchTerm, setSearchTerm] = useState("")  
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)  
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)  
-  const [regions, setRegions] = useState(regionsData)  
-  const [editingRegion, setEditingRegion] = useState(null)  
-  const [formData, setFormData] = useState({  
-    nom: "",  
-  })  
+    
+  // Modals  
+  const [isAddCityModalOpen, setIsAddCityModalOpen] = useState(false)  
+  const [isEditCityModalOpen, setIsEditCityModalOpen] = useState(false)  
+  const [isAddRegionModalOpen, setIsAddRegionModalOpen] = useState(false)  
+  const [isEditRegionModalOpen, setIsEditRegionModalOpen] = useState(false)  
+    
+  // États pour les formulaires  
+  const [selectedCity, setSelectedCity] = useState(null)  
+  const [selectedRegion, setSelectedRegion] = useState(null)  
+  const [cityFormData, setCityFormData] = useState({ name: "", code: "" })  
+  const [regionFormData, setRegionFormData] = useState({ nom: "", code: "", description: "" })  
   
-  // Filtrer les régions selon le terme de recherche  
-  const filteredRegions = regions.filter(  
-    (region) =>  
-      region.nom.toLowerCase().includes(searchTerm.toLowerCase())  
+  useEffect(() => {  
+    loadCitiesWithRegions()  
+  }, [])  
+  
+  const loadCitiesWithRegions = async () => {  
+    try {  
+      setLoading(true)  
+      const citiesResponse = await locationService.getCities()  
+      const citiesWithRegions = await Promise.all(  
+        citiesResponse.data.map(async (city) => {  
+          const regionsResponse = await locationService.getRegionsByCity(city._id)  
+          return { ...city, regions: regionsResponse.data || [] }  
+        })  
+      )  
+      setCities(citiesWithRegions)  
+    } catch (error) {  
+      console.error('Erreur chargement:', error)  
+    } finally {  
+      setLoading(false)  
+    }  
+  }  
+  
+  const toggleCityExpansion = (cityId) => {  
+    const newExpanded = new Set(expandedCities)  
+    if (newExpanded.has(cityId)) {  
+      newExpanded.delete(cityId)  
+    } else {  
+      newExpanded.add(cityId)  
+    }  
+    setExpandedCities(newExpanded)  
+  }  
+  
+  // Gestion des villes  
+  const handleAddCity = () => {  
+    setCityFormData({ name: "", code: "" })  
+    setIsAddCityModalOpen(true)  
+  }  
+  
+  const handleEditCity = (city) => {  
+    setSelectedCity(city)  
+    setCityFormData({ name: city.name, code: city.code })  
+    setIsEditCityModalOpen(true)  
+  }  
+  
+  const handleSubmitCity = async (e) => {  
+    e.preventDefault()  
+    try {  
+      if (isEditCityModalOpen) {  
+        await locationService.updateCity(selectedCity._id, cityFormData)  
+      } else {  
+        await locationService.createCity(cityFormData)  
+      }  
+      await loadCitiesWithRegions()  
+      setIsAddCityModalOpen(false)  
+      setIsEditCityModalOpen(false)  
+      setSelectedCity(null)  
+    } catch (error) {  
+      console.error('Erreur:', error)  
+    }  
+  }  
+  
+  const handleDeleteCity = async (cityId) => {  
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette ville et toutes ses régions ?')) {  
+      try {  
+        await locationService.deleteCity(cityId)  
+        await loadCitiesWithRegions()  
+      } catch (error) {  
+        console.error('Erreur:', error)  
+      }  
+    }  
+  }  
+  
+  // Gestion des régions  
+  const handleAddRegionToCity = (city) => {  
+    setSelectedCity(city)  
+    setRegionFormData({ nom: "", code: "", description: "" })  
+    setIsAddRegionModalOpen(true)  
+  }  
+  
+  const handleEditRegion = (region, city) => {  
+    setSelectedCity(city)  
+    setSelectedRegion(region)  
+    setRegionFormData({ nom: region.nom, code: region.code, description: region.description })  
+    setIsEditRegionModalOpen(true)  
+  }  
+  
+  const handleSubmitRegion = async (e) => {  
+    e.preventDefault()  
+    try {  
+      const regionData = { ...regionFormData, city_id: selectedCity._id }  
+      if (isEditRegionModalOpen) {  
+        await locationService.updateRegion(selectedRegion._id, regionData)  
+      } else {  
+        await locationService.createRegion(regionData)  
+      }  
+      await loadCitiesWithRegions()  
+      setIsAddRegionModalOpen(false)  
+      setIsEditRegionModalOpen(false)  
+      setSelectedCity(null)  
+      setSelectedRegion(null)  
+    } catch (error) {  
+      console.error('Erreur:', error)  
+    }  
+  }  
+  
+  const handleDeleteRegion = async (regionId) => {  
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette région ?')) {  
+      try {  
+        await locationService.deleteRegion(regionId)  
+        await loadCitiesWithRegions()  
+      } catch (error) {  
+        console.error('Erreur:', error)  
+      }  
+    }  
+  }  
+  
+  // Filtrer les villes selon le terme de recherche  
+  const filteredCities = cities.filter(city =>  
+    city.name.toLowerCase().includes(searchTerm.toLowerCase()) ||  
+    city.code.toLowerCase().includes(searchTerm.toLowerCase())  
   )  
   
-  const handleInputChange = (field, value) => {  
-    setFormData((prev) => ({  
-      ...prev,  
-      [field]: value,  
-    }))  
-  }  
-  
-  const handleAddSubmit = (e) => {  
-    e.preventDefault()  
-    const newRegion = {  
-      id: regions.length + 1,  
-      nom: formData.nom,  
-      nombreCommandes: 0  
-    }  
-    setRegions([...regions, newRegion])  
-    console.log("Nouvelle région:", newRegion)  
-  
-    // Réinitialiser le formulaire et fermer le modal  
-    setFormData({  
-      nom: "",  
-    })  
-    setIsAddDialogOpen(false)  
-  }  
-  
-  const handleEditSubmit = (e) => {  
-    e.preventDefault()  
-    const updatedRegions = regions.map(region =>   
-      region.id === editingRegion.id ? { ...editingRegion, nom: formData.nom } : region  
-    )  
-    setRegions(updatedRegions)  
-    console.log("Région modifiée:", { ...editingRegion, nom: formData.nom })  
-  
-    // Réinitialiser et fermer  
-    setFormData({  
-      nom: "",  
-    })  
-    setEditingRegion(null)  
-    setIsEditDialogOpen(false)  
-  }  
-  
-  const handleEdit = (region) => {  
-    setEditingRegion(region)  
-    setFormData({  
-      nom: region.nom,  
-    })  
-    setIsEditDialogOpen(true)  
-  }  
-  
-  const handleDelete = (regionId) => {  
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette région ?")) {  
-      const updatedRegions = regions.filter(region => region.id !== regionId)  
-      setRegions(updatedRegions)  
-      console.log("Région supprimée:", regionId)  
-    }  
-  }  
-  
-  const handleAddClick = () => {  
-    // Réinitialiser complètement le formulaire pour l'ajout  
-    setFormData({  
-      nom: "",  
-    })  
-    setIsAddDialogOpen(true)  
-  }  
+  // Calculer les statistiques  
+  const totalCities = cities.length  
+  const totalRegions = cities.reduce((sum, city) => sum + city.regions.length, 0)  
+  const activeCities = cities.filter(city => city.actif).length  
   
   return (  
     <div className="region-management-layout">  
-        
       <div className="region-management-wrapper">  
         <div className="region-management-container">  
           <div className="region-management-content">  
             {/* En-tête */}  
-            <div className="region-page-header">  
-              <h1 className="region-page-title">Gestion des Régions</h1>  
-              <p className="region-page-subtitle">Gérez les régions de livraison</p>  
+            <div className="page-header">  
+              <h1 className="page-title">Gestion des Villes et Régions</h1>  
+              <p className="page-subtitle">Gérez les villes et leurs régions pour la livraison</p>  
             </div>  
   
-            {/* Bouton Ajouter Région */}  
-            <div className="region-action-section">  
-              <button className="region-add-button" onClick={handleAddClick}>  
-                <Plus className="region-button-icon" />  
-                Ajouter Région  
+            {/* Statistiques */}  
+            <div className="stats-grid">  
+              <div className="stat-card gradient-card">  
+                <div className="stat-content">  
+                  <h3 className="stat-label">Total Villes</h3>  
+                  <div className="stat-value">{totalCities}</div>  
+                  <p className="stat-description">Villes configurées</p>  
+                </div>  
+              </div>  
+              <div className="stat-card gradient-card">  
+                <div className="stat-content">  
+                  <h3 className="stat-label">Total Régions</h3>  
+                  <div className="stat-value">{totalRegions}</div>  
+                  <p className="stat-description">Régions disponibles</p>  
+                </div>  
+              </div>  
+              <div className="stat-card gradient-card">  
+                <div className="stat-content">  
+                  <h3 className="stat-label">Villes Actives</h3>  
+                  <div className="stat-value">{activeCities}</div>  
+                  <p className="stat-description">Villes en service</p>  
+                </div>  
+              </div>  
+            </div>  
+  
+            {/* Actions */}  
+            <div className="action-section">  
+              <button className="add-button" onClick={handleAddCity}>  
+                <Plus className="button-icon" />  
+                Ajouter Ville  
               </button>  
             </div>  
   
-            {/* Barre de recherche */}  
-            <div className="region-search-section">  
-              <div className="region-search-container">  
-                <Search className="region-search-icon" />  
+            {/* Recherche */}  
+            <div className="search-section">  
+              <div className="search-container">  
+                <Search className="search-icon" />  
                 <input  
                   type="text"  
-                  placeholder="Rechercher par nom de région..."  
+                  placeholder="Rechercher par nom ou code de ville..."  
                   value={searchTerm}  
                   onChange={(e) => setSearchTerm(e.target.value)}  
-                  className="region-search-input"  
+                  className="search-input"  
                 />  
               </div>  
             </div>  
   
-            {/* Tableau */}  
-            <div className="region-table-card">  
-              <div className="region-table-header">  
-                <h3 className="region-table-title">Liste des Régions</h3>  
-              </div>  
-              <div className="region-table-content">  
-                <div className="region-table-container">  
-                  <table className="region-regions-table">  
-                    <thead>  
-                      <tr>  
-                        <th>Nom de la région</th>  
-                        <th>Nombre des commandes</th>  
-                        <th>Actions</th>  
-                      </tr>  
-                    </thead>  
-                    <tbody>  
-                      {filteredRegions.map((region) => (  
-                        <tr key={region.id}>  
-                          <td className="region-font-medium">{region.nom}</td>  
-                          <td>{region.nombreCommandes}</td>  
-                          <td>  
-                            <div className="region-action-buttons">  
+            {/* Liste hiérarchique */}  
+            <div className="cities-container">  
+              {loading ? (  
+                <div className="loading-container">Chargement...</div>  
+              ) : (  
+                <div className="cities-list">  
+                  {filteredCities.map(city => (  
+                    <div key={city._id} className="city-item">  
+                      <div className="city-header">  
+                        <div className="city-info">  
+                          <LocationCity className="city-icon" />  
+                          <div className="city-details">  
+                            <h3 className="city-name">{city.name}</h3>  
+                            <span className="city-code">Code: {city.code}</span>  
+                            <span className="regions-count">{city.regions.length} région(s)</span>  
+                          </div>  
+                        </div>  
+                        <div className="city-actions">  
+                          <button   
+                            className="action-btn edit-btn"  
+                            onClick={() => handleEditCity(city)}  
+                            title="Modifier la ville"  
+                          >  
+                            <Edit />  
+                          </button>  
+                          <button   
+                            className="action-btn delete-btn"  
+                            onClick={() => handleDeleteCity(city._id)}  
+                            title="Supprimer la ville"  
+                          >  
+                            <Delete />  
+                          </button>  
+                          <button   
+                            className="action-btn add-btn"  
+                            onClick={() => handleAddRegionToCity(city)}  
+                            title="Ajouter une région"  
+                          >  
+                            <Plus />  
+                          </button>  
+                          <button   
+                            className="expand-btn"  
+                            onClick={() => toggleCityExpansion(city._id)}  
+                          >  
+                            {expandedCities.has(city._id) ? <ExpandLess /> : <ExpandMore />}  
+                          </button>  
+                        </div>  
+                      </div>  
+                        
+                      {expandedCities.has(city._id) && (  
+                        <div className="regions-list">  
+                          {city.regions.length === 0 ? (  
+                            <div className="no-regions">  
+                              <p>Aucune région configurée pour cette ville</p>  
                               <button   
-                                className="region-edit-action-button"  
-                                onClick={() => handleEdit(region)}  
+                                className="add-region-btn"  
+                                onClick={() => handleAddRegionToCity(city)}  
                               >  
-                                <Edit className="region-action-icon" />  
-                              </button>  
-                              <button   
-                                className="region-delete-action-button"  
-                                onClick={() => handleDelete(region.id)}  
-                              >  
-                                <Delete className="region-action-icon" />  
+                                <Plus /> Ajouter la première région  
                               </button>  
                             </div>  
-                          </td>  
-                        </tr>  
-                      ))}  
-                    </tbody>  
-                  </table>  
-  
-                  {filteredRegions.length === 0 && (  
-                    <div className="region-no-results">  
-                      Aucune région trouvée pour votre recherche.  
+                          ) : (  
+                            city.regions.map(region => (  
+                              <div key={region._id} className="region-item">  
+                                <div className="region-info">  
+                                  <Place className="region-icon" />  
+                                  <div className="region-details">  
+                                    <h4 className="region-name">{region.nom}</h4>  
+                                    <span className="region-code">Code: {region.code}</span>  
+                                    {region.description && (  
+                                      <p className="region-description">{region.description}</p>  
+                                    )}  
+                                  </div>  
+                                </div>  
+                                <div className="region-actions">  
+                                  <button   
+                                    className="action-btn edit-btn"  
+                                    onClick={() => handleEditRegion(region, city)}  
+                                    title="Modifier la région"  
+                                  >  
+                                    <Edit />  
+                                  </button>  
+                                  <button   
+                                    className="action-btn delete-btn"  
+                                    onClick={() => handleDeleteRegion(region._id)}  
+                                    title="Supprimer la région"  
+                                  >  
+                                    <Delete />  
+                                  </button>  
+                                </div>  
+                              </div>  
+                            ))  
+                          )}  
+                        </div>  
+                      )}  
                     </div>  
-                  )}  
+                  ))}  
                 </div>  
-              </div>  
+              )}  
             </div>  
           </div>  
         </div>  
       </div>  
   
-      {/* Modal pour ajouter une région */}  
-      {isAddDialogOpen && (  
-        <div className="region-modal-overlay" onClick={() => setIsAddDialogOpen(false)}>  
-          <div className="region-modal-content" onClick={(e) => e.stopPropagation()}>  
-            <div className="region-modal-header">  
-              <h2 className="region-modal-title">Ajouter Région</h2>  
-              <button className="region-modal-close" onClick={() => setIsAddDialogOpen(false)}>  
-                <X className="region-close-icon" />  
+      {/* Modal Ajouter/Modifier Ville */}  
+      {(isAddCityModalOpen || isEditCityModalOpen) && (  
+        <div className="modal-overlay" onClick={() => {  
+          setIsAddCityModalOpen(false)  
+          setIsEditCityModalOpen(false)  
+        }}>  
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>  
+            <div className="modal-header">  
+              <h2 className="modal-title">  
+                {isEditCityModalOpen ? 'Modifier la ville' : 'Ajouter une ville'}  
+              </h2>  
+              <button className="modal-close" onClick={() => {  
+                setIsAddCityModalOpen(false)  
+                setIsEditCityModalOpen(false)  
+              }}>  
+                <X className="close-icon" />  
               </button>  
             </div>  
               
-            <form onSubmit={handleAddSubmit} className="region-modal-form">  
-              <div className="region-form-group">  
-                <label htmlFor="nom" className="region-form-label">Nom de la région</label>  
+            <form onSubmit={handleSubmitCity} className="modal-form">  
+              <div className="form-group">  
+                <label className="form-label">Nom de la ville</label>  
                 <input  
-                  id="nom"  
                   type="text"  
+                  value={cityFormData.name}  
+                  onChange={(e) => setCityFormData({...cityFormData, name: e.target.value})}  
+                  className="form-input"  
                   placeholder="Ex: Casablanca"  
-                  value={formData.nom}  
-                  onChange={(e) => handleInputChange("nom", e.target.value)}  
-                  className="region-form-input"  
                   required  
                 />  
               </div>  
-  
-              <div className="region-form-actions">  
-                <button type="button" className="region-cancel-button" onClick={() => setIsAddDialogOpen(false)}>  
+                
+              <div className="form-group">  
+                <label className="form-label">Code de la ville</label>  
+                <input  
+                  type="text"  
+                  value={cityFormData.code}  
+                  onChange={(e) => setCityFormData({...cityFormData, code: e.target.value.toUpperCase()})}  
+                  className="form-input"  
+                  placeholder="Ex: CASA"  
+                  required  
+                />  
+              </div>  
+                
+              <div className="form-actions">  
+                <button type="button" className="cancel-button" onClick={() => {  
+                  setIsAddCityModalOpen(false)  
+                  setIsEditCityModalOpen(false)  
+                }}>  
                   Annuler  
                 </button>  
-                <button type="submit" className="region-submit-button">  
-                  Ajouter  
+                <button type="submit" className="submit-button">  
+                  <Save className="btn-icon" />  
+                  {isEditCityModalOpen ? 'Modifier' : 'Ajouter'}  
                 </button>  
               </div>  
             </form>  
@@ -247,37 +383,71 @@ export default function RegionManagement() {
         </div>  
       )}  
   
-      {/* Modal pour modifier une région */}  
-      {isEditDialogOpen && (  
-        <div className="region-modal-overlay" onClick={() => setIsEditDialogOpen(false)}>  
-          <div className="region-modal-content" onClick={(e) => e.stopPropagation()}>  
-            <div className="region-modal-header">  
-              <h2 className="region-modal-title">Modifier Région</h2>  
-              <button className="region-modal-close" onClick={() => setIsEditDialogOpen(false)}>  
-                <X className="region-close-icon" />  
+      {/* Modal Ajouter/Modifier Région */}  
+      {(isAddRegionModalOpen || isEditRegionModalOpen) && (  
+        <div className="modal-overlay" onClick={() => {  
+          setIsAddRegionModalOpen(false)  
+          setIsEditRegionModalOpen(false)  
+        }}>  
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>  
+            <div className="modal-header">  
+              <h2 className="modal-title">  
+                {isEditRegionModalOpen ? 'Modifier la région' : `Ajouter une région à ${selectedCity?.name}`}  
+              </h2>  
+              <button className="modal-close" onClick={() => {  
+                setIsAddRegionModalOpen(false)  
+                setIsEditRegionModalOpen(false)  
+              }}>  
+                <X className="close-icon" />  
               </button>  
             </div>  
               
-            <form onSubmit={handleEditSubmit} className="region-modal-form">  
-              <div className="region-form-group">  
-                <label htmlFor="edit-nom" className="region-form-label">Nom de la région</label>  
+            <form onSubmit={handleSubmitRegion} className="modal-form">  
+              <div className="form-group">  
+                <label className="form-label">Nom de la région</label>  
                 <input  
-                  id="edit-nom"  
                   type="text"  
-                  placeholder="Ex: Casablanca"  
-                  value={formData.nom}  
-                  onChange={(e) => handleInputChange("nom", e.target.value)}  
-                  className="region-form-input"  
+                  value={regionFormData.nom}  
+                  onChange={(e) => setRegionFormData({...regionFormData, nom: e.target.value})}  
+                  className="form-input"  
+                  placeholder="Ex: 2 Mars"  
                   required  
                 />  
               </div>  
-  
-              <div className="region-form-actions">  
-                <button type="button" className="region-cancel-button" onClick={() => setIsEditDialogOpen(false)}>  
+                
+              <div className="form-group">  
+                <label className="form-label">Code de la région</label>  
+                <input  
+                  type="text"  
+                  value={regionFormData.code}  
+                  onChange={(e) => setRegionFormData({...regionFormData, code: e.target.value.toUpperCase()})}  
+                  className="form-input"  
+                  placeholder="Ex: 2MARS"  
+                  required  
+                />  
+              </div>  
+                
+              <div className="form-group">  
+                <label className="form-label">Description</label>  
+                <textarea  
+                  value={regionFormData.description}  
+                  onChange={(e) => setRegionFormData({...regionFormData, description: e.target.value})}  
+                  className="form-textarea"  
+                  placeholder="Description de la région..."  
+                  rows="3"  
+                />  
+              </div>  
+                
+              <div className="form-actions">  
+                <button type="button" className="cancel-button" onClick={() => {  
+                  setIsAddRegionModalOpen(false)  
+                  setIsEditRegionModalOpen(false)  
+                }}>  
                   Annuler  
                 </button>  
-                <button type="submit" className="region-submit-button">  
-                  Sauvegarder  
+                <button type="submit" className="submit-button">  
+                  <Save className="btn-icon" />  
+                  {isEditRegionModalOpen ? 'Modifier' : 'Ajouter'}  
                 </button>  
               </div>  
             </form>  

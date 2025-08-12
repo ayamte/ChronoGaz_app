@@ -1,34 +1,53 @@
-import React, { useState } from 'react';
-import Title from '../../components/client/CommandPage/Title';
-import StepsIndicator from '../../components/client/CommandPage/StepsIndicator';
-import QuantityStep from '../../components/client/CommandPage/QuantityStep';
-import AddressStep from '../../components/client/CommandPage/AddressStep';
-import SummaryStep from '../../components/client/CommandPage/SummaryStep';
-import butaButane from '../../assets/svg/buta-gaz-butane.svg';
-import butaPropane from '../../assets/svg/buta-gaz-propane.svg';
+import React, { useState, useEffect } from 'react';  
+import Title from '../../components/client/CommandPage/Title';  
+import StepsIndicator from '../../components/client/CommandPage/StepsIndicator';  
+import QuantityStep from '../../components/client/CommandPage/QuantityStep';  
+import AddressStep from '../../components/client/CommandPage/AddressStep';  
+import SummaryStep from '../../components/client/CommandPage/SummaryStep';  
+import butaButane from '../../assets/svg/buta-gaz-butane.svg';  
+import butaPropane from '../../assets/svg/buta-gaz-propane.svg';  
+import { getClientById, getClientAddresses } from '../../services/clientService';  
+// AJOUTEZ CES IMPORTS  
+import { authService } from '../../services/authService';  
+  
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 
 const Command = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [quantities, setQuantities] = useState({});
   const [useGPS, setUseGPS] = useState(false);
-  const [address, setAddress] = useState({
-    fullAddress: 'immeuble 122, Apartement 12',
-    phone: '0674563411',
-    instructions: ''
-  });
+  const [address, setAddress] = useState({  
+    num_appt: '',  
+    num_immeuble: '',  
+    rue: '',  
+    quartier: '', 
+    ville: 'Casablanca',  
+    code_postal: '',  
+    region_id: '',  
+    telephone: '', // Suppression de la référence à client?.telephone  
+    instructions_livraison: '',  
+    fullAddress: 'immeuble 122, Apartement 12',  
+    phone: '0674563411',  
+    instructions: ''  
+  });  
   const [gpsLocation, setGpsLocation] = useState(null);
+
+  const [clientData, setClientData] = useState(null);
+const [clientAddresses, setClientAddresses] = useState([]);
+const [loadingClient, setLoadingClient] = useState(false);
 
   // Produits disponibles (normalement depuis votre API)
   const products = [
     // Butane 12 kg
       {
-        id: 1,
+        id: '688bec6361019bd9d174e3ac',
         reference: 'BUT-12KG-AFRIQUIA',
         nom_court: 'Butane 12kg Afriquia',
         nom_long: 'Bouteille de Gaz Butane 12kg Afriquia - Gamme Économique',
         type_gaz: 'BUTANE',
         capacite: 12,
+        um_id: "688bec6361019bd9d174e3ab",
         marque: 'Afriquia',
         gamme: 'Économique',
         description: 'Bouteille de gaz butane de 12kg de la marque Afriquia. Idéale pour un usage domestique quotidien avec un excellent rapport qualité-prix. Parfaite pour la cuisine, le chauffage d\'appoint et l\'eau chaude.',
@@ -79,12 +98,13 @@ const Command = () => {
     
       // Propane 34 kg
       {
-        id: 4,
+        id: '688bec6361019bd9d174e3ae',
         reference: 'PROP-34KG-AFRIQUIA',
         nom_court: 'Propane 34kg Afriquia',
         nom_long: 'Bouteille de Gaz Propane 34kg Afriquia - Usage Professionnel',
         type_gaz: 'PROPANE',
         capacite: 34,
+        um_id: "688bec6361019bd9d174e3ab",
         marque: 'Afriquia',
         gamme: 'Économique',
         description: 'Grande bouteille de propane 34kg Afriquia, parfaite pour les besoins professionnels et industriels. Résistance aux basses températures et performance constante.',
@@ -135,10 +155,10 @@ const Command = () => {
   ];
 
   const prices = {
-    1: 120,  // Butane 12kg Afriquia (Économique)
+    "688bec6361019bd9d174e3ac": 120,  // Butane 12kg Afriquia (Économique)
     2: 130,  // Butane 12kg Shell (Standard)
     3: 140,  // Butane 12kg Total (Premium)
-    4: 350,  // Propane 34kg Afriquia (Économique)
+    "688bec6361019bd9d174e3ae": 350,  // Propane 34kg Afriquia (Économique)
     5: 370,  // Propane 34kg Shell (Standard)
     6: 390   // Propane 34kg Total (Premium)
   };
@@ -180,9 +200,52 @@ const Command = () => {
     }
   };
 
-  const canProceedToStep2 = Object.values(quantities).some(qty => qty > 0);
-  const canProceedToStep3 = useGPS ? gpsLocation : address.fullAddress && address.phone;
+  const loadClientData = async () => {  
+    setLoadingClient(true);  
+    try {  
+      const user = authService.getUser();  
+      if (user && user.role === 'CLIENT') {  
+        // Utiliser la structure auth-module avec PhysicalUser/MoralUser  
+        const response = await fetch(`${API_BASE_URL}/api/users/profile`, {  
+          headers: {  
+            'Authorization': `Bearer ${authService.getToken()}`,  
+            'Content-Type': 'application/json'  
+          }  
+        });  
+          
+        if (response.ok) {  
+          const profileData = await response.json();  
+          setClientData(profileData.data);  
+            
+          // Adapter selon le type de client (PHYSIQUE/MORAL)  
+          if (profileData.data.profile?.type === 'PHYSIQUE') {  
+            setAddress(prev => ({  
+              ...prev,  
+              telephone: profileData.data.profile.telephone_principal || '',  
+              ville: profileData.data.profile.ville || 'Casablanca',  
+              region_id: profileData.data.profile.region_principale || ''  
+            }));  
+          } else if (profileData.data.profile?.type === 'MORAL') {  
+            setAddress(prev => ({  
+              ...prev,  
+              telephone: profileData.data.profile.telephone_principal || '',  
+              ville: profileData.data.profile.ville || 'Casablanca',  
+              region_id: profileData.data.profile.region_principale || ''  
+            }));  
+          }  
+        }  
+      }  
+    } catch (error) {  
+      console.error('Erreur chargement données client:', error);  
+    } finally {  
+      setLoadingClient(false);  
+    }  
+  };
+  
 
+  const canProceedToStep2 = Object.values(quantities).some(qty => qty > 0);
+  const canProceedToStep3 = useGPS ? gpsLocation : (address.rue && address.ville && address.region_id && address.telephone);
+  
   const subtotal = Object.entries(quantities).reduce((total, [productId, qty]) => {
     return total + (qty * (prices[productId] || 0));
   }, 0);
@@ -206,6 +269,11 @@ const Command = () => {
     alert('Commande confirmée avec succès !');
     window.location.href = "/TrackOrder";
   };
+
+  useEffect(() => {
+    const clientId = '688bec637e0be4e53374e39e'; // Votre ID client
+    loadClientData(clientId);
+  }, []);
 
   const orderData = {
     products,
@@ -237,16 +305,18 @@ const Command = () => {
         )}
         {currentStep === 2 && (
           <AddressStep
-            useGPS={useGPS}
-            setUseGPS={setUseGPS}
-            address={address}
-            setAddress={setAddress}
-            gpsLocation={gpsLocation}
-            onGPSLocation={handleGPSLocation}
-            onBack={() => setCurrentStep(1)}
-            onNext={() => setCurrentStep(3)}
-            canProceed={canProceedToStep3}
-          />
+          useGPS={useGPS}
+          setUseGPS={setUseGPS}
+          address={address}
+          setAddress={setAddress}
+          gpsLocation={gpsLocation}
+          onGPSLocation={handleGPSLocation}
+          onBack={() => setCurrentStep(1)}
+          onNext={() => setCurrentStep(3)}
+          canProceed={canProceedToStep3}
+          clientAddresses={clientAddresses}
+          loadingClient={loadingClient}
+        />
         )}
         {currentStep === 3 && (
           <SummaryStep

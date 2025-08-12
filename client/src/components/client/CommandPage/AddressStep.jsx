@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, Map } from 'lucide-react';
+import axios from 'axios';
 
 const AddressStep = ({ 
   useGPS, 
@@ -10,59 +11,35 @@ const AddressStep = ({
   onGPSLocation, 
   onBack, 
   onNext, 
-  canProceed 
+  canProceed ,
+  clientAddresses = [],
+  loadingClient = false
 }) => {
   const [selectedRegion, setSelectedRegion] = useState('');
   const [showRegions, setShowRegions] = useState(false);
+  const [regions, setRegions] = useState([]);
 
-  const regions = [
-    {
-      id: 'mars',
-      name: '2 Mars',
-      color: '#FF6B6B',
-      description: 'Quartier résidentiel au centre-ville.',
-      zone_geographique: 'POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))',
-      actif: 1,
-      created_at: '2025-07-29T10:00:00Z',
-      updated_at: '2025-07-29T10:00:00Z'
-    },
-    {
-      id: 'maarif',
-      name: 'Maarif',
-      color: '#4ECDC4',
-      description: 'Quartier commerçant très fréquenté.',
-      zone_geographique: 'POLYGON((1 1, 1 2, 2 2, 2 1, 1 1))',
-      actif: 1,
-      created_at: '2025-07-29T10:00:00Z',
-      updated_at: '2025-07-29T10:00:00Z'
-    },
-    {
-      id: 'biranzerane',
-      name: 'Bir Anzarane',
-      color: '#45B7D1',
-      description: 'Zone longeant le boulevard Bir Anzarane.',
-      zone_geographique: 'POLYGON((2 2, 2 3, 3 3, 3 2, 2 2))',
-      actif: 1,
-      created_at: '2025-07-29T10:00:00Z',
-      updated_at: '2025-07-29T10:00:00Z'
-    },
-    {
-      id: 'alqods',
-      name: 'Al Qods',
-      color: '#96CEB4',
-      description: 'Quartier résidentiel populaire.',
-      zone_geographique: 'POLYGON((3 3, 3 4, 4 4, 4 3, 3 3))',
-      actif: 1,
-      created_at: '2025-07-29T10:00:00Z',
-      updated_at: '2025-07-29T10:00:00Z'
-    }
-  ];
-  ;
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/regions');
+        setRegions(res.data);
+      } catch (error) {
+        console.error('Erreur lors du chargement des régions:', error);
+      }
+    };
+  
+    fetchRegions();
+  }, []);
 
   const handleRegionSelect = (regionId) => {
+    const selectedRegion = regions.find(r => r._id === regionId);
     setSelectedRegion(regionId);
-    const region = regions.find(r => r.id === regionId);
-    setAddress({...address, region: region.name});
+    setAddress({ ...address, region_id: regionId, region: selectedRegion });
+  };
+
+  const handleAddressChange = (field, value) => {
+    setAddress({ ...address, [field]: value });
   };
 
   return (
@@ -108,6 +85,65 @@ const AddressStep = ({
           )}
         </div>
 
+        {/* Adresses sauvegardées */}
+        {!useGPS && clientAddresses.length > 0 && (
+  <div className="border-2 border-gray-200 rounded-lg p-4 mb-4">
+    <h4 className="font-medium mb-3 text-gray-700">
+      Vos adresses sauvegardées ({clientAddresses.length}) :
+    </h4>
+    <div className="space-y-2">
+      {clientAddresses.map((addr) => (
+        <div
+          key={addr._id}
+          onClick={() => {
+            setAddress({
+              ...address,
+              num_appt: addr.num_appt || '',
+              num_immeuble: addr.num_immeuble || '',
+              rue: addr.rue || '',
+              quartier: addr.quartier || '',
+              ville: addr.ville || 'Casablanca',
+              code_postal: addr.code_postal || '',
+              region_id: addr.region_id || '',
+              telephone: addr.telephone || '',
+              instructions_livraison: addr.instructions_livraison || ''
+            });
+            setSelectedRegion(addr.region_id || '');
+          }}
+          className="p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-gray-800">{addr.type_adresse}</p>
+                {addr.is_principal && (
+                  <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">
+                    Principal
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-600">
+                {addr.num_immeuble ? `Imm. ${addr.num_immeuble}, ` : ''}
+                {addr.num_appt ? `Apt. ${addr.num_appt}, ` : ''}
+                {addr.rue}
+              </p>
+              <p className="text-sm text-gray-500">
+                {addr.quartier ? `${addr.quartier}, ` : ''}{addr.ville}
+              </p>
+              {addr.telephone && (
+                <p className="text-sm text-gray-500">Tel: {addr.telephone}</p>
+              )}
+            </div>
+            <button className="text-blue-600 text-sm font-medium hover:text-blue-800">
+              Utiliser
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
         {/* Manual Address Option */}
         <div className="border-2 border-gray-200 rounded-lg p-4">
           <div className="flex items-center space-x-3 mb-4">
@@ -136,33 +172,29 @@ const AddressStep = ({
                   className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   <Map size={16} style={{color: '#4DAEBD'}} />
-                  <span className="text-sm font-medium">Choisir une région</span>
+                  <span className="text-sm font-medium">Choisir une région *</span>
                 </button>
                 
                 {showRegions && (
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     {regions.map((region) => (
                       <div
-                        key={region.id}
+                        key={region._id}
                         onClick={() => {
-                          handleRegionSelect(region.id);
+                          handleRegionSelect(region._id);
                           setShowRegions(false);
                         }}
                         className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                          selectedRegion === region.id
+                          selectedRegion === region._id
                             ? 'border-blue-500 bg-blue-50 shadow-md'
                             : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                         }`}
                       >
                         <div className="flex items-center space-x-2">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{backgroundColor: region.color}}
-                          ></div>
                           <span className={`text-sm font-medium ${
-                            selectedRegion === region.id ? 'text-blue-600' : 'text-gray-700'
+                            selectedRegion === region._id ? 'text-blue-600' : 'text-gray-700'
                           }`}>
-                            {region.name}
+                            {region.nom}
                           </span>
                         </div>
                       </div>
@@ -172,19 +204,79 @@ const AddressStep = ({
                 
                 {selectedRegion && (
                   <p className="mt-2 text-sm text-blue-600">
-                    Région sélectionnée: {regions.find(r => r.id === selectedRegion)?.name}
+                    Région sélectionnée: {regions.find(r => r._id === selectedRegion)?.nom}
                   </p>
                 )}
               </div>
 
+              {/* Address Fields Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">N° Appartement</label>
+                  <input
+                    type="text"
+                    value={address.num_appt || ''}
+                    onChange={(e) => handleAddressChange('num_appt', e.target.value)}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                    placeholder="N° appartement..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">N° Immeuble</label>
+                  <input
+                    type="text"
+                    value={address.num_immeuble || ''}
+                    onChange={(e) => handleAddressChange('num_immeuble', e.target.value)}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                    placeholder="N° immeuble..."
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium mb-2">Adresse complète *</label>
-                <textarea
-                  value={address.fullAddress}
-                  onChange={(e) => setAddress({...address, fullAddress: e.target.value})}
+                <label className="block text-sm font-medium mb-2">Rue *</label>
+                <input
+                  type="text"
+                  value={address.rue || ''}
+                  onChange={(e) => handleAddressChange('rue', e.target.value)}
                   className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                  rows="3"
-                  placeholder="Entrez votre adresse complète..."
+                  placeholder="Nom de la rue..."
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Quartier</label>
+                  <input
+                    type="text"
+                    value={address.quartier || ''}
+                    onChange={(e) => handleAddressChange('quartier', e.target.value)}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                    placeholder="Quartier..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Ville *</label>
+                  <input
+                    type="text"
+                    value={address.ville || 'Casablanca'}
+                    onChange={(e) => handleAddressChange('ville', e.target.value)}
+                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                    placeholder="Ville..."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Code Postal</label>
+                <input
+                  type="text"
+                  value={address.code_postal || ''}
+                  onChange={(e) => handleAddressChange('code_postal', e.target.value)}
+                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  placeholder="Code postal..."
                 />
               </div>
               
@@ -192,18 +284,18 @@ const AddressStep = ({
                 <label className="block text-sm font-medium mb-2">Téléphone *</label>
                 <input
                   type="tel"
-                  value={address.phone}
-                  onChange={(e) => setAddress({...address, phone: e.target.value})}
+                  value={address.telephone || ''}
+                  onChange={(e) => handleAddressChange('telephone', e.target.value)}
                   className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                   placeholder="Votre numéro de téléphone..."
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-2">Instructions (optionnel)</label>
+                <label className="block text-sm font-medium mb-2">Instructions de livraison (optionnel)</label>
                 <textarea
-                  value={address.instructions}
-                  onChange={(e) => setAddress({...address, instructions: e.target.value})}
+                  value={address.instructions_livraison || ''}
+                  onChange={(e) => handleAddressChange('instructions_livraison', e.target.value)}
                   className="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
                   rows="2"
                   placeholder="Instructions spéciales pour la livraison..."

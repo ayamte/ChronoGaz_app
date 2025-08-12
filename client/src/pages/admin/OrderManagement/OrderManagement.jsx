@@ -1,553 +1,377 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   MdSearch as Search,
   MdFilterList as Filter,
   MdVisibility as Eye,
   MdLocalShipping as TruckIcon,
-  MdPerson as User,
-  MdCalendarToday as Calendar,
-  MdInventory as Package,
-  MdWarning as AlertTriangle,
-  MdCheckCircle as CheckCircle,
-  MdAccessTime as Clock,
-  MdKeyboardArrowUp as ArrowUp,
-  MdKeyboardArrowDown as ArrowDown,
-  MdRemove as Minus,
-  MdClose as X,
-  MdCheck as Check,
-  MdHistory as History,
   MdPhone as Phone,
   MdSmartphone as Smartphone,
   MdDescription as ClipboardList,
-} from 'react-icons/md'
-import './OrderManagement.css'
+  MdRefresh as Refresh,
+  MdWarning as AlertTriangle,
+  MdCheckCircle as CheckCircle,
+  MdAccessTime as Clock,
+  MdCheck as Check,
+  MdClose as X,
+  MdInventory as Package 
+} from 'react-icons/md';
 
-// Mock data
-const mockTrucks = [
-  {
-    id: "truck-001",
-    plateNumber: "AB-123-CD",
-    model: "Mercedes Sprinter",
-    driverName: "Jean Dupont",
-    status: "available",
-  },
-  {
-    id: "truck-002",
-    plateNumber: "EF-456-GH",
-    model: "Iveco Daily",
-    driverName: "Marie Martin",
-    status: "available",
-  },
-  {
-    id: "truck-003",
-    plateNumber: "IJ-789-KL",
-    model: "Renault Master",
-    driverName: "Pierre Bernard",
-    status: "busy",
-  },
-]
+import { useOrders } from '../../../hooks/useOrders';
+import { useTrucks } from '../../../hooks/useTrucks';
+import { useStatuts } from '../../../hooks/useStatuts';
+import { useEmployees } from '../../../hooks/useEmployees';
+import { useNotification } from '../../../hooks/useNotification';
+import { orderService } from '../../../services/orderService';
+import SidebarNavigation from '../../../components/admin/Sidebar/Sidebar';
+import './OrderManagement.css';
 
-const mockOrders = [
-  {
-    id: "order-001",
-    orderNumber: "CMD-2024-001",
-    customer: {
-      id: "cust-001",
-      name: "Restaurant Le Gourmet",
-      phone: "01 23 45 67 89",
-      email: "contact@legourmet.fr",
-    },
-    deliveryAddress: {
-      id: "addr-001",
-      street: "15 Rue de la Paix",
-      city: "Paris",
-      postalCode: "75001",
-      region: "Île-de-France",
-    },
-    orderDate: "2024-01-15",
-    requestedDeliveryDate: "2024-01-16",
-    status: "pending",
-    priority: "high",
-    products: [
-      {
-        id: "prod-001",
-        productName: "Bouteille Gaz Butane 13kg",
-        productCode: "BUT13",
-        quantity: 10,
-        unit: "bottles",
-        unitPrice: 25.5,
-        totalPrice: 255.0,
-      },
-      {
-        id: "prod-002",
-        productName: "Détendeur Butane",
-        productCode: "DET-BUT",
-        quantity: 2,
-        unit: "units",
-        unitPrice: 15.8,
-        totalPrice: 31.6,
-      },
-    ],
-    totalAmount: 286.6,
-    customerNotes: "Livraison urgente - ouverture restaurant à 18h",
-    orderSource: "phone",
-    history: [
-      {
-        id: "hist-001",
-        action: "Commande créée",
-        details: "Commande passée par téléphone",
-        timestamp: "2024-01-15T10:30:00Z",
-        userId: "user-001",
-        userName: "Réceptionniste",
-      },
-    ],
-    createdAt: "2024-01-15T10:30:00Z",
-    updatedAt: "2024-01-15T10:30:00Z",
-  },
-  {
-    id: "order-002",
-    orderNumber: "CMD-2024-002",
-    customer: {
-      id: "cust-002",
-      name: "Boulangerie Martin",
-      phone: "01 34 56 78 90",
-      email: "martin@boulangerie.fr",
-    },
-    deliveryAddress: {
-      id: "addr-002",
-      street: "42 Avenue des Champs",
-      city: "Paris",
-      postalCode: "75008",
-      region: "Île-de-France",
-    },
-    orderDate: "2024-01-15",
-    requestedDeliveryDate: "2024-01-17",
-    status: "assigned",
-    priority: "medium",
-    assignedTruckId: "truck-001",
-    assignedTruck: mockTrucks[0],
-    products: [
-      {
-        id: "prod-003",
-        productName: "Bouteille Gaz Propane 35kg",
-        productCode: "PRO35",
-        quantity: 5,
-        unit: "bottles",
-        unitPrice: 45.8,
-        totalPrice: 229.0,
-      },
-    ],
-    totalAmount: 229.0,
-    customerNotes: "Accès par la cour arrière",
-    internalNotes: "Client régulier - paiement à 30 jours",
-    orderSource: "app",
-    history: [
-      {
-        id: "hist-002",
-        action: "Commande créée",
-        details: "Commande passée via l'application mobile",
-        timestamp: "2024-01-15T14:20:00Z",
-        userId: "cust-002",
-        userName: "Boulangerie Martin",
-      },
-      {
-        id: "hist-003",
-        action: "Assignée au camion",
-        details: "Assignée au camion AB-123-CD (Jean Dupont)",
-        timestamp: "2024-01-15T15:45:00Z",
-        userId: "admin-001",
-        userName: "Admin System",
-      },
-    ],
-    createdAt: "2024-01-15T14:20:00Z",
-    updatedAt: "2024-01-15T15:45:00Z",
-  },
-  {
-    id: "order-003",
-    orderNumber: "CMD-2024-003",
-    customer: {
-      id: "cust-003",
-      name: "Hôtel Royal",
-      phone: "01 45 67 89 01",
-      email: "reception@hotelroyal.fr",
-    },
-    deliveryAddress: {
-      id: "addr-003",
-      street: "8 Place Vendôme",
-      city: "Paris",
-      postalCode: "75001",
-      region: "Île-de-France",
-    },
-    orderDate: "2024-01-14",
-    requestedDeliveryDate: "2024-01-15",
-    status: "delivered",
-    priority: "low",
-    assignedTruckId: "truck-002",
-    assignedTruck: mockTrucks[1],
-    products: [
-      {
-        id: "prod-004",
-        productName: "Bouteille Gaz Butane 6kg",
-        productCode: "BUT06",
-        quantity: 15,
-        unit: "bottles",
-        unitPrice: 18.5,
-        totalPrice: 277.5,
-      },
-    ],
-    totalAmount: 277.5,
-    customerNotes: "Réception au sous-sol",
-    orderSource: "website",
-    history: [
-      {
-        id: "hist-004",
-        action: "Commande créée",
-        details: "Commande passée via le site web",
-        timestamp: "2024-01-14T09:15:00Z",
-        userId: "cust-003",
-        userName: "Hôtel Royal",
-      },
-      {
-        id: "hist-005",
-        action: "Assignée au camion",
-        details: "Assignée au camion EF-456-GH (Marie Martin)",
-        timestamp: "2024-01-14T10:30:00Z",
-        userId: "admin-001",
-        userName: "Admin System",
-      },
-      {
-        id: "hist-006",
-        action: "Livrée",
-        details: "Livraison effectuée avec succès",
-        timestamp: "2024-01-15T11:20:00Z",
-        userId: "driver-002",
-        userName: "Marie Martin",
-      },
-    ],
-    createdAt: "2024-01-14T09:15:00Z",
-    updatedAt: "2024-01-15T11:20:00Z",
-  },
-]
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import Pagination from '../../../components/common/Pagination';
+import OrderDetailsModal from './OrderDetailsModal';
+import TruckAssignmentModal from './TruckAssignmentModal';
 
-const mockUser = {
-  id: "admin-001",
-  name: "Admin System",
-  role: "admin",
-}
+const OrderManagement = () => {
+  // États locaux pour les filtres et modales
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    priority: 'all',
+    dateFrom: '',
+    dateTo: ''
+  });
+  
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    assigned: 0,
+    inProgress: 0,
+    delivered: 0
+  });
 
-export default function OrderManagementPage() {
-  // TOUS LES HOOKS EN PREMIER
-  const [orders, setOrders] = useState(mockOrders)
-  const [filteredOrders, setFilteredOrders] = useState(mockOrders)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [priorityFilter, setPriorityFilter] = useState("all")
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
-  const [assignmentData, setAssignmentData] = useState({
-    truckId: "",
-    priority: "",
-    notes: "",
-  })
-  const [loading, setLoading] = useState(false)
-  const [notification, setNotification] = useState(null)
+  // Hooks personnalisés
+  const {
+    orders,
+    loading: ordersLoading,
+    error: ordersError,
+    pagination,
+    fetchOrders,
+    assignTruck,
+    cancelAssignment,
+    setPagination
+  } = useOrders();
 
-  // Filter orders based on search and filters
+  const { trucks, loading: trucksLoading } = useTrucks();
+  const { drivers, accompagnateurs, loading: employeesLoading } = useEmployees(); 
+  const { notification, showNotification, hideNotification } = useNotification();
+  const { getStatutByCode, loading: statutsLoading } = useStatuts();
+
+  
+  // État pour stocker les chauffeurs disponibles, filtrés par le hook des employés
+  //const [availableDrivers, setAvailableDrivers] = useState([]);
+  //const [availableAccompagnateurs, setAvailableAccompagnateurs] = useState([]);
+
+
+  // Refs pour la gestion des timeouts et lifecycle
+  const searchTimeoutRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  // Logique pour extraire les chauffeurs une fois les données chargées
+  //useEffect(() => {
+    //if (employees && employees.length > 0) {
+      //const drivers = employees.filter(emp => emp.fonction === 'CHAUFFEUR');
+      //const accompagnateurs = employees.filter(emp => emp.fonction === 'ACCOMPAGNANT');
+      
+      //setAvailableDrivers(drivers);
+      //setAvailableAccompagnateurs(accompagnateurs);
+    //}
+  //}, [employees]);
+
+  // SOLUTION 1: Fonction fetchData stable avec useCallback
+  const fetchData = useCallback(async (currentFilters = null, currentPage = null) => {
+    if (!isMountedRef.current) return;
+    
+    try {
+      const filtersToUse = currentFilters || filters;
+      const pageToUse = currentPage || pagination.page;
+      
+      console.log('🔄 fetchData called with:', { filtersToUse, pageToUse });
+      
+      const orderFilters = {
+        ...filtersToUse,
+        status: filtersToUse.status === 'all' ? undefined : filtersToUse.status,
+        priority: filtersToUse.priority === 'all' ? undefined : filtersToUse.priority,
+      };
+
+      await fetchOrders(orderFilters, pageToUse, 20);
+
+      try {
+        const statsResponse = await orderService.getOrderStats(orderFilters);
+        if (isMountedRef.current) {
+          setStats(statsResponse);
+        }
+      } catch (statsError) {
+        console.error('⚠️ Erreur stats (non-critique):', statsError);
+      }
+      
+      console.log('✅ fetchData completed successfully');
+      
+    } catch (error) {
+      console.error('❌ Erreur fetchData:', error);
+      if (isMountedRef.current) {
+        showNotification('Erreur lors du chargement des données', 'error');
+      }
+    }
+  }, [fetchOrders, showNotification]);
+
+  // SOLUTION 2: useEffect principal - SANS fetchData dans les dépendances
   useEffect(() => {
-    let filtered = orders
+    console.log('🔄 Main useEffect triggered - filters changed');
+    fetchData(filters, pagination.page);
+  }, [filters, pagination.page]);
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (order) =>
-          order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.customer.name.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
+  // SOLUTION 3: Debounce search avec useRef et cleanup optimal
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
     }
 
-    // Status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((order) => order.status === statusFilter)
+    if (filters.search.length >= 2 || filters.search === '') {
+      searchTimeoutRef.current = setTimeout(() => {
+        if (!isMountedRef.current) return;
+        
+        console.log('🔍 Debounced search triggered:', filters.search);
+        fetchData({ ...filters }, 1);
+      }, 500);
     }
 
-    // Priority filter
-    if (priorityFilter !== "all") {
-      filtered = filtered.filter((order) => order.priority === priorityFilter)
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [filters.search]);
+
+  // SOLUTION 4: Gestionnaires d'événements optimisés avec useCallback
+  const handleFilterChange = useCallback((filterType, value) => {
+    console.log('🔧 Filter changed:', filterType, value);
+    setFilters(prev => ({ ...prev, [filterType]: value }));
+    if (filterType !== 'search') {
+      setPagination(prev => ({ ...prev, page: 1 }));
+    }
+  }, [setPagination]);
+
+  const handleViewDetails = useCallback(async (order) => {
+    try {
+      console.log('👁️ Viewing details for order:', order.id);
+      const detailedOrder = await orderService.getOrder(order.id);
+      if (isMountedRef.current) {
+        setSelectedOrder(detailedOrder);
+        setIsDetailsModalOpen(true);
+      }
+    } catch (error) {
+      console.error('❌ Erreur handleViewDetails:', error);
+      if (isMountedRef.current) {
+        showNotification('Erreur lors du chargement des détails', 'error');
+      }
+    }
+  }, [showNotification]);
+
+  const handleAssignTruck = useCallback((order) => {
+    console.log('🚛 Opening truck assignment for order:', order.id);
+    setSelectedOrder(order);
+    setIsAssignModalOpen(true);
+  }, []);
+
+  const handleSaveAssignment = useCallback(async (assignmentData) => {
+    if (!selectedOrder) {
+      console.warn('⚠️ No selected order for assignment');
+      return;
+    }
+    try {
+      const confirmedStatusId = getStatutByCode('CONFIRMEE')?._id;
+    if (!confirmedStatusId) {
+      showNotification('Erreur: Statut CONFIRMEE non trouvé', 'error');
+      return;
     }
 
-    setFilteredOrders(filtered)
-  }, [orders, searchTerm, statusFilter, priorityFilter])
+    const finalPayload = {
+      statut_id: confirmedStatusId,
+      truck_id: assignmentData.truckId,
+      livreur_id: assignmentData.driverId,
+      accompagnateur_id: assignmentData.accompagnateurId || null,
+      date_planifiee: assignmentData.scheduledDate
+    };
+      console.log('💾 Saving assignment:', assignmentData);
+      await assignTruck(selectedOrder.id, finalPayload, trucks, drivers);
+      const assignedTruck = trucks.find(t => t.id === assignmentData.truckId);
+      if (isMountedRef.current) {
+        showNotification(
+          `Commande ${selectedOrder.orderNumber} assignée au camion ${assignedTruck?.plateNumber}`,
+          'success'
+        );
+        setIsAssignModalOpen(false);
+        try {
+          const orderFilters = {
+            ...filters,
+            status: filters.status === 'all' ? undefined : filters.status,
+            priority: filters.priority === 'all' ? undefined : filters.priority,
+          };
+          const statsResponse = await orderService.getOrderStats(orderFilters);
+          setStats(statsResponse);
+        } catch (statsError) {
+          console.error('⚠️ Erreur refresh stats:', statsError);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur handleSaveAssignment:', error);
+      if (isMountedRef.current) {
+        showNotification('Erreur lors de l\'assignation', 'error');
+      }
+    }
+  }, [selectedOrder, assignTruck, trucks, drivers, getStatutByCode, showNotification, filters]);
 
-  // TOUTES LES FONCTIONS
+  const handleCancelAssignment = useCallback(async (order) => {
+    try {
+      console.log('❌ Canceling assignment for order:', order.id);
+      await cancelAssignment(order.id);
+      if (isMountedRef.current) {
+        showNotification(`Assignation de la commande ${order.orderNumber} annulée`, 'success');
+        try {
+          const orderFilters = {
+            ...filters,
+            status: filters.status === 'all' ? undefined : filters.status,
+            priority: filters.priority === 'all' ? undefined : filters.priority,
+          };
+          const statsResponse = await orderService.getOrderStats(orderFilters);
+          setStats(statsResponse);
+        } catch (statsError) {
+          console.error('⚠️ Erreur refresh stats:', statsError);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur handleCancelAssignment:', error);
+      if (isMountedRef.current) {
+        showNotification('Erreur lors de l\'annulation', 'error');
+      }
+    }
+  }, [cancelAssignment, showNotification, filters]);
+
+  const handleRefresh = useCallback(() => {
+    console.log('🔄 Manual refresh triggered');
+    fetchData(filters, pagination.page);
+  }, [fetchData, filters, pagination.page]);
+
+  const handlePageChange = useCallback((newPage) => {
+    console.log('📄 Page changed to:', newPage);
+    setPagination(prev => ({ ...prev, page: newPage }));
+  }, [setPagination]);
+
+  // SOLUTION 5: Cleanup complet au démontage
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      console.log('🧹 OrderManagement cleanup');
+      isMountedRef.current = false;
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Fonctions utilitaires pour l'affichage
   const getStatusColor = (status) => {
-    switch (status) {
-      case "pending":
-        return "om-status-pending"
-      case "assigned":
-        return "om-status-assigned"
-      case "in_progress":
-        return "om-status-in-progress"
-      case "delivered":
-        return "om-status-delivered"
-      case "cancelled":
-        return "om-status-cancelled"
-      default:
-        return "om-status-default"
-    }
-  }
+    const statusColors = {
+      pending: 'om-status-pending',
+      assigned: 'om-status-assigned',
+      in_progress: 'om-status-in-progress',
+      delivered: 'om-status-delivered',
+      cancelled: 'om-status-cancelled'
+    };
+    return statusColors[status] || 'om-status-default';
+  };
 
   const getStatusText = (status) => {
-    switch (status) {
-      case "pending":
-        return "En attente"
-      case "assigned":
-        return "Assignée"
-      case "in_progress":
-        return "En cours"
-      case "delivered":
-        return "Livrée"
-      case "cancelled":
-        return "Annulée"
-      default:
-        return status
-    }
-  }
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "pending":
-        return <Clock className="om-status-icon" />
-      case "assigned":
-        return <TruckIcon className="om-status-icon" />
-      case "in_progress":
-        return <Package className="om-status-icon" />
-      case "delivered":
-        return <CheckCircle className="om-status-icon" />
-      case "cancelled":
-        return <X className="om-status-icon" />
-      default:
-        return null
-    }
-  }
+    const statusTexts = {
+      pending: 'En attente',
+      assigned: 'Assignée',
+      in_progress: 'En cours',
+      delivered: 'Livrée',
+      cancelled: 'Annulée'
+    };
+    return statusTexts[status] || status;
+  };
 
   const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "urgent":
-        return "om-priority-urgent"
-      case "high":
-        return "om-priority-high"
-      case "medium":
-        return "om-priority-medium"
-      case "low":
-        return "om-priority-low"
-      default:
-        return "om-priority-default"
-    }
-  }
+    const priorityColors = {
+      urgent: 'om-priority-urgent',
+      high: 'om-priority-high',
+      medium: 'om-priority-medium',
+      low: 'om-priority-low'
+    };
+    return priorityColors[priority] || 'om-priority-default';
+  };
 
   const getPriorityText = (priority) => {
-    switch (priority) {
-      case "urgent":
-        return "Urgente"
-      case "high":
-        return "Haute"
-      case "medium":
-        return "Moyenne"
-      case "low":
-        return "Basse"
-      default:
-        return priority
-    }
+    const priorityTexts = {
+      urgent: 'Urgente',
+      high: 'Haute',
+      medium: 'Moyenne',
+      low: 'Basse'
+    };
+    return priorityTexts[priority] || priority;
+  };
+
+  // SOLUTION 6: Mémoisation des stats
+  const memoizedStats = useMemo(() => stats, [
+    stats.total, stats.pending, stats.assigned, stats.inProgress, stats.delivered
+  ]);
+
+  // Loading state - affichage initial
+  if (ordersLoading && orders.length === 0) {
+    return (
+      <div className="om-layout">
+        <SidebarNavigation/>
+        <div className="om-wrapper">
+          <div className="om-container">
+            <LoadingSpinner />
+          </div>
+        </div>
+      </div>
+    );
   }
-
-  const getPriorityIcon = (priority) => {
-    switch (priority) {
-      case "urgent":
-      case "high":
-        return <ArrowUp className="om-priority-icon" />
-      case "medium":
-        return <Minus className="om-priority-icon" />
-      case "low":
-        return <ArrowDown className="om-priority-icon" />
-      default:
-        return null
-    }
-  }
-
-  const getOrderSourceIcon = (source) => {
-    switch (source) {
-      case "phone":
-        return <Phone className="om-source-icon om-text-blue" />
-      case "app":
-        return <Smartphone className="om-source-icon om-text-green" />
-      case "website":
-        return <ClipboardList className="om-source-icon om-text-purple" />
-      default:
-        return null
-    }
-  }
-
-  const getOrderSourceText = (source) => {
-    switch (source) {
-      case "phone":
-        return "Téléphone"
-      case "app":
-        return "Application"
-      case "website":
-        return "Site Web"
-      default:
-        return source
-    }
-  }
-
-  const handleViewDetails = (order) => {
-    setSelectedOrder(order)
-    setIsDetailsModalOpen(true)
-  }
-
-  const handleAssignTruck = (order) => {
-    setSelectedOrder(order)
-    setAssignmentData({
-      truckId: order.assignedTruckId || "",
-      priority: order.priority,
-      notes: order.internalNotes || "",
-    })
-    setIsAssignModalOpen(true)
-  }
-
-  const handleSaveAssignment = async () => {
-    if (!selectedOrder || !assignmentData.truckId) {
-      setNotification({
-        type: "error",
-        message: "Veuillez sélectionner un camion.",
-      })
-      return
-    }
-
-    setLoading(true)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      const selectedTruck = mockTrucks.find((truck) => truck.id === assignmentData.truckId)
-
-      const updatedOrders = orders.map((order) => {
-        if (order.id === selectedOrder.id) {
-          const historyEntry = {
-            id: `hist-${Date.now()}`,
-            action: "Assignée au camion",
-            details: `Assignée au camion ${selectedTruck?.plateNumber} (${selectedTruck?.driverName})`,
-            timestamp: new Date().toISOString(),
-            userId: mockUser.id,
-            userName: mockUser.name,
-          }
-          return {
-            ...order,
-            status: "assigned",
-            priority: assignmentData.priority,
-            assignedTruckId: assignmentData.truckId,
-            assignedTruck: selectedTruck,
-            internalNotes: assignmentData.notes,
-            history: [...order.history, historyEntry],
-            updatedAt: new Date().toISOString(),
-          }
-        }
-        return order
-      })
-
-      setOrders(updatedOrders)
-      setIsAssignModalOpen(false)
-      setNotification({
-        type: "success",
-        message: `Commande ${selectedOrder.orderNumber} assignée avec succès au camion ${selectedTruck?.plateNumber}.`,
-      })
-
-      setTimeout(() => setNotification(null), 5000)
-    } catch (error) {
-      setNotification({
-        type: "error",
-        message: "Erreur lors de l'assignation. Veuillez réessayer.",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleCancelAssignment = async (order) => {
-    if (!order.assignedTruckId) return
-
-    setLoading(true)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      const updatedOrders = orders.map((o) => {
-        if (o.id === order.id) {
-          const historyEntry = {
-            id: `hist-${Date.now()}`,
-            action: "Assignation annulée",
-            details: "Assignation au camion annulée",
-            timestamp: new Date().toISOString(),
-            userId: mockUser.id,
-            userName: mockUser.name,
-          }
-
-          return {
-            ...o,
-            status: "pending",
-            assignedTruckId: undefined,
-            assignedTruck: undefined,
-            history: [...o.history, historyEntry],
-            updatedAt: new Date().toISOString(),
-          }
-        }
-        return o
-      })
-
-      setOrders(updatedOrders)
-      setNotification({
-        type: "success",
-        message: `Assignation de la commande ${order.orderNumber} annulée.`,
-      })
-
-      setTimeout(() => setNotification(null), 5000)
-    } catch (error) {
-      setNotification({
-        type: "error",
-        message: "Erreur lors de l'annulation. Veuillez réessayer.",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getOrderStats = () => {
-    const total = orders.length
-    const pending = orders.filter((o) => o.status === "pending").length
-    const assigned = orders.filter((o) => o.status === "assigned").length
-    const inProgress = orders.filter((o) => o.status === "in_progress").length
-    const delivered = orders.filter((o) => o.status === "delivered").length
-
-    return { total, pending, assigned, inProgress, delivered }
-  }
-
-  const stats = getOrderStats()
 
   return (
     <div className="om-layout">
-      
+      <SidebarNavigation/>
       <div className="om-wrapper">
         <div className="om-container">
           <div className="om-content">
             {/* Header */}
             <div className="om-header">
-              <h2 className="om-title">Gestion des Commandes</h2>
-              <p className="om-subtitle">Gérez et assignez les commandes clients aux camions</p>
+              <div className="om-header-content">
+                <h2 className="om-title">Gestion des Commandes</h2>
+                <p className="om-subtitle">Gérez et assignez les commandes clients aux camions</p>
+              </div>
+              <div className="om-header-actions">
+                <button
+                  onClick={handleRefresh}
+                  className="om-btn om-btn-secondary"
+                  disabled={ordersLoading}
+                  title="Actualiser"
+                >
+                  <Refresh className={`om-btn-icon ${ordersLoading ? 'om-spinning' : ''}`} />
+                  Actualiser
+                </button>
+              </div>
             </div>
 
             {/* Notification */}
             {notification && (
-              <div className={`om-alert ${notification.type === "success" ? "om-alert-success" : "om-alert-error"}`}>
-                {notification.type === "success" ? (
+              <div className={`om-alert ${notification.type === 'success' ? 'om-alert-success' : 'om-alert-error'}`}>
+                {notification.type === 'success' ? (
                   <CheckCircle className="om-alert-icon" />
                 ) : (
                   <AlertTriangle className="om-alert-icon" />
@@ -555,6 +379,28 @@ export default function OrderManagementPage() {
                 <div className="om-alert-content">
                   {notification.message}
                 </div>
+                <button 
+                  className="om-alert-close"
+                  onClick={hideNotification}
+                >
+                  <X />
+                </button>
+              </div>
+            )}
+
+            {/* Error Display */}
+            {ordersError && (
+              <div className="om-alert om-alert-error">
+                <AlertTriangle className="om-alert-icon" />
+                <div className="om-alert-content">
+                  {ordersError}
+                </div>
+                <button 
+                  className="om-alert-close"
+                  onClick={() => window.location.reload()}
+                >
+                  <Refresh />
+                </button>
               </div>
             )}
 
@@ -629,8 +475,8 @@ export default function OrderManagementPage() {
                         id="search"
                         type="text"
                         placeholder="Numéro de commande ou client..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        value={filters.search}
+                        onChange={(e) => handleFilterChange('search', e.target.value)}
                         className="om-search-input"
                       />
                     </div>
@@ -640,8 +486,8 @@ export default function OrderManagementPage() {
                     <label htmlFor="status-filter" className="om-label">Statut</label>
                     <select
                       id="status-filter"
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
+                      value={filters.status}
+                      onChange={(e) => handleFilterChange('status', e.target.value)}
                       className="om-select"
                     >
                       <option value="all">Tous les statuts</option>
@@ -657,8 +503,8 @@ export default function OrderManagementPage() {
                     <label htmlFor="priority-filter" className="om-label">Priorité</label>
                     <select
                       id="priority-filter"
-                      value={priorityFilter}
-                      onChange={(e) => setPriorityFilter(e.target.value)}
+                      value={filters.priority}
+                      onChange={(e) => handleFilterChange('priority', e.target.value)}
                       className="om-select"
                     >
                       <option value="all">Toutes les priorités</option>
@@ -667,6 +513,28 @@ export default function OrderManagementPage() {
                       <option value="medium">Moyenne</option>
                       <option value="low">Basse</option>
                     </select>
+                  </div>
+
+                  <div className="om-form-group">
+                    <label htmlFor="date-from" className="om-label">Date de début</label>
+                    <input
+                      id="date-from"
+                      type="date"
+                      value={filters.dateFrom}
+                      onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                      className="om-input"
+                    />
+                  </div>
+
+                  <div className="om-form-group">
+                    <label htmlFor="date-to" className="om-label">Date de fin</label>
+                    <input
+                      id="date-to"
+                      type="date"
+                      value={filters.dateTo}
+                      onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                      className="om-input"
+                    />
                   </div>
                 </div>
               </div>
@@ -678,9 +546,14 @@ export default function OrderManagementPage() {
                 <div className="om-card-header-with-badge">
                   <h3 className="om-card-title">Liste des Commandes</h3>
                   <div className="om-badge">
-                    {filteredOrders.length} commande{filteredOrders.length !== 1 ? "s" : ""}
+                    {pagination.total} commande{pagination.total !== 1 ? 's' : ''}
                   </div>
                 </div>
+                {ordersLoading && (
+                  <div className="om-loading-indicator">
+                    <LoadingSpinner size="small" />
+                  </div>
+                )}
               </div>
               <div className="om-card-content">
                 <div className="om-table-container">
@@ -698,20 +571,20 @@ export default function OrderManagementPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredOrders.length === 0 ? (
+                      {orders.length === 0 ? (
                         <tr>
                           <td colSpan={8} className="om-empty-state">
                             <ClipboardList className="om-empty-icon" />
                             <h3 className="om-empty-title">Aucune commande trouvée</h3>
                             <p className="om-empty-message">
-                              {searchTerm || statusFilter !== "all" || priorityFilter !== "all"
+                              {Object.values(filters).some(f => f && f !== 'all')
                                 ? "Aucune commande ne correspond à vos critères."
                                 : "Aucune commande disponible."}
                             </p>
                           </td>
                         </tr>
                       ) : (
-                        filteredOrders.map((order) => (
+                        orders.map((order) => (
                           <tr key={order.id} className="om-table-row">
                             <td className="om-font-medium">{order.orderNumber}</td>
                             <td>
@@ -722,7 +595,9 @@ export default function OrderManagementPage() {
                             </td>
                             <td>
                               <div className="om-date-info">
-                                <p className="om-order-date">{new Date(order.orderDate).toLocaleDateString("fr-FR")}</p>
+                                <p className="om-order-date">
+                                  {new Date(order.orderDate).toLocaleDateString("fr-FR")}
+                                </p>
                                 <p className="om-delivery-date">
                                   Livraison: {new Date(order.requestedDeliveryDate).toLocaleDateString("fr-FR")}
                                 </p>
@@ -730,13 +605,11 @@ export default function OrderManagementPage() {
                             </td>
                             <td>
                               <div className={`om-status-badge ${getStatusColor(order.status)}`}>
-                                {getStatusIcon(order.status)}
                                 <span className="om-status-text">{getStatusText(order.status)}</span>
                               </div>
                             </td>
                             <td>
                               <div className={`om-priority-badge ${getPriorityColor(order.priority)}`}>
-                                {getPriorityIcon(order.priority)}
                                 <span className="om-priority-text">{getPriorityText(order.priority)}</span>
                               </div>
                             </td>
@@ -752,8 +625,13 @@ export default function OrderManagementPage() {
                             </td>
                             <td>
                               <div className="om-source-info">
-                                {getOrderSourceIcon(order.orderSource)}
-                                <span className="om-source-text">{getOrderSourceText(order.orderSource)}</span>
+                                {order.orderSource === 'phone' && <Phone className="om-source-icon om-text-blue" />}
+                                {order.orderSource === 'app' && <Smartphone className="om-source-icon om-text-green" />}
+                                {order.orderSource === 'website' && <ClipboardList className="om-source-icon om-text-purple" />}
+                                <span className="om-source-text">
+                                  {order.orderSource === 'phone' ? 'Téléphone' : 
+                                   order.orderSource === 'app' ? 'Application' : 'Site Web'}
+                                </span>
                               </div>
                             </td>
                             <td>
@@ -772,7 +650,7 @@ export default function OrderManagementPage() {
                                 >
                                   <TruckIcon className="om-btn-icon" />
                                 </button>
-                                {order.assignedTruckId && order.status === "assigned" && (
+                                {order.assignedTruckId && order.status === 'assigned' && (
                                   <button
                                     onClick={() => handleCancelAssignment(order)}
                                     className="om-btn om-btn-danger"
@@ -789,307 +667,45 @@ export default function OrderManagementPage() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination */}
+                {pagination.totalPages > 1 && (
+                  <Pagination
+                    currentPage={pagination.page}
+                    totalPages={pagination.totalPages}
+                    totalItems={pagination.total}
+                    itemsPerPage={pagination.limit}
+                    onPageChange={handlePageChange}
+                  />
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Order Details Modal */}
+      {/* Modales */}
       {isDetailsModalOpen && selectedOrder && (
-        <div className="om-modal-overlay" onClick={() => setIsDetailsModalOpen(false)}>
-          <div className="om-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="om-modal-header">
-              <h2 className="om-modal-title">
-                <ClipboardList className="om-modal-icon" />
-                Détails de la Commande {selectedOrder.orderNumber}
-              </h2>
-              <button 
-                className="om-modal-close" 
-                onClick={() => setIsDetailsModalOpen(false)}
-              >
-                <X className="om-close-icon" />
-              </button>
-            </div>
-
-            <div className="om-modal-body">
-              <div className="om-details-grid">
-                {/* Customer and Order Info */}
-                <div className="om-details-section">
-                  <div className="om-details-card">
-                    <div className="om-details-card-header">
-                      <h3 className="om-details-card-title">
-                        <User className="om-details-icon" />
-                        Informations Client
-                      </h3>
-                    </div>
-                    <div className="om-details-card-content">
-                      <div className="om-detail-item">
-                        <label className="om-detail-label">Nom</label>
-                        <span className="om-detail-value">{selectedOrder.customer.name}</span>
-                      </div>
-                      <div className="om-detail-item">
-                        <label className="om-detail-label">Téléphone</label>
-                        <span className="om-detail-value">{selectedOrder.customer.phone}</span>
-                      </div>
-                      {selectedOrder.customer.email && (
-                        <div className="om-detail-item">
-                          <label className="om-detail-label">Email</label>
-                          <span className="om-detail-value">{selectedOrder.customer.email}</span>
-                        </div>
-                      )}
-                      <div className="om-detail-item">
-                        <label className="om-detail-label">Adresse de livraison</label>
-                        <span className="om-detail-value">
-                          {selectedOrder.deliveryAddress.street}<br />
-                          {selectedOrder.deliveryAddress.postalCode} {selectedOrder.deliveryAddress.city}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="om-details-section">
-                  <div className="om-details-card">
-                    <div className="om-details-card-header">
-                      <h3 className="om-details-card-title">
-                        <Calendar className="om-details-icon" />
-                        Informations Commande
-                      </h3>
-                    </div>
-                    <div className="om-details-card-content">
-                      <div className="om-detail-item">
-                        <label className="om-detail-label">Date de commande</label>
-                        <span className="om-detail-value">{new Date(selectedOrder.orderDate).toLocaleDateString("fr-FR")}</span>
-                      </div>
-                      <div className="om-detail-item">
-                        <label className="om-detail-label">Livraison souhaitée</label>
-                        <span className="om-detail-value">{new Date(selectedOrder.requestedDeliveryDate).toLocaleDateString("fr-FR")}</span>
-                      </div>
-                      <div className="om-detail-item">
-                        <label className="om-detail-label">Statut</label>
-                        <div className={`om-status-badge ${getStatusColor(selectedOrder.status)}`}>
-                          {getStatusIcon(selectedOrder.status)}
-                          <span className="om-status-text">{getStatusText(selectedOrder.status)}</span>
-                        </div>
-                      </div>
-                      <div className="om-detail-item">
-                        <label className="om-detail-label">Priorité</label>
-                        <div className={`om-priority-badge ${getPriorityColor(selectedOrder.priority)}`}>
-                          {getPriorityIcon(selectedOrder.priority)}
-                          <span className="om-priority-text">{getPriorityText(selectedOrder.priority)}</span>
-                        </div>
-                      </div>
-                      <div className="om-detail-item">
-                        <label className="om-detail-label">Source</label>
-                        <div className="om-source-info">
-                          {getOrderSourceIcon(selectedOrder.orderSource)}
-                          <span className="om-source-text">{getOrderSourceText(selectedOrder.orderSource)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Products */}
-              <div className="om-products-section">
-                <div className="om-details-card">
-                  <div className="om-details-card-header">
-                    <h3 className="om-details-card-title">
-                      <Package className="om-details-icon" />
-                      Produits Commandés
-                    </h3>
-                  </div>
-                  <div className="om-details-card-content">
-                    <div className="om-products-list">
-                      {selectedOrder.products.map((product) => (
-                        <div key={product.id} className="om-product-item">
-                          <div className="om-product-info">
-                            <h4 className="om-product-name">{product.productName}</h4>
-                            <p className="om-product-code">Code: {product.productCode}</p>
-                          </div>
-                          <div className="om-product-details">
-                            <p className="om-product-quantity">
-                              {product.quantity} {product.unit}
-                            </p>
-                            <p className="om-product-price">{product.totalPrice.toFixed(2)}€</p>
-                          </div>
-                        </div>
-                      ))}
-                      <div className="om-separator" />
-                      <div className="om-total-section">
-                        <span className="om-total-label">Total:</span>
-                        <span className="om-total-value">{selectedOrder.totalAmount.toFixed(2)}€</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {(selectedOrder.customerNotes || selectedOrder.internalNotes) && (
-                <div className="om-notes-section">
-                  <div className="om-details-card">
-                    <div className="om-details-card-header">
-                      <h3 className="om-details-card-title">Notes</h3>
-                    </div>
-                    <div className="om-details-card-content">
-                      {selectedOrder.customerNotes && (
-                        <div className="om-note-item">
-                          <label className="om-detail-label">Notes du client</label>
-                          <p className="om-customer-note">{selectedOrder.customerNotes}</p>
-                        </div>
-                      )}
-                      {selectedOrder.internalNotes && (
-                        <div className="om-note-item">
-                          <label className="om-detail-label">Notes internes</label>
-                          <p className="om-internal-note">{selectedOrder.internalNotes}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* History */}
-              <div className="om-history-section">
-                <div className="om-details-card">
-                  <div className="om-details-card-header">
-                    <h3 className="om-details-card-title">
-                      <History className="om-details-icon" />
-                      Historique des Changements
-                    </h3>
-                  </div>
-                  <div className="om-details-card-content">
-                    <div className="om-history-list">
-                      {selectedOrder.history.map((entry) => (
-                        <div key={entry.id} className="om-history-item">
-                          <div className="om-history-dot" />
-                          <div className="om-history-content">
-                            <div className="om-history-header">
-                              <h4 className="om-history-action">{entry.action}</h4>
-                              <span className="om-history-time">
-                                {new Date(entry.timestamp).toLocaleString("fr-FR")}
-                              </span>
-                            </div>
-                            <p className="om-history-details">{entry.details}</p>
-                            <p className="om-history-user">Par: {entry.userName}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <OrderDetailsModal
+          order={selectedOrder}
+          onClose={() => setIsDetailsModalOpen(false)}
+        />
       )}
 
-      {/* Truck Assignment Modal */}
       {isAssignModalOpen && selectedOrder && (
-        <div className="om-modal-overlay" onClick={() => setIsAssignModalOpen(false)}>
-          <div className="om-modal-content om-assign-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="om-modal-header">
-              <h2 className="om-modal-title">
-                <TruckIcon className="om-modal-icon" />
-                Assigner au Camion
-              </h2>
-              <button 
-                className="om-modal-close" 
-                onClick={() => setIsAssignModalOpen(false)}
-              >
-                <X className="om-close-icon" />
-              </button>
-            </div>
-
-            <div className="om-modal-body">
-              <p className="om-assign-description">
-                Assignez la commande {selectedOrder.orderNumber} à un camion et définissez sa priorité
-              </p>
-
-              <div className="om-assign-form">
-                <div className="om-form-group">
-                  <label htmlFor="truck-select" className="om-label">Camion *</label>
-                  <select
-                    id="truck-select"
-                    value={assignmentData.truckId}
-                    onChange={(e) => setAssignmentData((prev) => ({ ...prev, truckId: e.target.value }))}
-                    className="om-select"
-                  >
-                    <option value="">Sélectionner un camion</option>
-                    {mockTrucks.map((truck) => (
-                      <option 
-                        key={truck.id} 
-                        value={truck.id} 
-                        disabled={truck.status !== "available"}
-                      >
-                        {truck.plateNumber} - {truck.model} ({truck.status === "available" ? "Disponible" : "Occupé"})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="om-form-group">
-                  <label htmlFor="priority-select" className="om-label">Priorité</label>
-                  <select
-                    id="priority-select"
-                    value={assignmentData.priority}
-                    onChange={(e) => setAssignmentData((prev) => ({ ...prev, priority: e.target.value }))}
-                    className="om-select"
-                  >
-                    <option value="">Sélectionner une priorité</option>
-                    <option value="urgent">Urgente</option>
-                    <option value="high">Haute</option>
-                    <option value="medium">Moyenne</option>
-                    <option value="low">Basse</option>
-                  </select>
-                </div>
-
-                <div className="om-form-group">
-                  <label htmlFor="assignment-notes" className="om-label">Notes internes (optionnel)</label>
-                  <textarea
-                    id="assignment-notes"
-                    value={assignmentData.notes}
-                    onChange={(e) => setAssignmentData((prev) => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Ajoutez des notes pour le chauffeur ou l'équipe..."
-                    rows={3}
-                    className="om-textarea"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="om-modal-footer">
-              <button 
-                className="om-btn om-btn-secondary" 
-                onClick={() => setIsAssignModalOpen(false)}
-              >
-                <X className="om-btn-icon" />
-                Annuler
-              </button>
-              <button 
-                className="om-btn om-btn-primary" 
-                onClick={handleSaveAssignment} 
-                disabled={loading || !assignmentData.truckId}
-              >
-                {loading ? (
-                  <>
-                    <div className="om-spinner" />
-                    Assignation...
-                  </>
-                ) : (
-                  <>
-                    <Check className="om-btn-icon" />
-                    Confirmer l'Assignation
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        <TruckAssignmentModal
+          order={selectedOrder}
+          trucks={trucks}
+          drivers={drivers}
+          accompagnateurs={accompagnateurs}
+          confirmedStatusId={getStatutByCode('CONFIRMEE')?._id}
+          loading={trucksLoading || employeesLoading || statutsLoading}
+          onSave={handleSaveAssignment}
+          onClose={() => setIsAssignModalOpen(false)}
+        />
+      )}  
     </div>
-  )
-}
+  );
+};
+
+export default OrderManagement;

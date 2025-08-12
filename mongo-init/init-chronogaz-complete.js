@@ -173,11 +173,27 @@ db.createCollection('trucks', {
     }  
   }  
 });  
+
+// Collection Cities 
+db.createCollection('cities', {  
+  validator: {  
+    $jsonSchema: {  
+      bsonType: 'object',  
+      required: ['name', 'code'],  
+      properties: {  
+        name: { bsonType: 'string' },  
+        code: { bsonType: 'string' },  
+        actif: { bsonType: 'bool' }  
+      }  
+    }  
+  }  
+});
   
 // Collection Depots  
 
 db.createCollection('regions');  
-db.createCollection('addresses');  
+db.createCollection('addresses'); 
+db.createCollection('useraddresses');
 db.createCollection('categories');  
 db.createCollection('ums');  
 db.createCollection('statutcommandes');  
@@ -229,36 +245,33 @@ const roleEmployeMagasin = db.roles.insertOne({
   createdAt: new Date(),  
   updatedAt: new Date()  
 });
-  
-// Insérer les régions  
-const regionCasa = db.regions.insertOne({  
-  code: 'CASA',  
-  nom: 'Casablanca',  
-  description: 'Région du Grand Casablanca',  
-  actif: true,  
-  createdAt: new Date(),  
-  updatedAt: new Date()  
-});  
-  
-const regionRabat = db.regions.insertOne({  
-  code: 'RABAT',  
-  nom: 'Rabat-Salé',  
-  description: 'Région de Rabat-Salé-Kénitra',  
-  actif: true,  
-  createdAt: new Date(),  
-  updatedAt: new Date()  
-});  
+
   
 // Insérer les adresses  
-const addressCasa = db.addresses.insertOne({  
-  rue: '123 Rue Mohammed V',  
-  ville: 'Casablanca',  
-  region_id: regionCasa.insertedId,  
-  type_adresse: 'DEPOT',  
-  actif: true,  
-  createdAt: new Date(),  
-  updatedAt: new Date()  
-});  
+db.createCollection('addresses', {  
+  validator: {  
+    $jsonSchema: {  
+      bsonType: 'object',  
+      required: ['user_id', 'street', 'city_id', 'region_id'],  
+      properties: {  
+        user_id: { bsonType: 'objectId' },  
+        numappt: { bsonType: 'string' },  
+        numimmeuble: { bsonType: 'string' },  
+        street: { bsonType: 'string' },  
+        city_id: { bsonType: 'objectId' },  
+        region_id: { bsonType: 'objectId' },  
+        postal_code: { bsonType: 'string' },  
+        is_principal: { bsonType: 'bool' },  
+        latitude: { bsonType: 'number' },  
+        longitude: { bsonType: 'number' },  
+        type_adresse: {   
+          enum: ['DOMICILE', 'TRAVAIL', 'LIVRAISON', 'FACTURATION']   
+        },  
+        actif: { bsonType: 'bool' }  
+      }  
+    }  
+  }  
+});
   
 // Insérer les utilisateurs  
 const userAdmin = db.users.insertOne({  
@@ -433,42 +446,40 @@ db.products.insertMany([
   }    
 ]);
 
-const region2Mars = db.regions.insertOne({  
-  code: '2MARS',  
-  nom: '2 Mars',  
-  description: 'Région 2 Mars - Casablanca',  
-  actif: true,  
-  createdAt: new Date(),  
-  updatedAt: new Date()  
-});  
+db.addresses.insertMany([  
+  {  
+    user_id: userClient.insertedId,  
+    numappt: '12',  
+    numimmeuble: '45',  
+    street: 'Rue Mohammed V',  
+    city_id: cityCasablanca.insertedId,  
+    region_id: region2Mars.insertedId,  
+    postal_code: '20000',  
+    is_principal: true,  
+    type_adresse: 'DOMICILE',  
+    actif: true,  
+    createdAt: new Date(),  
+    updatedAt: new Date()  
+  },  
+  {  
+    user_id: userEmploye.insertedId,  
+    street: 'Avenue Hassan II',  
+    city_id: cityCasablanca.insertedId,  
+    region_id: regionMaarif.insertedId,  
+    postal_code: '20100',  
+    is_principal: true,  
+    type_adresse: 'DOMICILE',  
+    actif: true,  
+    createdAt: new Date(),  
+    updatedAt: new Date()  
+  }  
+]);
+
+
   
-const regionMaarif = db.regions.insertOne({  
-  code: 'MAARIF',  
-  nom: 'Maarif',  
-  description: 'Région Maarif - Casablanca',  
-  actif: true,  
-  createdAt: new Date(),  
-  updatedAt: new Date()  
-});  
+ 
   
-const regionBirAnzarane = db.regions.insertOne({  
-  code: 'BIRANZAN',  
-  nom: 'Bir Anzarane',  
-  description: 'Région Bir Anzarane - Casablanca',  
-  actif: true,  
-  createdAt: new Date(),  
-  updatedAt: new Date()  
-});  
-  
-const regionBoulevardAlQods = db.regions.insertOne({  
-  code: 'BLVQODS',  
-  nom: 'Boulevard al qods',  
-  description: 'Région Boulevard al qods - Casablanca',  
-  actif: true,  
-  createdAt: new Date(),  
-  updatedAt: new Date()  
-});
-  
+
 // Insérer les statuts de commande  
 const statutNouvelle = db.statutcommandes.insertOne({  
   code: 'NOUVELLE',  
@@ -615,6 +626,23 @@ db.roles.createIndex({ code: 1 }, { unique: true });
 // Index Depots  
 db.depots.createIndex({ reference: 1 }, { unique: true });  
 db.depots.createIndex({ actif: 1 });
+
+// Index Cities  
+db.cities.createIndex({ name: 1 }, { unique: true });  
+db.cities.createIndex({ code: 1 }, { unique: true });  
+db.cities.createIndex({ actif: 1 });  
+  
+// Index Regions (modifier l'existant)  
+db.regions.createIndex({ code: 1 }, { unique: true });  
+db.regions.createIndex({ city_id: 1 });  
+db.regions.createIndex({ actif: 1 });  
+  
+// Index Addresses  
+db.addresses.createIndex({ user_id: 1 });  
+db.addresses.createIndex({ city_id: 1 });  
+db.addresses.createIndex({ region_id: 1 });  
+db.addresses.createIndex({ is_principal: 1 });  
+db.addresses.createIndex({ actif: 1 });
   
 print('✅ Base de données ChronoGaz complète initialisée avec succès!');  
 print('📊 Collections créées avec validation');  

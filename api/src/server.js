@@ -1,5 +1,7 @@
 const express = require('express');      
 const cors = require('cors');      
+const http = require('http');
+const socketIo = require('socket.io');
 const connectDB = require('./config/database');      
     
 // Import des routes d'authentification    
@@ -13,13 +15,18 @@ const MoralUser = require('./models/MoralUser');
 const Customer = require('./models/Customer');      
 const Employe = require('./models/Employe');      
 const Product = require('./models/Product');      
-const Truck = require('./models/Truck');      
-const Region = require('./models/Region');      
+const Truck = require('./models/Truck');     
+
 const Address = require('./models/Address');
+const City = require('./models/City');    
+const Region = require('./models/Region');  
+const locationRoutes = require('./routes/locations');  
+
+const Command = require('./models/Commande');
 
 const usersRouter = require('./routes/usersRouter');   
 
-  
+// Routes métier d'auth-module
 const depotsRoutes = require('./routes/depots');    
 const stockRoutes = require('./routes/stock');     
 const trucksRoutes = require('./routes/trucks');    
@@ -30,9 +37,13 @@ const stockLineRoutes = require('./routes/stockLines');
 const productRoutes = require('./routes/products');  
 const umRoutes = require('./routes/ums'); 
 
-    
+// Routes de commandes de ghani-dev
+const commandRoutes = require('./routes/order');
+const deliveryRoutes = require('./routes/deliveries');
+
 // Import du middleware d'authentification    
 const { authenticateToken } = require('./middleware/authMiddleware');    
+const setupWebSocket = require('./middleware/websocket');
   
 const passport = require('passport');    
 require('./config/passport');   
@@ -40,14 +51,37 @@ require('./config/passport');
 require('dotenv').config();      
     
 const app = express();      
+const server = http.createServer(app);
+
+// Configuration Socket.IO pour les commandes
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
     
 // Connexion à MongoDB      
 connectDB();      
     
 // Middleware      
-app.use(cors());      
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true
+}));      
 app.use(express.json());      
 app.use(express.urlencoded({ extended: true }));     
+
+// Middleware pour Socket.IO dans les routes
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+// Setup WebSocket pour les commandes
+setupWebSocket(io);
+
 app.use('/api/users', usersRouter);   
     
 // Routes d'authentification (publiques)    
@@ -55,7 +89,7 @@ app.use('/api/auth', authRoutes);
   
 app.use(passport.initialize());  
   
-// Routes des modules métier  
+// Routes des modules métier d'auth-module
 app.use('/api/depots', depotsRoutes);  
 app.use('/api/stock', stockRoutes);  
 app.use('/api/trucks', trucksRoutes); 
@@ -64,10 +98,14 @@ app.use('/api/stock-depots', stockDepotRoutes);
 app.use('/api/stock-lines', stockLineRoutes);
 app.use('/api/products', productRoutes);  
 app.use('/api/ums', umRoutes);
-  
-// Routes admin (AJOUTÉ)  
 app.use('/api/admin', adminRoutes);  
-  
+
+app.use('/api/locations', locationRoutes);
+
+// Routes de commandes de ghani-dev
+app.use("/api/commands", commandRoutes);
+app.use("/api/deliveries", deliveryRoutes);
+
 // Routes de test et santé      
 app.get('/api/health', (req, res) => {      
   res.json({       
@@ -77,7 +115,7 @@ app.get('/api/health', (req, res) => {
     collections: [  
       'users', 'roles', 'physicalusers', 'moralusers',  
       'customers', 'employes', 'products', 'trucks',  
-      'regions', 'addresses', 'commandes', 'depots',   
+      'regions', 'cities', 'addresses', 'commandes', 'depots',   
       'stockdepots', 'stocklines', 'ums' 
     ]     
   });      
@@ -119,27 +157,45 @@ app.get('/api/users', authenticateToken, async (req, res) => {
   }      
 });      
     
-     
-  
 // ==================== ROUTES CLIENTS CRUD ====================  
   
 // GET - Récupérer tous les clients  
 app.get('/api/customers', authenticateToken, async (req, res) => {        
   try {        
     const customers = await Customer.find()    
-      .populate({    
-        path: 'physical_user_id',    
-        populate: {    
-          path: 'user_id',    
-          select: 'email'    
-        }    
-      })    
-      .populate({    
-        path: 'moral_user_id',    
-        populate: {    
-          path: 'user_id',    
-          select: 'email'    
-        }    
+      .populate({  
+        path: 'physical_user_id',  
+        populate: [  
+          {  
+            path: 'user_id',  
+            select: 'email'  
+          },  
+          {  
+            path: 'region_principale',  
+            select: 'nom code'  
+          },  
+          {  
+            path: 'city_id',  
+            select: 'name code'  
+          }  
+        ]  
+      })  
+      .populate({  
+        path: 'moral_user_id',  
+        populate: [  
+          {  
+            path: 'user_id',  
+            select: 'email'  
+          },  
+          {  
+            path: 'region_principale',  
+            select: 'nom code'  
+          },  
+          {  
+            path: 'city_id',  
+            select: 'name code'  
+          }  
+        ]  
       });        
     res.json({        
       success: true,        
@@ -160,17 +216,37 @@ app.get('/api/customers/:id', authenticateToken, async (req, res) => {
     const customer = await Customer.findById(req.params.id)    
       .populate({    
         path: 'physical_user_id',    
-        populate: {    
-          path: 'user_id',    
-          select: 'email'    
-        }    
+        populate: [
+          {
+            path: 'user_id',    
+            select: 'email'    
+          },
+          {
+            path: 'region_principale',
+            select: 'nom code'
+          },
+          {
+            path: 'city_id',
+            select: 'name code'
+          }
+        ]
       })    
       .populate({    
         path: 'moral_user_id',    
-        populate: {    
-          path: 'user_id',    
-          select: 'email'    
-        }    
+        populate: [
+          {
+            path: 'user_id',    
+            select: 'email'    
+          },
+          {
+            path: 'region_principale',
+            select: 'nom code'
+          },
+          {
+            path: 'city_id',
+            select: 'name code'
+          }
+        ]
       });    
     
     if (!customer) {  
@@ -196,6 +272,29 @@ app.get('/api/customers/:id', authenticateToken, async (req, res) => {
 app.post('/api/customers', authenticateToken, async (req, res) => {      
   try {      
     const { type_client, profile, statut } = req.body;    
+
+    if (profile.region_principale === "" || profile.region_principale === null) {  
+      profile.region_principale = null; // ou undefined  
+    }  
+      
+    if (profile.city_id === "" || profile.city_id === null) {  
+      profile.city_id = null;  
+    }  
+      
+    // Validation ObjectId si fourni  
+    if (profile.region_principale && !mongoose.Types.ObjectId.isValid(profile.region_principale)) {  
+      return res.status(400).json({  
+        success: false,  
+        message: 'ID de région invalide'  
+      });  
+    }  
+      
+    if (profile.city_id && !mongoose.Types.ObjectId.isValid(profile.city_id)) {  
+      return res.status(400).json({  
+        success: false,  
+        message: 'ID de ville invalide'  
+      });  
+    }
           
     // Créer d'abord l'utilisateur de base      
     const roleClient = await Role.findOne({ code: 'CLIENT' });      
@@ -220,32 +319,31 @@ app.post('/api/customers', authenticateToken, async (req, res) => {
     let physicalUserId = null, moralUserId = null;      
       
     if (type_client === 'PHYSIQUE') {      
-      const physicalUser = new PhysicalUser({      
-        user_id: savedUser._id,      
-        first_name: profile.first_name,      
-        last_name: profile.last_name,      
-        civilite: profile.civilite || 'M',      
-        telephone_principal: profile.telephone_principal,      
-        ville: profile.ville, // AJOUTÉ    
-        region_principale: profile.region_principale,    
-        adresse_principale: profile.adresse_principale      
-      });      
+      const physicalUser = new PhysicalUser({  
+        user_id: savedUser._id,  
+        first_name: profile.first_name,  
+        last_name: profile.last_name,  
+        civilite: profile.civilite || 'M',  
+        telephone_principal: profile.telephone_principal, 
+        city_id: profile.city_id || null,
+        region_principale: profile.region_principale,  
+        adresse_principale: profile.adresse_principale  
+      });        
       const savedPhysical = await physicalUser.save();      
       physicalUserId = savedPhysical._id;      
     } else {      
-      // CORRIGÉ: Inclure TOUS les champs pour MoralUser    
-      const moralUser = new MoralUser({      
-        user_id: savedUser._id,      
-        raison_sociale: profile.raison_sociale,      
-        ice: profile.ice, // AJOUTÉ    
-        patente: profile.patente, // AJOUTÉ    
-        rc: profile.rc, // AJOUTÉ    
-        ville_rc: profile.ville_rc, // AJOUTÉ    
-        telephone_principal: profile.telephone_principal,      
-        ville: profile.ville, // AJOUTÉ    
-        region_principale: profile.region_principale,    
-        adresse_principale: profile.adresse_principale      
-      });      
+      const moralUser = new MoralUser({  
+        user_id: savedUser._id,  
+        raison_sociale: profile.raison_sociale,  
+        ice: profile.ice,  
+        patente: profile.patente,  
+        rc: profile.rc,  
+        ville_rc: profile.ville_rc,  
+        telephone_principal: profile.telephone_principal,  
+        city_id: profile.city_id || null,
+        region_principale: profile.region_principale,  
+        adresse_principale: profile.adresse_principale  
+      });     
       const savedMoral = await moralUser.save();      
       moralUserId = savedMoral._id;      
     }      
@@ -263,11 +361,19 @@ app.post('/api/customers', authenticateToken, async (req, res) => {
     const populatedCustomer = await Customer.findById(savedCustomer._id)      
       .populate({      
         path: 'physical_user_id',      
-        populate: { path: 'user_id', select: 'email' }      
+        populate: [
+          { path: 'user_id', select: 'email' },
+          { path: 'region_principale', select: 'nom code' },
+          { path: 'city_id', select: 'name code' }
+        ]
       })      
       .populate({      
         path: 'moral_user_id',      
-        populate: { path: 'user_id', select: 'email' }      
+        populate: [
+          { path: 'user_id', select: 'email' },
+          { path: 'region_principale', select: 'nom code' },
+          { path: 'city_id', select: 'name code' }
+        ]
       });      
       
     res.json({ success: true, data: populatedCustomer });      
@@ -317,11 +423,19 @@ app.put('/api/customers/:id', authenticateToken, async (req, res) => {
     const updatedCustomer = await Customer.findById(req.params.id)    
       .populate({    
         path: 'physical_user_id',    
-        populate: { path: 'user_id', select: 'email' }    
+        populate: [
+          { path: 'user_id', select: 'email' },
+          { path: 'region_principale', select: 'nom code' },
+          { path: 'city_id', select: 'name code' }
+        ]
       })    
       .populate({    
         path: 'moral_user_id',     
-        populate: { path: 'user_id', select: 'email' }    
+        populate: [
+          { path: 'user_id', select: 'email' },
+          { path: 'region_principale', select: 'nom code' },
+          { path: 'city_id', select: 'name code' }
+        ]
       });    
     
     res.json({ success: true, data: updatedCustomer });    
@@ -355,434 +469,563 @@ app.delete('/api/customers/:id', authenticateToken, async (req, res) => {
     }  
   
     await Customer.findByIdAndDelete(req.params.id);  
-    res.json({ success: true, message: 'Client supprimé avec succès' });  
-  } catch (error) {  
-    res.status(400).json({ success: false, message: error.message });  
-  }  
-});  
-  
-// ==================== ROUTES ENTREPRISES ====================  
-  
-// GET - Récupérer les clients d'une entreprise spécifique    
-app.get('/api/customers/company/:companyId', authenticateToken, async (req, res) => {      
+    res.json({ success: true, message: 'Client supprimé avec succès' });    
+  } catch (error) {    
+    res.status(400).json({ success: false, message: error.message });    
+  }    
+});    
+    
+// ==================== ROUTES ENTREPRISES ====================    
+    
+// GET - Récupérer les clients d'une entreprise spécifique      
+app.get('/api/customers/company/:companyId', authenticateToken, async (req, res) => {        
+  try {        
+    const { companyId } = req.params;        
+    const user = req.user;        
+            
+    // Vérifier que l'utilisateur est une entreprise et accède à ses propres clients        
+    if (user.role_id.code !== 'CLIENT' || !user.moral_user_id) {        
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });        
+    }        
+            
+    // Récupérer tous les clients physiques et filtrer ceux liés à cette entreprise      
+    const customers = await Customer.find({ type_client: 'PHYSIQUE' })      
+      .populate({        
+        path: 'physical_user_id',        
+        populate: [
+          {
+            path: 'user_id',        
+            select: 'email'  
+          },
+          {
+            path: 'region_principale',
+            select: 'nom code'
+          },
+          {
+            path: 'city_id',
+            select: 'name code'
+          }
+        ]
+      });      
+          
+    // Filtrer les clients qui ont le moral_user_id correspondant      
+    const companyClients = customers.filter(customer =>       
+      customer.physical_user_id &&       
+      customer.physical_user_id.moral_user_id &&       
+      customer.physical_user_id.moral_user_id.toString() === companyId      
+    );      
+            
+    res.json({        
+      success: true,        
+      count: companyClients.length,        
+      data: companyClients        
+    });        
+  } catch (error) {        
+    res.status(500).json({ success: false, error: error.message });        
+  }        
+});    
+    
+// POST - Créer un client particulier pour une entreprise spécifique      
+app.post('/api/customers/company', authenticateToken, async (req, res) => {      
   try {      
-    const { companyId } = req.params;      
     const user = req.user;      
           
-    // Vérifier que l'utilisateur est une entreprise et accède à ses propres clients      
+    // Vérifier que l'utilisateur est une entreprise      
     if (user.role_id.code !== 'CLIENT' || !user.moral_user_id) {      
-      return res.status(403).json({ success: false, message: 'Accès non autorisé' });      
+      return res.status(403).json({       
+        success: false,       
+        message: 'Seules les entreprises peuvent créer des clients particuliers'       
+      });      
     }      
+    
+    const { profile } = req.body;      
           
-    // Récupérer tous les clients physiques et filtrer ceux liés à cette entreprise    
-    const customers = await Customer.find({ type_client: 'PHYSIQUE' })    
+    // Validation des champs requis pour un particulier      
+    if (!profile?.first_name || !profile?.last_name || !profile?.civilite || !profile?.email) {      
+      return res.status(400).json({      
+        success: false,      
+        message: 'Prénom, nom, civilité et email sont requis'      
+      });      
+    }      
+    
+    // Créer l'utilisateur de base avec mot de passe par défaut      
+    const roleClient = await Role.findOne({ code: 'CLIENT' });      
+    if (!roleClient) {      
+      return res.status(400).json({ success: false, message: 'Rôle CLIENT non trouvé' });      
+    }      
+    
+    const bcrypt = require('bcrypt');      
+    const defaultPassword = 'ChronoGaz2024';      
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);      
+    
+    const newUser = new User({      
+      email: profile.email,      
+      password_hash: hashedPassword,      
+      role_id: roleClient._id,      
+      statut: 'ACTIF'      
+    });      
+    await newUser.save();      
+    
+    // Créer le PhysicalUser lié à l'entreprise      
+    const physicalUser = new PhysicalUser({  
+      user_id: newUser._id,  // ✅ CORRIGÉ : utiliser newUser au lieu de savedUser
+      first_name: profile.first_name,  
+      last_name: profile.last_name,  
+      civilite: profile.civilite,  
+      telephone_principal: profile.telephone_principal,  
+      city_id: profile.city_id || null,
+      region_principale: profile.region_principale, 
+      adresse_principale: profile.adresse_principale,
+      moral_user_id: user.moral_user_id // LIER À L'ENTREPRISE CONNECTÉE    
+    });       
+    await physicalUser.save();      
+    
+    // Créer le Customer      
+    const customer_code = `CLI-P${Date.now()}`;      
+    const customer = new Customer({      
+      customer_code,      
+      type_client: 'PHYSIQUE',      
+      physical_user_id: physicalUser._id,      
+      statut: 'ACTIF'      
+    });      
+    await customer.save();      
+    
+    const populatedCustomer = await Customer.findById(customer._id)      
       .populate({      
         path: 'physical_user_id',      
-        populate: {      
-          path: 'user_id',      
-          select: 'email'
-        }      
-      });    
-        
-    // Filtrer les clients qui ont le moral_user_id correspondant    
-    const companyClients = customers.filter(customer =>     
-      customer.physical_user_id &&     
-      customer.physical_user_id.moral_user_id &&     
-      customer.physical_user_id.moral_user_id.toString() === companyId    
-    );    
-          
-    res.json({      
-      success: true,      
-      count: companyClients.length,      
-      data: companyClients      
+        populate: [
+          {
+            path: 'user_id',      
+            select: 'email'      
+          },
+          {
+            path: 'region_principale',
+            select: 'nom code'
+          },
+          {
+            path: 'city_id',
+            select: 'name code'
+          }
+        ]
+      });      
+    
+    res.status(201).json({       
+      success: true,       
+      message: 'Client particulier créé avec succès',      
+      data: populatedCustomer       
     });      
+    
+  } catch (error) {      
+    console.error('Erreur création client entreprise:', error);        
+            
+    if (error.code === 11000) {        
+      return res.status(400).json({        
+        success: false,        
+        message: 'Cet email est déjà utilisé'        
+      });        
+    }        
+            
+    res.status(500).json({         
+      success: false,         
+      message: 'Erreur interne du serveur',        
+      error: error.message         
+    });        
+  }        
+});      
+
+// Route pour les adresses client (utilise la logique customers existante)  
+app.get('/api/customers/:id/addresses', authenticateToken, async (req, res) => {  
+  try {  
+    const customer = await Customer.findById(req.params.id)  
+      .populate({  
+        path: 'physical_user_id',  
+        populate: [  
+          { path: 'region_principale', select: 'nom code' },  
+          { path: 'city_id', select: 'name code' }  
+        ]  
+      })  
+      .populate({  
+        path: 'moral_user_id',  
+        populate: [  
+          { path: 'region_principale', select: 'nom code' },  
+          { path: 'city_id', select: 'name code' }  
+        ]  
+      });  
+        
+    if (!customer) {  
+      return res.status(404).json({ success: false, message: 'Client non trouvé' });  
+    }  
+        
+    let addresses = [];  
+        
+    if (customer.physical_user_id) {  
+      addresses.push({  
+        _id: customer.physical_user_id._id,  
+        type_adresse: 'DOMICILE',  
+        street: customer.physical_user_id.adresse_principale || '', // ✅ CORRIGÉ : utiliser 'street' au lieu de 'rue'
+        region: customer.physical_user_id.region_principale, // Objet complet  
+        city: customer.physical_user_id.city_id, // Objet complet  
+        telephone: customer.physical_user_id.telephone_principal || '',  
+        is_principal: true  
+      });  
+    } else if (customer.moral_user_id) {  
+      addresses.push({  
+        _id: customer.moral_user_id._id,  
+        type_adresse: 'SIÈGE SOCIAL',  
+        street: customer.moral_user_id.adresse_principale || '', // ✅ CORRIGÉ : utiliser 'street' au lieu de 'rue'
+        region: customer.moral_user_id.region_principale, // Objet complet  
+        city: customer.moral_user_id.city_id, // Objet complet  
+        telephone: customer.moral_user_id.telephone_principal || '',  
+        is_principal: true  
+      });  
+    }  
+        
+    res.json({  
+      success: true,  
+      addresses: addresses  
+    });  
+  } catch (error) {  
+    res.status(500).json({ success: false, error: error.message });  
+  }  
+});
+      
+// ==================== ROUTES EMPLOYÉS CRUD ====================      
+      
+// GET - Récupérer tous les employés      
+app.get('/api/employees', authenticateToken, async (req, res) => {      
+  try {      
+    const employees = await Employe.find()      
+      .populate({      
+        path: 'physical_user_id',      
+        populate: [
+          {
+            path: 'user_id',      
+            select: 'email'      
+          },
+          {
+            path: 'region_principale',
+            select: 'nom code'
+          },
+          {
+            path: 'city_id',
+            select: 'name code'
+          }
+        ]
+      });      
+    res.json({ success: true, count: employees.length, data: employees });      
   } catch (error) {      
     res.status(500).json({ success: false, error: error.message });      
   }      
-});  
-  
-// POST - Créer un client particulier pour une entreprise spécifique    
-app.post('/api/customers/company', authenticateToken, async (req, res) => {    
-  try {    
-    const user = req.user;    
-        
-    // Vérifier que l'utilisateur est une entreprise    
-    if (user.role_id.code !== 'CLIENT' || !user.moral_user_id) {    
-      return res.status(403).json({     
-        success: false,     
-        message: 'Seules les entreprises peuvent créer des clients particuliers'     
-      });    
-    }    
-  
-    const { profile } = req.body;    
-        
-    // Validation des champs requis pour un particulier    
-    if (!profile?.first_name || !profile?.last_name || !profile?.civilite || !profile?.email) {    
-      return res.status(400).json({    
-        success: false,    
-        message: 'Prénom, nom, civilité et email sont requis'    
-      });    
-    }    
-  
-    // Créer l'utilisateur de base avec mot de passe par défaut    
-    const roleClient = await Role.findOne({ code: 'CLIENT' });    
-    if (!roleClient) {    
-      return res.status(400).json({ success: false, message: 'Rôle CLIENT non trouvé' });    
-    }    
-  
-    const bcrypt = require('bcrypt');    
-    const defaultPassword = 'ChronoGaz2024';    
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);    
-  
-    const newUser = new User({    
-      email: profile.email,    
-      password_hash: hashedPassword,    
-      role_id: roleClient._id,    
-      statut: 'ACTIF'    
-    });    
-    await newUser.save();    
-  
-    // Créer le PhysicalUser lié à l'entreprise    
-    const physicalUser = new PhysicalUser({    
-      user_id: newUser._id,    
-      first_name: profile.first_name,    
-      last_name: profile.last_name,    
-      civilite: profile.civilite,    
-      telephone_principal: profile.telephone_principal,    
-      adresse_principale: profile.adresse_principale,    
-      moral_user_id: user.moral_user_id // LIER À L'ENTREPRISE CONNECTÉE    
-    });    
-    await physicalUser.save();    
-  
-    // Créer le Customer    
-    const customer_code = `CLI-P${Date.now()}`;    
-    const customer = new Customer({    
-      customer_code,    
-      type_client: 'PHYSIQUE',    
-      physical_user_id: physicalUser._id,    
-      statut: 'ACTIF'    
-    });    
-    await customer.save();    
-  
-    const populatedCustomer = await Customer.findById(customer._id)    
-      .populate({    
-        path: 'physical_user_id',    
-        populate: {    
-          path: 'user_id',    
-          select: 'email'    
-        }    
-      });    
-  
-    res.status(201).json({     
-      success: true,     
-      message: 'Client particulier créé avec succès',    
-      data: populatedCustomer     
-    });    
-  
-  } catch (error) {    
-    console.error('Erreur création client entreprise:', error);      
-          
-    if (error.code === 11000) {      
-      return res.status(400).json({      
-        success: false,      
-        message: 'Cet email est déjà utilisé'      
-      });      
-    }      
-          
-    res.status(500).json({       
-      success: false,       
-      message: 'Erreur interne du serveur',      
-      error: error.message       
-    });      
-  }      
-});    
-    
-// ==================== ROUTES EMPLOYÉS CRUD ====================    
-    
-// GET - Récupérer tous les employés    
-app.get('/api/employees', authenticateToken, async (req, res) => {    
-  try {    
-    const employees = await Employe.find()    
-      .populate({    
-        path: 'physical_user_id',    
-        populate: {    
-          path: 'user_id',    
-          select: 'email'    
-        }    
-      });    
-    res.json({ success: true, count: employees.length, data: employees });    
-  } catch (error) {    
-    res.status(500).json({ success: false, error: error.message });    
-  }    
-});    
-    
-// GET - Récupérer un employé par ID    
-app.get('/api/employees/:id', authenticateToken, async (req, res) => {    
-  try {    
-    const employee = await Employe.findById(req.params.id)    
-      .populate({    
-        path: 'physical_user_id',    
-        populate: { path: 'user_id', select: 'email statut' }    
-      });    
-          
-    if (!employee) {    
-      return res.status(404).json({ success: false, message: 'Employé non trouvé' });    
-    }    
-        
-    res.json({ success: true, data: employee });    
-  } catch (error) {    
-    res.status(500).json({ success: false, error: error.message });    
-  }    
-});    
-    
-// POST - Créer un nouvel employé    
-app.post('/api/employees', authenticateToken, async (req, res) => {        
-  try {        
-    const { profile, fonction, statut } = req.body;        
-            
-    // Déterminer le rôle selon la fonction      
-    let roleCode = 'EMPLOYE'; // Par défaut pour chauffeurs et accompagnants        
-    if (fonction === 'MAGASINIER') {        
-      roleCode = 'EMPLOYE_MAGASIN';        
-    }        
-            
-    const roleEmploye = await Role.findOne({ code: roleCode });        
-    if (!roleEmploye) {        
-      return res.status(400).json({ success: false, message: `Rôle ${roleCode} non trouvé` });        
-    }        
-        
-    const bcrypt = require('bcrypt');        
-          
-    const defaultPassword = 'ChronoGaz2024';        
-    const saltRounds = 10;        
-    const hashedPassword = await bcrypt.hash(defaultPassword, saltRounds);        
-            
-    const newUser = new User({          
-      email: profile.email,          
-      password_hash: hashedPassword,          
-      role_id: roleEmploye._id,    
-      password_temporary: true, // AJOUTÉ    
-      first_login: true // AJOUTÉ    
-    });      
-    const savedUser = await newUser.save();      
+});      
       
-    // Créer l'utilisateur physique avec région      
-    const physicalUser = new PhysicalUser({        
-      user_id: savedUser._id,        
-      first_name: profile.first_name,        
-      last_name: profile.last_name,        
-      civilite: profile.civilite || 'M',        
-      telephone_principal: profile.telephone_principal,        
-      region_principale: profile.region_principale,    
-      ville: profile.ville, // AJOUTÉ    
-      adresse_principale: profile.adresse_principale    
-    });       
-    const savedPhysical = await physicalUser.save();      
-      
-    // Créer l'employé avec tous les champs      
-    const employee = new Employe({        
-      physical_user_id: savedPhysical._id,        
-      matricule: `EMP${(Date.now()).toString().padStart(6, '0')}`, // AMÉLIORÉ    
-      cin: profile.cin,      
-      cnss: profile.cnss,    
-      fonction,        
-      date_embauche: new Date(),        
-      statut: statut || 'ACTIF'  
-    });  
-      
-    const savedEmployee = await employee.save();      
-    const populatedEmployee = await Employe.findById(savedEmployee._id)      
+// GET - Récupérer un employé par ID      
+app.get('/api/employees/:id', authenticateToken, async (req, res) => {      
+  try {      
+    const employee = await Employe.findById(req.params.id)      
       .populate({      
         path: 'physical_user_id',      
-        populate: { path: 'user_id', select: 'email statut' }      
+        populate: [
+          { path: 'user_id', select: 'email statut' },
+          { path: 'region_principale', select: 'nom code' },
+          { path: 'city_id', select: 'name code' }
+        ]
       });      
-      
-    res.json({ success: true, data: populatedEmployee });      
-  } catch (error) {      
-    console.error('Erreur création employé:', error);      
-    res.status(400).json({ success: false, message: error.message });      
-  }      
-});    
-    
-// PUT - Mettre à jour un employé    
-app.put('/api/employees/:id', authenticateToken, async (req, res) => {        
-  try {        
-    const { profile, fonction, statut } = req.body;        
-    const employee = await Employe.findById(req.params.id)        
-      .populate('physical_user_id');        
-        
-    if (!employee) {        
-      return res.status(404).json({ success: false, message: 'Employé non trouvé' });        
-    }        
-        
-    // Mettre à jour les données de l'employé        
-    if (fonction) employee.fonction = fonction;        
-    if (statut !== undefined) employee.statut = statut; // AJOUTÉ    
-    if (profile.cin !== undefined) employee.cin = profile.cin;    
-    if (profile.cnss !== undefined) employee.cnss = profile.cnss;    
-    await employee.save();       
-        
-    // AJOUTÉ: Mettre à jour l'email dans User si fourni    
-    if (profile?.email && employee.physical_user_id) {    
-      await User.findByIdAndUpdate(employee.physical_user_id.user_id, {     
-        email: profile.email     
-      });    
-    }    
-        
-    // Mettre à jour les données physiques        
-    if (profile && employee.physical_user_id) {        
-      const updateFields = {    
-        first_name: profile.first_name,        
-        last_name: profile.last_name,        
-        civilite: profile.civilite, // AJOUTÉ    
-        telephone_principal: profile.telephone_principal,        
-        region_principale: profile.region_principale,    
-        ville: profile.ville,    
-        adresse_principale: profile.adresse_principale    
-      };    
-      await PhysicalUser.findByIdAndUpdate(employee.physical_user_id._id, updateFields);        
-    }       
-        
-    const updatedEmployee = await Employe.findById(req.params.id)        
-      .populate({        
-        path: 'physical_user_id',        
-        populate: { path: 'user_id', select: 'email statut' }        
-      });        
-        
-    res.json({ success: true, data: updatedEmployee });        
-  } catch (error) {        
-    res.status(400).json({ success: false, message: error.message });        
-  }        
-});  
-    
-// DELETE - Supprimer un employé    
-app.delete('/api/employees/:id', authenticateToken, async (req, res) => {    
-  try {    
-    const employee = await Employe.findById(req.params.id);      
+            
     if (!employee) {      
       return res.status(404).json({ success: false, message: 'Employé non trouvé' });      
     }      
-      
-    // Supprimer les données liées      
-    if (employee.physical_user_id) {      
-      const physicalUser = await PhysicalUser.findById(employee.physical_user_id);      
-      if (physicalUser) {      
-        await User.findByIdAndDelete(physicalUser.user_id);      
-        await PhysicalUser.findByIdAndDelete(employee.physical_user_id);      
-      }      
-    }      
-      
-    await Employe.findByIdAndDelete(req.params.id);      
-    res.json({ success: true, message: 'Employé supprimé avec succès' });      
+          
+    res.json({ success: true, data: employee });      
   } catch (error) {      
-    res.status(400).json({ success: false, message: error.message });      
+    res.status(500).json({ success: false, error: error.message });      
   }      
 });      
       
-// Route protégée pour tester les camions          
-app.get('/api/trucks', authenticateToken, async (req, res) => {            
+// POST - Créer un nouvel employé      
+app.post('/api/employees', authenticateToken, async (req, res) => {          
+  try {          
+    const { profile, fonction, statut } = req.body;          
+              
+    // Déterminer le rôle selon la fonction        
+    let roleCode = 'EMPLOYE'; // Par défaut pour chauffeurs et accompagnants          
+    if (fonction === 'MAGASINIER') {          
+      roleCode = 'EMPLOYE_MAGASIN';          
+    }          
+              
+    const roleEmploye = await Role.findOne({ code: roleCode });          
+    if (!roleEmploye) {          
+      return res.status(400).json({ success: false, message: `Rôle ${roleCode} non trouvé` });          
+    }          
+          
+    const bcrypt = require('bcrypt');          
+            
+    const defaultPassword = 'ChronoGaz2024';          
+    const saltRounds = 10;          
+    const hashedPassword = await bcrypt.hash(defaultPassword, saltRounds);          
+              
+    const newUser = new User({            
+      email: profile.email,            
+      password_hash: hashedPassword,            
+      role_id: roleEmploye._id,      
+      password_temporary: true, // AJOUTÉ      
+      first_login: true // AJOUTÉ      
+    });        
+    const savedUser = await newUser.save();        
+        
+    // Créer l'utilisateur physique avec région        
+    const physicalUser = new PhysicalUser({  
+      user_id: savedUser._id,  
+      first_name: profile.first_name,  
+      last_name: profile.last_name,  
+      civilite: profile.civilite || 'M',  
+      telephone_principal: profile.telephone_principal,  
+      city_id: profile.city_id || null, // ✅ AJOUTÉ
+      region_principale: profile.region_principale,  
+      adresse_principale: profile.adresse_principale  
+    });           
+    const savedPhysical = await physicalUser.save();        
+        
+    // Créer l'employé avec tous les champs        
+    const employee = new Employe({          
+      physical_user_id: savedPhysical._id,          
+      matricule: `EMP${(Date.now()).toString().padStart(6, '0')}`, // AMÉLIORÉ      
+      cin: profile.cin,        
+      cnss: profile.cnss,      
+      fonction,          
+      date_embauche: new Date(),          
+      statut: statut || 'ACTIF'    
+    });    
+        
+    const savedEmployee = await employee.save();        
+    const populatedEmployee = await Employe.findById(savedEmployee._id)        
+      .populate({
+        path: 'physical_user_id',          
+        populate: [  
+          { path: 'user_id', select: 'email statut' },  
+          { path: 'region_principale', select: 'nom code' },  
+          { path: 'city_id', select: 'name code' }  
+        ]  
+      });          
+          
+    res.json({ success: true, data: populatedEmployee });          
+  } catch (error) {          
+    console.error('Erreur création employé:', error);          
+    res.status(400).json({ success: false, message: error.message });          
+  }          
+});        
+        
+// PUT - Mettre à jour un employé        
+app.put('/api/employees/:id', authenticateToken, async (req, res) => {            
   try {            
-    const trucks = await Truck.find({ status: { $ne: 'Hors service' } }) // Remplace actif: true  
-      .populate('region_id', 'code nom');            
-    res.json({            
-      success: true,            
-      count: trucks.length,            
-      data: trucks            
-    });            
+    const { profile, fonction, statut } = req.body;            
+    const employee = await Employe.findById(req.params.id)            
+      .populate('physical_user_id');            
+            
+    if (!employee) {            
+      return res.status(404).json({ success: false, message: 'Employé non trouvé' });            
+    }            
+            
+    // Mettre à jour les données de l'employé            
+    if (fonction) employee.fonction = fonction;            
+    if (statut !== undefined) employee.statut = statut;        
+    if (profile.cin !== undefined) employee.cin = profile.cin;        
+    if (profile.cnss !== undefined) employee.cnss = profile.cnss;        
+    await employee.save();           
+            
+    // Mettre à jour l'email dans User si fourni        
+    if (profile?.email && employee.physical_user_id) {        
+      await User.findByIdAndUpdate(employee.physical_user_id.user_id, {         
+        email: profile.email         
+      });        
+    }        
+            
+    // Mettre à jour les données physiques            
+    if (profile && employee.physical_user_id) {            
+      const updateFields = {        
+        first_name: profile.first_name,            
+        last_name: profile.last_name,            
+        civilite: profile.civilite,        
+        telephone_principal: profile.telephone_principal,            
+        city_id: profile.city_id, // ✅ AJOUTÉ  
+        region_principale: profile.region_principale,  
+        adresse_principale: profile.adresse_principale        
+      };        
+      await PhysicalUser.findByIdAndUpdate(employee.physical_user_id._id, updateFields);            
+    }           
+            
+    const updatedEmployee = await Employe.findById(req.params.id)            
+      .populate({            
+        path: 'physical_user_id',            
+        populate: [  
+          { path: 'user_id', select: 'email statut' },  
+          { path: 'region_principale', select: 'nom code' },  
+          { path: 'city_id', select: 'name code' }  
+        ]  
+      });            
+            
+    res.json({ success: true, data: updatedEmployee });            
   } catch (error) {            
-    res.status(500).json({             
-      success: false,            
-      error: error.message             
-    });            
+    res.status(400).json({ success: false, message: error.message });            
   }            
+});      
+        
+// DELETE - Supprimer un employé        
+app.delete('/api/employees/:id', authenticateToken, async (req, res) => {        
+  try {        
+    const employee = await Employe.findById(req.params.id);          
+    if (!employee) {          
+      return res.status(404).json({ success: false, message: 'Employé non trouvé' });          
+    }          
+          
+    // Supprimer les données liées          
+    if (employee.physical_user_id) {          
+      const physicalUser = await PhysicalUser.findById(employee.physical_user_id);          
+      if (physicalUser) {          
+        await User.findByIdAndDelete(physicalUser.user_id);          
+        await PhysicalUser.findByIdAndDelete(employee.physical_user_id);          
+      }          
+    }          
+          
+    await Employe.findByIdAndDelete(req.params.id);          
+    res.json({ success: true, message: 'Employé supprimé avec succès' });          
+  } catch (error) {          
+    res.status(400).json({ success: false, message: error.message });          
+  }          
 });          
-        
-// Route protégée pour les statistiques générales          
-app.get('/api/stats', authenticateToken, async (req, res) => {            
-  try {            
-    const stats = {            
-      users: await User.countDocuments(),            
-      customers: await Customer.countDocuments(),            
-      products: await Product.countDocuments({ actif: true }),            
-      trucks: await Truck.countDocuments({ status: { $ne: 'Hors service' } }), // Modifié  
-      roles: await Role.countDocuments({ actif: true })            
-    };            
-                
-    res.json({            
-      success: true,            
-      data: stats,            
-      timestamp: new Date().toISOString()            
-    });            
-  } catch (error) {            
-    res.status(500).json({             
-      success: false,            
-      error: error.message             
-    });            
-  }            
-});         
-        
-// Gestion des erreurs 404          
-app.use('*', (req, res) => {          
-  res.status(404).json({          
-    success: false,          
-    message: 'Route non trouvée',          
-    availableRoutes: [          
-      'POST /api/auth/register',        
-      'POST /api/auth/login',        
-      'GET /api/health',          
-      'GET /api/users (protégée)',    
-      'GET /api/customers (protégée)',      
-      'POST /api/customers (protégée)',      
-      'PUT /api/customers/:id (protégée)',      
-      'DELETE /api/customers/:id (protégée)',      
-      'GET /api/customers/:id (protégée)',    
-      'GET /api/customers/company/:companyId (protégée)',    
-      'POST /api/customers/company (protégée)',    
-      'GET /api/employees (protégée)',      
-      'POST /api/employees (protégée)',      
-      'PUT /api/employees/:id (protégée)',      
-      'DELETE /api/employees/:id (protégée)',      
-      'GET /api/employees/:id (protégée)',      
-      'GET /api/trucks (protégée)',          
-      'GET /api/stats (protégée)',  
-      'GET/POST/PUT/DELETE /api/depots (protégée)',  
-      'GET/POST/PUT/DELETE /api/stock (protégée)',   
-      'GET/POST/PUT/DELETE /api/products (protégée)',  
-      'GET/POST/PUT/DELETE /api/trucks (protégée)',  
-      'GET /api/admin/clients (admin)',  
-      'GET /api/admin/employees (admin)',  
-      'POST/PUT/DELETE /api/admin/users (admin)',
-      'GET/POST/PUT/DELETE /api/reports (protégée)',  
-      'GET /api/reports/dashboard (protégée)',  
-      'GET /api/reports/inventory (protégée)',  
-      'GET /api/reports/export/products (protégée)',  
-      'GET/POST/PUT/DELETE /api/stock-depots (protégée)',  
-      'GET/POST/PUT/DELETE /api/stock-lines (protégée)',  
-      'GET/POST/PUT/DELETE /api/ums (protégée)',        
-    ]          
-  });          
+          
+// Route protégée pour tester les camions              
+app.get('/api/trucks', authenticateToken, async (req, res) => {                
+  try {                
+    const trucks = await Truck.find({ status: { $ne: 'Hors service' } })      
+      .populate('region_id', 'code nom');                
+    res.json({                
+      success: true,                
+      count: trucks.length,                
+      data: trucks                
+    });                
+  } catch (error) {                
+    res.status(500).json({                 
+      success: false,                
+      error: error.message                 
+    });                
+  }                
 });          
+  
+app.post('/api/address', authenticateToken, async (req, res) => {    
+  try {    
+    const newAddress = new Address(req.body);    
+    const savedAddress = await newAddress.save();    
         
-// Gestion globale des erreurs          
-app.use((err, req, res, next) => {          
-  console.error('Erreur serveur:', err.stack);          
-  res.status(500).json({          
-    success: false,          
-    message: 'Erreur interne du serveur',          
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Une erreur est survenue'          
-  });          
-});          
-    
-const PORT = process.env.PORT || 5000;          
+    const populatedAddress = await Address.findById(savedAddress._id)    
+      .populate('region_id')  
+      .populate('city_id');    
         
-app.listen(PORT, () => {          
-  console.log(`🚀 ChronoGaz server running on port ${PORT}`);          
-  console.log(`📊 MongoDB connected to chronogaz_db`);          
-  console.log(`🔗 API Health: http://localhost:${PORT}/api/health`);          
-  console.log(`🔐 Auth Register: http://localhost:${PORT}/api/auth/register`);        
-  console.log(`🔐 Auth Login: http://localhost:${PORT}/api/auth/login`);        
-  console.log(`📈 API Stats: http://localhost:${PORT}/api/stats`);          
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);          
-});          
+    res.status(201).json({    
+      success: true,    
+      message: 'Adresse créée avec succès',    
+      data: populatedAddress    
+    });    
+  } catch (error) {    
+    console.error('Erreur création adresse:', error);    
+    res.status(500).json({    
+      success: false,    
+      message: 'Erreur serveur lors de la création de l\'adresse',    
+      error: error.message    
+    });    
+  }    
+});    
+     
+// Route protégée pour les statistiques générales              
+app.get('/api/stats', authenticateToken, async (req, res) => {                
+  try {                
+    const stats = {                
+      users: await User.countDocuments(),                
+      customers: await Customer.countDocuments(),                
+      products: await Product.countDocuments({ actif: true }),                
+      trucks: await Truck.countDocuments({ status: { $ne: 'Hors service' } }),      
+      roles: await Role.countDocuments({ actif: true })    
+    };                
+                    
+    res.json({                
+      success: true,                
+      data: stats,                
+      timestamp: new Date().toISOString()                
+    });                
+  } catch (error) {                
+    res.status(500).json({                 
+      success: false,                
+      error: error.message                 
+    });                
+  }                
+});             
+            
+// Gestion des erreurs 404              
+app.use('*', (req, res) => {              
+  res.status(404).json({              
+    success: false,              
+    message: 'Route non trouvée',              
+    availableRoutes: [              
+      'POST /api/auth/register',            
+      'POST /api/auth/login',            
+      'GET /api/health',              
+      'GET /api/users (protégée)',        
+      'GET /api/customers (protégée)',          
+      'POST /api/customers (protégée)',          
+      'PUT /api/customers/:id (protégée)',          
+      'DELETE /api/customers/:id (protégée)',          
+      'GET /api/customers/:id (protégée)',        
+      'GET /api/customers/company/:companyId (protégée)',        
+      'POST /api/customers/company (protégée)',        
+      'GET /api/customers/:id/addresses (protégée)',  
+      'GET /api/employees (protégée)',          
+      'POST /api/employees (protégée)',          
+      'PUT /api/employees/:id (protégée)',          
+      'DELETE /api/employees/:id (protégée)',          
+      'GET /api/employees/:id (protégée)',          
+      'GET /api/trucks (protégée)',              
+      'GET /api/stats (protégée)',      
+      'POST /api/address (protégée)',  
+      'GET/POST/PUT/DELETE /api/depots (protégée)',      
+      'GET/POST/PUT/DELETE /api/stock (protégée)',       
+      'GET/POST/PUT/DELETE /api/products (protégée)',      
+      'GET/POST/PUT/DELETE /api/trucks (protégée)',      
+      'GET /api/admin/clients (admin)',      
+      'GET /api/admin/employees (admin)',      
+      'POST/PUT/DELETE /api/admin/users (admin)',    
+      'GET/POST/PUT/DELETE /api/reports (protégée)',      
+      'GET /api/reports/dashboard (protégée)',      
+      'GET /api/reports/inventory (protégée)',      
+      'GET /api/reports/export/products (protégée)',      
+      'GET/POST/PUT/DELETE /api/stock-depots (protégée)',      
+      'GET/POST/PUT/DELETE /api/stock-lines (protégée)',      
+      'GET/POST/PUT/DELETE /api/ums (protégée)',    
+      'GET/POST/PUT/DELETE /api/commands (protégée)',    
+      'GET/POST/PUT/DELETE /api/deliveries (protégée)',  
+      'GET/POST/PUT/DELETE /api/locations (protégée)'            
+    ]              
+  });              
+});              
+            
+// Gestion globale des erreurs              
+app.use((err, req, res, next) => {              
+  console.error('Erreur serveur:', err.stack);              
+  res.status(500).json({              
+    success: false,              
+    message: 'Erreur interne du serveur',              
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Une erreur est survenue'              
+  });              
+});              
         
-module.exports = app;
+const PORT = process.env.PORT || 5000;              
+            
+server.listen(PORT, () => {              
+  console.log(`🚀 ChronoGaz server running on port ${PORT}`);              
+  console.log(`📊 MongoDB connected to chronogaz_db`);              
+  console.log(`🔗 API Health: http://localhost:${PORT}/api/health`);              
+  console.log(`🔐 Auth Register: http://localhost:${PORT}/api/auth/register`);            
+  console.log(`🔐 Auth Login: http://localhost:${PORT}/api/auth/login`);            
+  console.log(`📈 API Stats: http://localhost:${PORT}/api/stats`);    
+  console.log(`📦 Commands API: http://localhost:${PORT}/api/commands`);    
+  console.log(`🚚 Deliveries API: http://localhost:${PORT}/api/deliveries`);              
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);              
+});

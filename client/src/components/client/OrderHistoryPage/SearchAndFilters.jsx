@@ -5,10 +5,14 @@ import { Search } from 'lucide-react';
 const SearchAndFilters = ({ searchTerm, setSearchTerm, filterStatus, setFilterStatus }) => {
     const filterButtons = [
       { value: 'toutes', label: 'Toutes', color: '#6B7280' },
-      { value: 'livree', label: 'Livrées', color: '#10B981' },
+      { value: 'Livrée', label: 'Livrées', color: '#10B981' },
     //  { value: 'en_route', label: 'En route', color: '#4DAEBD' },
-      { value: 'en_cours', label: 'En cours', color: '#F59E0B' },
-      { value: 'annulee', label: 'Annulées', color: '#EF4444' }
+      { value: 'En cours', label: 'En cours', color: '#F59E0B' },
+      { value: 'Annulée', label: 'Annulées', color: '#EF4444' },
+      { value: 'Confirmée', label: 'Confirmées', color: '#DBEAFE' },
+      { value: 'Planifiée', label: 'Planifiées', color: '#D1FAFA' },
+      { value: 'Nouvelle', label: 'Nouvelles', color: '#F3E8FF' }
+
     ];
   
     return (

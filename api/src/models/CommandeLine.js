@@ -1,4 +1,5 @@
-const mongoose = require('mongoose');  
+const mongoose = require('mongoose'); 
+require('./Um');
   
 const CommandeLineSchema = new mongoose.Schema({  
   commande_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Commande', required: true },  
