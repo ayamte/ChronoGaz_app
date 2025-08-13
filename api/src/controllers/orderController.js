@@ -56,7 +56,14 @@ const getCommands = async (req, res) => {
             select: 'first_name last_name telephone_principal'
           }
       })
-      .populate('address_livraison_id', 'rue ville')
+      .populate({
+        path: 'address_livraison_id',
+        select: 'rue ville region_id', // Inclure 'region_id' dans la sélection
+        populate: {
+          path: 'region_id', // Population imbriquée pour récupérer la région
+          select: 'nom' // Ne récupérer que le champ 'nom' de la région
+        }
+      })
       .populate('statut_id', 'code nom') 
       .sort({ date_commande: -1 })
       .skip(skip)
