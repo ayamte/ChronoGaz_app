@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { MapPin, Map } from 'lucide-react';
 import axios from 'axios';
 
-const AddressStep = ({ 
-  useGPS, 
-  setUseGPS, 
-  address, 
-  setAddress, 
-  gpsLocation, 
-  onGPSLocation, 
-  onBack, 
-  onNext, 
-  canProceed ,
+const AddressStep = ({
+  useGPS,
+  setUseGPS,
+  address,
+  setAddress,
+  gpsLocation,
+  onGPSLocation,
+  onBack,
+  onNext,
+  canProceed,
   clientAddresses = [],
   loadingClient = false
 }) => {
@@ -28,7 +28,6 @@ const AddressStep = ({
         console.error('Erreur lors du chargement des régions:', error);
       }
     };
-  
     fetchRegions();
   }, []);
 
@@ -42,9 +41,43 @@ const AddressStep = ({
     setAddress({ ...address, [field]: value });
   };
 
+  const handleSearchNominatim = async () => {
+    const { rue, ville, code_postal } = address;
+    if (!rue || !ville) {
+      alert('Veuillez entrer une rue et une ville pour la recherche.');
+      return;
+    }
+
+    const query = `${rue}, ${ville}, ${code_postal || ''}, Morocco`;
+    try {
+      const response = await axios.get('https://nominatim.openstreetmap.org/search', {
+        params: {
+          q: query,
+          format: 'json',
+          limit: 1
+        }
+      });
+
+      if (response.data && response.data.length > 0) {
+        const result = response.data[0];
+        setAddress(prev => ({
+          ...prev,
+          latitude: result.lat,
+          longitude: result.lon,
+        }));
+        alert(`Coordonnées trouvées : ${result.lat}, ${result.lon}`);
+      } else {
+        alert('Adresse non trouvée. Veuillez vérifier les informations ou utiliser la géolocalisation.');
+      }
+    } catch (error) {
+      console.error('Erreur Nominatim:', error);
+      alert('Erreur lors de la recherche de l\'adresse.');
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-6 text-center" style={{color: '#1F55A3'}}>
+      <h2 className="text-2xl font-bold mb-6 text-center" style={{ color: '#1F55A3' }}>
         2) Adresse de livraison
       </h2>
 
@@ -61,17 +94,17 @@ const AddressStep = ({
               className="w-4 h-4"
             />
             <label htmlFor="gps" className="flex items-center space-x-2 cursor-pointer">
-              <MapPin size={20} style={{color: '#4DAEBD'}} />
+              <MapPin size={20} style={{ color: '#4DAEBD' }} />
               <span className="font-medium">Utiliser ma position actuelle</span>
             </label>
           </div>
-          
+
           {useGPS && (
             <div className="mt-4">
               <button
                 onClick={onGPSLocation}
                 className="px-4 py-2 rounded-lg text-white font-medium hover:opacity-80 transition-opacity"
-                style={{backgroundColor: '#4DAEBD'}}
+                style={{ backgroundColor: '#4DAEBD' }}
               >
                 <MapPin size={16} className="inline mr-2" />
                 Obtenir ma position
@@ -87,62 +120,64 @@ const AddressStep = ({
 
         {/* Adresses sauvegardées */}
         {!useGPS && clientAddresses.length > 0 && (
-  <div className="border-2 border-gray-200 rounded-lg p-4 mb-4">
-    <h4 className="font-medium mb-3 text-gray-700">
-      Vos adresses sauvegardées ({clientAddresses.length}) :
-    </h4>
-    <div className="space-y-2">
-      {clientAddresses.map((addr) => (
-        <div
-          key={addr._id}
-          onClick={() => {
-            setAddress({
-              ...address,
-              num_appt: addr.num_appt || '',
-              num_immeuble: addr.num_immeuble || '',
-              rue: addr.rue || '',
-              quartier: addr.quartier || '',
-              ville: addr.ville || 'Casablanca',
-              code_postal: addr.code_postal || '',
-              region_id: addr.region_id || '',
-              telephone: addr.telephone || '',
-              instructions_livraison: addr.instructions_livraison || ''
-            });
-            setSelectedRegion(addr.region_id || '');
-          }}
-          className="p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <p className="font-medium text-gray-800">{addr.type_adresse}</p>
-                {addr.is_principal && (
-                  <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">
-                    Principal
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-gray-600">
-                {addr.num_immeuble ? `Imm. ${addr.num_immeuble}, ` : ''}
-                {addr.num_appt ? `Apt. ${addr.num_appt}, ` : ''}
-                {addr.rue}
-              </p>
-              <p className="text-sm text-gray-500">
-                {addr.quartier ? `${addr.quartier}, ` : ''}{addr.ville}
-              </p>
-              {addr.telephone && (
-                <p className="text-sm text-gray-500">Tel: {addr.telephone}</p>
-              )}
+          <div className="border-2 border-gray-200 rounded-lg p-4 mb-4">
+            <h4 className="font-medium mb-3 text-gray-700">
+              Vos adresses sauvegardées ({clientAddresses.length}) :
+            </h4>
+            <div className="space-y-2">
+              {clientAddresses.map((addr) => (
+                <div
+                  key={addr._id}
+                  onClick={() => {
+                    setAddress({
+                      ...address,
+                      num_appt: addr.num_appt || '',
+                      num_immeuble: addr.num_immeuble || '',
+                      rue: addr.rue || '',
+                      quartier: addr.quartier || '',
+                      ville: addr.ville || 'Casablanca',
+                      code_postal: addr.code_postal || '',
+                      region_id: addr.region_id || '',
+                      telephone: addr.telephone || '',
+                      instructions_livraison: addr.instructions_livraison || '',
+                      latitude: addr.latitude || null,
+                      longitude: addr.longitude || null,
+                    });
+                    setSelectedRegion(addr.region_id || '');
+                  }}
+                  className="p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-gray-800">{addr.type_adresse}</p>
+                        {addr.is_principal && (
+                          <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded">
+                            Principal
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {addr.num_immeuble ? `Imm. ${addr.num_immeuble}, ` : ''}
+                        {addr.num_appt ? `Apt. ${addr.num_appt}, ` : ''}
+                        {addr.rue}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {addr.quartier ? `${addr.quartier}, ` : ''}{addr.ville}
+                      </p>
+                      {addr.telephone && (
+                        <p className="text-sm text-gray-500">Tel: {addr.telephone}</p>
+                      )}
+                    </div>
+                    <button className="text-blue-600 text-sm font-medium hover:text-blue-800">
+                      Utiliser
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <button className="text-blue-600 text-sm font-medium hover:text-blue-800">
-              Utiliser
-            </button>
           </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+        )}
 
         {/* Manual Address Option */}
         <div className="border-2 border-gray-200 rounded-lg p-4">
@@ -162,7 +197,7 @@ const AddressStep = ({
               Saisir l'adresse manuellement
             </label>
           </div>
-          
+
           {!useGPS && (
             <div className="space-y-4">
               {/* Region Selection */}
@@ -171,10 +206,10 @@ const AddressStep = ({
                   onClick={() => setShowRegions(!showRegions)}
                   className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
-                  <Map size={16} style={{color: '#4DAEBD'}} />
+                  <Map size={16} style={{ color: '#4DAEBD' }} />
                   <span className="text-sm font-medium">Choisir une région *</span>
                 </button>
-                
+
                 {showRegions && (
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     {regions.map((region) => (
@@ -201,7 +236,7 @@ const AddressStep = ({
                     ))}
                   </div>
                 )}
-                
+
                 {selectedRegion && (
                   <p className="mt-2 text-sm text-blue-600">
                     Région sélectionnée: {regions.find(r => r._id === selectedRegion)?.nom}
@@ -281,6 +316,23 @@ const AddressStep = ({
               </div>
               
               <div>
+                <button
+                  onClick={handleSearchNominatim}
+                  className="w-full px-4 py-2 rounded-lg text-white font-medium hover:opacity-80 transition-opacity"
+                  style={{ backgroundColor: '#4DAEBD' }}
+                >
+                  <MapPin size={16} className="inline mr-2" />
+                  Rechercher sur la carte
+                </button>
+              </div>
+
+              {address.latitude && (
+                <p className="mt-2 text-sm text-green-600">
+                  Coordonnées trouvées : {Number(address.latitude).toFixed(4)}, {Number(address.longitude).toFixed(4)}
+                </p>
+              )}
+
+              <div>
                 <label className="block text-sm font-medium mb-2">Téléphone *</label>
                 <input
                   type="tel"
@@ -290,7 +342,7 @@ const AddressStep = ({
                   placeholder="Votre numéro de téléphone..."
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">Instructions de livraison (optionnel)</label>
                 <textarea
@@ -310,20 +362,20 @@ const AddressStep = ({
         <button
           onClick={onBack}
           className="px-6 py-3 rounded-lg font-bold text-white hover:opacity-80 transition-opacity"
-          style={{backgroundColor: '#4DAEBD'}}
+          style={{ backgroundColor: '#4DAEBD' }}
         >
           Retour
         </button>
-        
+
         <button
           onClick={onNext}
           disabled={!canProceed}
           className={`px-8 py-3 rounded-lg font-bold text-white transition-all ${
-            canProceed 
-              ? 'hover:opacity-80 cursor-pointer' 
+            canProceed
+              ? 'hover:opacity-80 cursor-pointer'
               : 'opacity-50 cursor-not-allowed'
           }`}
-          style={{backgroundColor: canProceed ? '#1F55A3' : '#9ca3af'}}
+          style={{ backgroundColor: canProceed ? '#1F55A3' : '#9ca3af' }}
         >
           Continuer vers le récapitulatif
         </button>

@@ -461,95 +461,87 @@ const getCommandsStatsByCustomer = async (req, res) => {
 
 
   // Créer une nouvelle commande
-const createCommand = async (req, res) => {
-  try {
-    const {
-      numero_commande,
-      customer_id,
-      address_livraison_id,
-      date_commande,
-      date_souhaite,
-      statut_id,
-      urgent,
-      total_ht,
-      total_tva,
-      total_ttc,
-      commentaires,
-      lignes // Array des lignes de commande
-    } = req.body;
-
-    // Validation des champs obligatoires
-    if (!numero_commande || !customer_id || !address_livraison_id || !statut_id) {
-      return res.status(400).json({
+  const createCommand = async (req, res) => {
+    try {
+      const {
+        numero_commande,
+        customer_id,
+        address_livraison_id, // L'ID de l'adresse déjà créée
+        date_commande,
+        date_souhaite,
+        statut_id,
+        urgent,
+        total_ht,
+        total_tva,
+        total_ttc,
+        commentaires,
+        lignes
+      } = req.body;
+  
+      if (!numero_commande || !customer_id || !address_livraison_id || !statut_id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Les champs numero_commande, customer_id, address_livraison_id et statut_id sont obligatoires'
+        });
+      }
+  
+      const nouvelleCommande = new Command({
+        numero_commande,
+        customer_id: new mongoose.Types.ObjectId(customer_id),
+        address_livraison_id: new mongoose.Types.ObjectId(address_livraison_id),
+        statut_id: new mongoose.Types.ObjectId(statut_id),
+        date_commande: date_commande || new Date(),
+        date_souhaite,
+        urgent: urgent || false,
+        commentaires,
+        total_ht: total_ht || 0,
+        total_tva: total_tva || 0,
+        total_ttc: total_ttc || 0
+      });
+  
+      const commandeSauvegardee = await nouvelleCommande.save();
+  
+      if (lignes && Array.isArray(lignes) && lignes.length > 0) {
+        const lignesCommande = lignes.map(ligne => ({
+          commande_id: commandeSauvegardee._id,
+          product_id: ligne.product_id,
+          um_id: ligne.um_id,
+          quantite: ligne.quantite,
+          prix_unitaire: ligne.prix_unitaire,
+          total_ligne: ligne.total_ligne || (ligne.quantite * ligne.prix_unitaire),
+        }));
+  
+        await CommandeLine.insertMany(lignesCommande);
+      }
+  
+      const commandeComplete = await Command.findById(commandeSauvegardee._id)
+        .populate('customer_id', 'customer_code type_client')
+        .populate('address_livraison_id', 'rue ville latitude longitude')
+        .populate('statut_id', 'code nom');
+  
+      res.status(201).json({
+        success: true,
+        message: 'Commande créée avec succès',
+        data: commandeComplete
+      });
+  
+    } catch (error) {
+      console.error('Erreur lors de la création de la commande:', error);
+      if (error.name === 'ValidationError') {
+        const errors = Object.values(error.errors).map(err => err.message);
+        return res.status(400).json({
+          success: false,
+          message: 'Erreur de validation',
+          errors
+        });
+      }
+  
+      res.status(500).json({
         success: false,
-        message: 'Les champs numero_commande, customer_id, address_livraison_id et statut_id sont obligatoires'
+        message: error.message
       });
     }
-
-    // Créer la commande
-    const nouvelleCommande = new Command({
-      numero_commande,
-      customer_id: new mongoose.Types.ObjectId(customer_id),
-      address_livraison_id: new mongoose.Types.ObjectId(address_livraison_id),
-      statut_id: new mongoose.Types.ObjectId(statut_id),
-      date_commande: date_commande || new Date(),
-      date_souhaite,
-      urgent: urgent || false,
-      commentaires,
-      total_ht: total_ht || 0,
-      total_tva: total_tva || 0,
-      total_ttc: total_ttc || 0
-    });
-
-
-    const commandeSauvegardee = await nouvelleCommande.save();
-
-    // Si des lignes de commande sont fournies, les créer
-    if (lignes && Array.isArray(lignes) && lignes.length > 0) {
-      const lignesCommande = lignes.map(ligne => ({
-        commande_id: commandeSauvegardee._id,
-        product_id: ligne.product_id,
-        um_id: ligne.um_id,
-        quantite: ligne.quantite,
-        prix_unitaire: ligne.prix_unitaire,
-        total_ligne: ligne.total_ligne || (ligne.quantite * ligne.prix_unitaire),
-        //remarques: ligne.remarques
-      }));
-
-      await CommandeLine.insertMany(lignesCommande);
-    }
-
-    // Récupérer la commande créée avec ses relations
-    const commandeComplete = await Command.findById(commandeSauvegardee._id)
-      .populate('customer_id', 'customer_code type_client')
-      .populate('address_livraison_id', 'rue ville')
-      .populate('statut_id', 'code nom');
-
-    res.status(201).json({
-      success: true,
-      message: 'Commande créée avec succès',
-      data: commandeComplete
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de la création de la commande:', error);
-    
-    // Gestion des erreurs de validation Mongoose
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Erreur de validation',
-        errors
-      });
-    }
-
-    res.status(500).json({ 
-      success: false,
-      message: error.message 
-    });
-  }
-};
+  };
 
 // Supprimer une commande et ses lignes associées
 const deleteCommandById = async (req, res) => {

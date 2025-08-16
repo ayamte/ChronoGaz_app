@@ -7,6 +7,7 @@ import SummaryStep from '../../components/client/CommandPage/SummaryStep';
 import butaButane from '../../assets/svg/buta-gaz-butane.svg';
 import butaPropane from '../../assets/svg/buta-gaz-propane.svg';
 import { getClientById, getClientAddresses } from '../../services/clientService';
+import { orderService } from '../../services/orderService';
 
 
 const Command = () => {
@@ -23,6 +24,8 @@ const Command = () => {
     region_id: '',
     telephone: '',
     instructions_livraison: '',
+    latitude: null,
+    longitude: null,
     // Anciens champs pour compatibilité
     fullAddress: 'immeuble 122, Apartement 12',
     phone: '0674563411',
@@ -31,142 +34,141 @@ const Command = () => {
   const [gpsLocation, setGpsLocation] = useState(null);
 
   const [clientData, setClientData] = useState(null);
-const [clientAddresses, setClientAddresses] = useState([]);
-const [loadingClient, setLoadingClient] = useState(false);
+  const [clientAddresses, setClientAddresses] = useState([]);
+  const [loadingClient, setLoadingClient] = useState(false);
 
   // Produits disponibles (normalement depuis votre API)
   const products = [
     // Butane 12 kg
-      {
-        id: '688bec6361019bd9d174e3ac',
-        reference: 'BUT-12KG-AFRIQUIA',
-        nom_court: 'Butane 12kg Afriquia',
-        nom_long: 'Bouteille de Gaz Butane 12kg Afriquia - Gamme Économique',
-        type_gaz: 'BUTANE',
-        capacite: 12,
-        um_id: "688bec6361019bd9d174e3ab",
-        marque: 'Afriquia',
-        gamme: 'Économique',
-        description: 'Bouteille de gaz butane de 12kg de la marque Afriquia. Idéale pour un usage domestique quotidien avec un excellent rapport qualité-prix. Parfaite pour la cuisine, le chauffage d\'appoint et l\'eau chaude.',
-        image_url: butaButane,
-        poids_vide: 15.5,
-        poids_plein: 27.5,
-        category_id: 1,
-        actif: 1,
-        created_at: '2024-01-15T10:30:00Z',
-        updated_at: '2024-12-01T14:20:00Z'
-      },
-      {
-        id: 2,
-        reference: 'BUT-12KG-SHELL',
-        nom_court: 'Butane 12kg Shell',
-        nom_long: 'Bouteille de Gaz Butane 12kg Shell - Gamme Standard',
-        type_gaz: 'BUTANE',
-        capacite: 12,
-        marque: 'Shell',
-        gamme: 'Standard',
-        description: 'Bouteille de gaz butane Shell 12kg, qualité standard fiable. Conçue pour répondre aux besoins énergétiques domestiques avec une combustion propre et efficace.',
-        image_url: butaButane,
-        poids_vide: 15.2,
-        poids_plein: 27.2,
-        category_id: 1,
-        actif: 1,
-        created_at: '2024-01-20T09:15:00Z',
-        updated_at: '2024-11-28T16:45:00Z'
-      },
-      {
-        id: 3,
-        reference: 'BUT-12KG-TOTAL',
-        nom_court: 'Butane 12kg Total',
-        nom_long: 'Bouteille de Gaz Butane 12kg Total - Gamme Premium',
-        type_gaz: 'BUTANE',
-        capacite: 12,
-        marque: 'Total',
-        gamme: 'Premium',
-        description: 'Bouteille de gaz butane premium Total 12kg. Qualité supérieure avec une pureté optimale du gaz pour une performance maximale. Recommandée pour les utilisateurs exigeants.',
-        image_url: butaButane,
-        poids_vide: 15.8,
-        poids_plein: 27.8,
-        category_id: 1,
-        actif: 1,
-        created_at: '2024-01-25T11:00:00Z',
-        updated_at: '2024-12-02T13:30:00Z'
-      },
-    
-      // Propane 34 kg
-      {
-        id: '688bec6361019bd9d174e3ae',
-        reference: 'PROP-34KG-AFRIQUIA',
-        nom_court: 'Propane 34kg Afriquia',
-        nom_long: 'Bouteille de Gaz Propane 34kg Afriquia - Usage Professionnel',
-        type_gaz: 'PROPANE',
-        capacite: 34,
-        um_id: "688bec6361019bd9d174e3ab",
-        marque: 'Afriquia',
-        gamme: 'Économique',
-        description: 'Grande bouteille de propane 34kg Afriquia, parfaite pour les besoins professionnels et industriels. Résistance aux basses températures et performance constante.',
-        image_url: butaPropane,
-        poids_vide: 28.5,
-        poids_plein: 62.5,
-        category_id: 2,
-        actif: 1,
-        created_at: '2024-02-01T08:45:00Z',
-        updated_at: '2024-11-30T10:15:00Z'
-      },
-      {
-        id: 5,
-        reference: 'PROP-34KG-SHELL',
-        nom_court: 'Propane 34kg Shell',
-        nom_long: 'Bouteille de Gaz Propane 34kg Shell - Qualité Industrielle',
-        type_gaz: 'PROPANE',
-        capacite: 34,
-        marque: 'Shell',
-        gamme: 'Standard',
-        description: 'Bouteille de propane Shell 34kg pour usage industriel et commercial. Conçue pour les applications nécessitant une grande quantité de gaz avec une fiabilité éprouvée.',
-        image_url: butaPropane,
-        poids_vide: 28.2,
-        poids_plein: 62.2,
-        category_id: 2,
-        actif: 0, // Pas disponible
-        created_at: '2024-02-05T14:20:00Z',
-        updated_at: '2024-12-01T09:00:00Z'
-      },
-      {
-        id: 6,
-        reference: 'PROP-34KG-TOTAL',
-        nom_court: 'Propane 34kg Total',
-        nom_long: 'Bouteille de Gaz Propane 34kg Total - Excellence Professionnelle',
-        type_gaz: 'PROPANE',
-        capacite: 34,
-        marque: 'Total',
-        gamme: 'Premium',
-        description: 'Bouteille de propane Total 34kg haut de gamme. Qualité premium pour les professionnels exigeants. Pureté maximale et performance exceptionnelle dans toutes les conditions.',
-        image_url: butaPropane,
-        poids_vide: 29.0,
-        poids_plein: 63.0,
-        category_id: 2,
-        actif: 1,
-        created_at: '2024-02-10T16:30:00Z',
-        updated_at: '2024-12-02T15:45:00Z'
-      }
+    {
+      id: '688bec6361019bd9d174e3ac',
+      reference: 'BUT-12KG-AFRIQUIA',
+      nom_court: 'Butane 12kg Afriquia',
+      nom_long: 'Bouteille de Gaz Butane 12kg Afriquia - Gamme Économique',
+      type_gaz: 'BUTANE',
+      capacite: 12,
+      um_id: "688bec6361019bd9d174e3ab",
+      marque: 'Afriquia',
+      gamme: 'Économique',
+      description: 'Bouteille de gaz butane de 12kg de la marque Afriquia. Idéale pour un usage domestique quotidien avec un excellent rapport qualité-prix. Parfaite pour la cuisine, le chauffage d\'appoint et l\'eau chaude.',
+      image_url: butaButane,
+      poids_vide: 15.5,
+      poids_plein: 27.5,
+      category_id: 1,
+      actif: 1,
+      created_at: '2024-01-15T10:30:00Z',
+      updated_at: '2024-12-01T14:20:00Z'
+    },
+    {
+      id: 2,
+      reference: 'BUT-12KG-SHELL',
+      nom_court: 'Butane 12kg Shell',
+      nom_long: 'Bouteille de Gaz Butane 12kg Shell - Gamme Standard',
+      type_gaz: 'BUTANE',
+      capacite: 12,
+      marque: 'Shell',
+      gamme: 'Standard',
+      description: 'Bouteille de gaz butane Shell 12kg, qualité standard fiable. Conçue pour répondre aux besoins énergétiques domestiques avec une combustion propre et efficace.',
+      image_url: butaButane,
+      poids_vide: 15.2,
+      poids_plein: 27.2,
+      category_id: 1,
+      actif: 1,
+      created_at: '2024-01-20T09:15:00Z',
+      updated_at: '2024-11-28T16:45:00Z'
+    },
+    {
+      id: 3,
+      reference: 'BUT-12KG-TOTAL',
+      nom_court: 'Butane 12kg Total',
+      nom_long: 'Bouteille de Gaz Butane 12kg Total - Gamme Premium',
+      type_gaz: 'BUTANE',
+      capacite: 12,
+      marque: 'Total',
+      gamme: 'Premium',
+      description: 'Bouteille de gaz butane premium Total 12kg. Qualité supérieure avec une pureté optimale du gaz pour une performance maximale. Recommandée pour les utilisateurs exigeants.',
+      image_url: butaButane,
+      poids_vide: 15.8,
+      poids_plein: 27.8,
+      category_id: 1,
+      actif: 1,
+      created_at: '2024-01-25T11:00:00Z',
+      updated_at: '2024-12-02T13:30:00Z'
+    },
+    // Propane 34 kg
+    {
+      id: '688bec6361019bd9d174e3ae',
+      reference: 'PROP-34KG-AFRIQUIA',
+      nom_court: 'Propane 34kg Afriquia',
+      nom_long: 'Bouteille de Gaz Propane 34kg Afriquia - Usage Professionnel',
+      type_gaz: 'PROPANE',
+      capacite: 34,
+      um_id: "688bec6361019bd9d174e3ab",
+      marque: 'Afriquia',
+      gamme: 'Économique',
+      description: 'Grande bouteille de propane 34kg Afriquia, parfaite pour les besoins professionnels et industriels. Résistance aux basses températures et performance constante.',
+      image_url: butaPropane,
+      poids_vide: 28.5,
+      poids_plein: 62.5,
+      category_id: 2,
+      actif: 1,
+      created_at: '2024-02-01T08:45:00Z',
+      updated_at: '2024-11-30T10:15:00Z'
+    },
+    {
+      id: 5,
+      reference: 'PROP-34KG-SHELL',
+      nom_court: 'Propane 34kg Shell',
+      nom_long: 'Bouteille de Gaz Propane 34kg Shell - Qualité Industrielle',
+      type_gaz: 'PROPANE',
+      capacite: 34,
+      marque: 'Shell',
+      gamme: 'Standard',
+      description: 'Bouteille de propane Shell 34kg pour usage industriel et commercial. Conçue pour les applications nécessitant une grande quantité de gaz avec une fiabilité éprouvée.',
+      image_url: butaPropane,
+      poids_vide: 28.2,
+      poids_plein: 62.2,
+      category_id: 2,
+      actif: 0, // Pas disponible
+      created_at: '2024-02-05T14:20:00Z',
+      updated_at: '2024-12-01T09:00:00Z'
+    },
+    {
+      id: 6,
+      reference: 'PROP-34KG-TOTAL',
+      nom_court: 'Propane 34kg Total',
+      nom_long: 'Bouteille de Gaz Propane 34kg Total - Excellence Professionnelle',
+      type_gaz: 'PROPANE',
+      capacite: 34,
+      marque: 'Total',
+      gamme: 'Premium',
+      description: 'Bouteille de propane Total 34kg haut de gamme. Qualité premium pour les professionnels exigeants. Pureté maximale et performance exceptionnelle dans toutes les conditions.',
+      image_url: butaPropane,
+      poids_vide: 29.0,
+      poids_plein: 63.0,
+      category_id: 2,
+      actif: 1,
+      created_at: '2024-02-10T16:30:00Z',
+      updated_at: '2024-12-02T15:45:00Z'
+    }
   ];
 
   const prices = {
-    "688bec6361019bd9d174e3ac": 120,  // Butane 12kg Afriquia (Économique)
-    2: 130,  // Butane 12kg Shell (Standard)
-    3: 140,  // Butane 12kg Total (Premium)
-    "688bec6361019bd9d174e3ae": 350,  // Propane 34kg Afriquia (Économique)
-    5: 370,  // Propane 34kg Shell (Standard)
-    6: 390   // Propane 34kg Total (Premium)
+    "688bec6361019bd9d174e3ac": 120, // Butane 12kg Afriquia (Économique)
+    2: 130, // Butane 12kg Shell (Standard)
+    3: 140, // Butane 12kg Total (Premium)
+    "688bec6361019bd9d174e3ae": 350, // Propane 34kg Afriquia (Économique)
+    5: 370, // Propane 34kg Shell (Standard)
+    6: 390 // Propane 34kg Total (Premium)
   };
 
   const deliveryFee = 20;
 
   const handleQuantityChange = (productId, operation) => {
     const product = products.find(p => p.id === productId);
-    if(!product) return;
+    if (!product) return;
 
-    if (operation === 'increment' && product.actif !== 1){
+    if (operation === 'increment' && product.actif !== 1) {
       alert('Impossible d\'ajouter un produit non disponible');
       return;
     }
@@ -205,13 +207,11 @@ const [loadingClient, setLoadingClient] = useState(false);
         getClientAddresses(clientId)
       ]);
       console.log('Adresses récupérées:', addressesResponse);
-console.log('Client data:', client);
+      console.log('Client data:', client);
       setClientData(client);
-      
       // CORRECTION : Vérifier la structure des données retournées
       const addresses = addressesResponse || [];
       setClientAddresses(addresses);
-      
       // Pré-remplir avec la première adresse ou adresse par défaut
       if (addresses.length > 0) {
         const defaultAddress = addresses.find(addr => addr.is_principal) || addresses[0];
@@ -241,33 +241,40 @@ console.log('Client data:', client);
       setLoadingClient(false);
     }
   };
-  
 
   const canProceedToStep2 = Object.values(quantities).some(qty => qty > 0);
   const canProceedToStep3 = useGPS ? gpsLocation : (address.rue && address.ville && address.region_id && address.telephone);
-  
   const subtotal = Object.entries(quantities).reduce((total, [productId, qty]) => {
     return total + (qty * (prices[productId] || 0));
   }, 0);
   const total = subtotal + deliveryFee;
 
-  const handleConfirmOrder = () => {
-    // Garde votre logique originale
-    const orderData = {
-      products,
-      quantities,
-      prices,
-      deliveryFee,
-      subtotal,
-      total,
-      useGPS,
-      address,
-      gpsLocation
-    };
-    
-    localStorage.setItem('lastOrder', JSON.stringify(orderData));
-    alert('Commande confirmée avec succès !');
-    window.location.href = "/TrackOrder";
+  const handleConfirmOrder = async () => {
+    try {
+      const orderData = {
+        clientId: '688bec637e0be4e53374e39e',
+        products,
+        quantities,
+        prices,
+        deliveryFee,
+        subtotal,
+        total,
+        useGPS,
+        address,
+        gpsLocation,
+        tva: 0
+      };
+
+      // Si vous avez besoin de faire un appel API pour confirmer la commande, vous le feriez ici.
+      // Par exemple: await orderService.createOrderFromSteps(orderData);
+      
+      localStorage.setItem('lastOrder', JSON.stringify(orderData));
+      alert('Commande confirmée avec succès !');
+      window.location.href = "/TrackOrder";
+    } catch (error) {
+      console.error('Erreur lors de la confirmation de la commande:', error);
+      alert('Échec de la commande. Veuillez réessayer.');
+    }
   };
 
   useEffect(() => {
@@ -304,18 +311,18 @@ console.log('Client data:', client);
         )}
         {currentStep === 2 && (
           <AddressStep
-          useGPS={useGPS}
-          setUseGPS={setUseGPS}
-          address={address}
-          setAddress={setAddress}
-          gpsLocation={gpsLocation}
-          onGPSLocation={handleGPSLocation}
-          onBack={() => setCurrentStep(1)}
-          onNext={() => setCurrentStep(3)}
-          canProceed={canProceedToStep3}
-          clientAddresses={clientAddresses}
-          loadingClient={loadingClient}
-        />
+            useGPS={useGPS}
+            setUseGPS={setUseGPS}
+            address={address}
+            setAddress={setAddress}
+            gpsLocation={gpsLocation}
+            onGPSLocation={handleGPSLocation}
+            onBack={() => setCurrentStep(1)}
+            onNext={() => setCurrentStep(3)}
+            canProceed={canProceedToStep3}
+            clientAddresses={clientAddresses}
+            loadingClient={loadingClient}
+          />
         )}
         {currentStep === 3 && (
           <SummaryStep
@@ -328,6 +335,5 @@ console.log('Client data:', client);
     </div>
   );
 };
-
 
 export default Command;

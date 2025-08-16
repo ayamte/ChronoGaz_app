@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { MapPin, Phone, Home, Building } from 'lucide-react';
 import { createOrderFromSteps } from '../../../services/orderService';
 
-const SummaryStep = ({ orderData, onBack }) => {
+const SummaryStep = ({ orderData, onBack, onConfirm }) => {
   const { products, quantities, prices, deliveryFee, subtotal, total } = orderData;
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -13,17 +13,9 @@ const SummaryStep = ({ orderData, onBack }) => {
     setSuccess(false);
     setError(null);
     
-    // Debug: vérifier les données avant envoi
-    console.log('📦 orderData complet:', orderData);
-    console.log('📍 Adresse dans orderData:', orderData.address);
-    console.log('📍 useGPS:', orderData.useGPS);
-    console.log('📍 gpsLocation:', orderData.gpsLocation);
-    
     try {
-      const result = await createOrderFromSteps(orderData);
-      console.log('✅ Commande créée avec succès:', result);
+      await onConfirm();
       setSuccess(true);
-      // Tu peux aussi rediriger ou vider les steps ici si besoin
     } catch (err) {
       console.error('❌ Erreur création commande:', err);
       setError("Une erreur est survenue lors de la création de la commande.");
@@ -32,17 +24,14 @@ const SummaryStep = ({ orderData, onBack }) => {
     }
   };
 
-  // Fonction pour formater l'adresse complète
   const formatAddress = (address) => {
     const parts = [];
-    
     if (address.num_appt) parts.push(`Appt ${address.num_appt}`);
     if (address.num_immeuble) parts.push(`Imm ${address.num_immeuble}`);
     if (address.rue) parts.push(address.rue);
     if (address.quartier) parts.push(address.quartier);
     if (address.ville) parts.push(address.ville);
     if (address.code_postal) parts.push(address.code_postal);
-    
     return parts.join(', ');
   };
 
@@ -93,15 +82,30 @@ const SummaryStep = ({ orderData, onBack }) => {
             Adresse de livraison:
           </h3>
           
-          {orderData.useGPS ? (
+          {orderData.useGPS || (orderData.address?.latitude && orderData.address?.longitude) ? (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="flex items-center text-green-700">
                 <MapPin size={16} className="mr-2" />
-                <span className="font-medium">Position GPS</span>
+                <span className="font-medium">Position sur la carte</span>
               </div>
-              <p className="text-gray-600 mt-1">
-                Coordonnées: {orderData.gpsLocation?.latitude.toFixed(4)}, {orderData.gpsLocation?.longitude.toFixed(4)}
-              </p>
+              { (orderData.useGPS && orderData.gpsLocation) || (orderData.address?.latitude && orderData.address?.longitude) ? (
+    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        {/* ... */}
+        <p className="text-gray-600 mt-1">
+            Coordonnées: {orderData.useGPS 
+                ? Number(orderData.gpsLocation.latitude).toFixed(4) 
+                : Number(orderData.address.latitude).toFixed(4)}, 
+                {orderData.useGPS 
+                ? Number(orderData.gpsLocation.longitude).toFixed(4) 
+                : Number(orderData.address.longitude).toFixed(4)}
+        </p>
+        {/* ... */}
+    </div>
+) : (
+    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        {/* ... */}
+    </div>
+)}
               {orderData.address?.telephone && (
                 <div className="flex items-center mt-2 text-gray-600">
                   <Phone size={16} className="mr-2" />
@@ -111,34 +115,26 @@ const SummaryStep = ({ orderData, onBack }) => {
             </div>
           ) : (
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              {/* Région */}
               {orderData.address?.region_id && (
                 <div className="flex items-center text-blue-600 mb-2">
                   <Building size={16} className="mr-2" />
                   <span className="font-medium">
-                  Région: {orderData.address?.region?.nom || 'Région sélectionnée'}
-
+                    Région: {orderData.address?.region?.nom || 'Région sélectionnée'}
                   </span>
                 </div>
               )}
-              
-              {/* Adresse complète */}
               <div className="flex items-start text-gray-700 mb-2">
                 <Home size={16} className="mr-2 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium">{formatAddress(orderData.address)}</p>
                 </div>
               </div>
-              
-              {/* Téléphone */}
               {orderData.address?.telephone && (
                 <div className="flex items-center text-gray-600 mb-2">
                   <Phone size={16} className="mr-2" />
                   <span>{orderData.address.telephone}</span>
                 </div>
               )}
-              
-              {/* Instructions */}
               {orderData.address?.instructions_livraison && (
                 <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
                   <p className="text-sm text-yellow-800">
@@ -150,16 +146,6 @@ const SummaryStep = ({ orderData, onBack }) => {
             </div>
           )}
         </div>
-
-        {/* Informations supplémentaires */}
-        {orderData.additionalInfo && (
-          <div>
-            <h3 className="font-bold mb-2 text-lg text-gray-800">Informations supplémentaires:</h3>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-gray-700">{orderData.additionalInfo}</p>
-            </div>
-          </div>
-        )}
 
         {/* Messages d'état */}
         {loading && (

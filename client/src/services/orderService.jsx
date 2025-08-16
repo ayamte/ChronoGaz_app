@@ -10,7 +10,7 @@ export const createDeliveryAddress = async (addressData) => {
     const response = await axios.post(`${API_BASE_URL}/address`, {
       num_appt: addressData.num_appt || '',
       num_immeuble: addressData.num_immeuble || '',
-      rue: addressData.rue || addressData.fullAddress || 'Adresse inconnue',
+      rue: addressData.rue || 'Adresse inconnue',
       quartier: addressData.quartier || '',
       ville: addressData.ville || 'Casablanca',
       code_postal: addressData.code_postal || '',
@@ -32,48 +32,46 @@ export const createDeliveryAddress = async (addressData) => {
 // Création de commande complète
 export const createOrderFromSteps = async (orderData) => {
   try {
-    console.log('🛒 Création de commande avec:', orderData);
-
     let addressId = null;
 
-    // Cas GPS
-    if (orderData.useGPS && orderData.gpsLocation) {
+    // --- ÉTAPE 1: GESTION DE L'ADRESSE DE LIVRAISON ---
+    // Si l'adresse a déjà un ID, c'est une adresse existante.
+    // On l'utilise directement.
+    if (orderData.address?._id) {
+        console.log('📍 Utilisation d\'une adresse existante:', orderData.address._id);
+        addressId = orderData.address._id;
+    } 
+    // Sinon, on crée une nouvelle adresse.
+    else if (orderData.useGPS && orderData.gpsLocation) {
+      console.log('📍 Création d\'une nouvelle adresse GPS...');
       const gpsAddress = await createDeliveryAddress({
         rue: 'Position GPS',
         ville: 'Casablanca',
         region_id: orderData.address?.region_id || null,
         latitude: orderData.gpsLocation.latitude,
         longitude: orderData.gpsLocation.longitude,
-        telephone: orderData.customerPhone || orderData.address?.telephone || ''
+        telephone: orderData.address?.telephone || ''
       });
       addressId = gpsAddress._id;
     }
-    // Cas adresse manuelle
     else if (orderData.address) {
-      if (!orderData.address.rue || !orderData.address.ville || !orderData.address.region_id) {
-        throw new Error("Veuillez remplir tous les champs obligatoires: rue, ville et région");
+      console.log('📍 Création d\'une nouvelle adresse manuelle...');
+      if (!orderData.address.rue || !orderData.address.ville || !orderData.address.region_id || !orderData.address.telephone) {
+        throw new Error("Veuillez remplir tous les champs obligatoires: rue, ville, région et téléphone");
       }
       const manualAddress = await createDeliveryAddress(orderData.address);
       addressId = manualAddress._id;
-    }
-    else {
+    } else {
       throw new Error("Aucune adresse de livraison fournie");
     }
 
-    // Lignes de commande
-    const lignes = [];
-    orderData.products.forEach(product => {
-      const quantity = orderData.quantities[product.id];
-      const price = orderData.prices[product.id];
-      if (quantity > 0) {
-        lignes.push({
-          product_id: product.id,
-          um_id: product.um_id || null,
-          quantite: quantity,
-          prix_unitaire: price
-        });
-      }
-    });
+    // --- ÉTAPE 2: Création de la commande avec l'ID de l'adresse ---
+    const lignes = orderData.products.filter(product => orderData.quantities[product.id] > 0).map(product => ({
+      product_id: product.id,
+      um_id: product.um_id || null,
+      quantite: orderData.quantities[product.id],
+      prix_unitaire: orderData.prices[product.id]
+    }));
 
     if (lignes.length === 0) {
       throw new Error("Aucun produit sélectionné");
@@ -160,9 +158,9 @@ export const orderService = {
         orderNumber: command.numero_commande,
         customer: {
           id: command.customer_id._id,
-          name: command.customer_id?.physical_user_id?.first_name || command.customer_id.customer_code,
+          name: command.customer_id.physical_user_id?.first_name + ' ' + command.customer_id.physical_user_id?.last_name || command.customer_id.customer_code,
           phone: command.customer_id.physical_user_id?.telephone_principal || '', // Correction ici
-         // email: command.customer_id.email || ''
+          email: command.customer_id.physical_user_id?.user_id?.email || ''
         },
         deliveryAddress: {
           id: command.address_livraison_id._id,
@@ -212,9 +210,9 @@ export const orderService = {
         customer: {
           id: command.customer_id._id,
           // Use the nested physical_user_id for name and phone
-          name: command.customer_id.physical_user_id?.first_name + ' ' + command.customer_id.physical_user_id?.last_name || command.customer_id.nom_commercial || command.customer_id.customer_code,
-          phone: command.customer_id.physical_user_id?.telephone_principal || command.customer_id.telephone || '',
-          email: command.customer_id.email || ''
+          name: command.customer_id.physical_user_id?.first_name + ' ' + command.customer_id.physical_user_id?.last_name || command.customer_id.customer_code,
+          phone: command.customer_id.physical_user_id?.telephone_principal || '',
+          email: command.customer_id.physical_user_id?.user_id?.email || ''
         },
         deliveryAddress: {
           id: command.address_livraison_id._id,
@@ -258,7 +256,11 @@ export const orderService = {
       stats.repartitionParStatut.forEach(stat => {
         const statusCode = stat.statut[0]?.code;
         switch(statusCode) {
-          case 'EN_ATTENTE': pending = stat.count; break;
+          case 'NOUVELLE':
+          case 'CONFIRMEE':
+          case 'EN_ATTENTE': 
+            pending += stat.count; 
+            break;
           case 'PLANIFIEE': assigned = stat.count; break;
           case 'EN_COURS': inProgress = stat.count; break;
           case 'LIVREE': delivered = stat.count; break;
@@ -315,7 +317,7 @@ export const orderService = {
   // Utilitaires
   mapStatusToLocal(backendStatus) {
     const statusMap = {
-      'EN_ATTENTE': 'pending',
+      'NOUVELLE': 'pending',
       'CONFIRMEE': 'pending',
       'PLANIFIEE': 'assigned',
       'EN_COURS': 'in_progress',
@@ -328,7 +330,7 @@ export const orderService = {
   // ✅ NOUVELLE FONCTION : Mappe le statut local au code du backend
   mapLocalStatusToBackend(localStatus) {
     const statusMap = {
-      'pending': 'EN_ATTENTE',
+      'pending': 'CONFIRMEE',
       'assigned': 'PLANIFIEE',
       'in_progress': 'EN_COURS',
       'delivered': 'LIVREE',
