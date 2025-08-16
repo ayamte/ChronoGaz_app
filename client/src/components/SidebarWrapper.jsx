@@ -6,7 +6,7 @@ import ClientSidebar from './client/SideBar';
 import DriverSidebar from './chauffeur/DriverSidebar/DriverSidebar';  
 import AdminSidebar from './admin/Sidebar/Sidebar';  
 import EntrepriseSidebar from './entreprise/Sidebar/EntrepriseSidebar';  
-import MagasinierSidebar from './magasinier/magasinierSidebar'; // AJOUTÉ: Import manquant  
+import MagasinierSidebar from './magasinier/magasinierSidebar';  
       
 const SidebarWrapper = () => {      
   const user = authService.getUser();      

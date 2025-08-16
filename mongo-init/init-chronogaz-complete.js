@@ -131,15 +131,15 @@ db.createCollection('commandes', {
   validator: {  
     $jsonSchema: {  
       bsonType: 'object',  
-      required: ['numero_commande', 'customer_id', 'statut_id'],  
+      required: ['numero_commande', 'customer_id', 'statut'], // ← Changer statut_id en statut  
       properties: {  
         numero_commande: { bsonType: 'string' },  
         customer_id: { bsonType: 'objectId' },  
-        statut_id: { bsonType: 'objectId' }  
+        statut: { enum: ['EN_ATTENTE', 'CONFIRMEE', 'PLANIFIEE', 'EN_COURS', 'LIVREE', 'ANNULEE'] } // ← Nouveau  
       }  
     }  
   }  
-});  
+});
 
 db.createCollection('depots', {    
   validator: {    
@@ -276,7 +276,7 @@ db.createCollection('addresses', {
 // Insérer les utilisateurs  
 const userAdmin = db.users.insertOne({  
   email: 'admin@chronogaz.ma',  
-  password_hash: '$2b$10$example_hash_admin',  
+  password_hash: '$2b$12$LQv3c1yqBwEHxPuNYkGOaOapswbQ.vAbnq.JjSO7hZGaNxz5HiDAa', // "admin123"  
   role_id: roleAdmin.insertedId,  
   statut: 'ACTIF',  
   last_login: null,  

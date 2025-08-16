@@ -10,7 +10,10 @@ const { hashPassword, comparePassword } = require('../utils/password');
 const { generateCustomerCode } = require('../utils/customerCode');      
 const crypto = require('crypto');  
 const { sendVerificationEmail } = require('../services/emailService');  
-      
+const Address = require('../models/Address');  
+const UserAddress = require('../models/UserAddress');
+const City = require('../models/City'); // ✅ AJOUTER pour Casablanca par défaut
+
 const register = async (req, res) => {        
   try {        
     const {         
@@ -29,20 +32,28 @@ const register = async (req, res) => {
       });        
     }        
       
-    // Validation des régions avec ObjectId (si fournie)
-    if (profile?.region_principale && !mongoose.Types.ObjectId.isValid(profile.region_principale)) {  
-      return res.status(400).json({  
-        success: false,  
-        message: 'ID de région invalide'  
-      });  
-    }        
+    // ✅ SUPPRIMER toutes les validations de région et ville
+    
+    // Validation des coordonnées GPS (si fournies)
+    if (profile?.latitude && (profile.latitude < -90 || profile.latitude > 90)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Latitude invalide (doit être entre -90 et 90)'
+      });
+    }
 
-    // Validation des villes avec ObjectId (si fournie)  
-    if (profile?.city_id && !mongoose.Types.ObjectId.isValid(profile.city_id)) {  
-      return res.status(400).json({  
-        success: false,  
-        message: 'ID de ville invalide'  
-      });  
+    if (profile?.longitude && (profile.longitude < -180 || profile.longitude > 180)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Longitude invalide (doit être entre -180 et 180)'
+      });
+    }
+
+    if (role_code === 'CLIENT' && !profile?.city_id) {    
+      return res.status(400).json({    
+        success: false,    
+        message: 'La sélection d\'une ville est requise'    
+      });    
     }
       
     // Vérifier si l'utilisateur existe déjà        
@@ -71,29 +82,26 @@ const register = async (req, res) => {
       email,    
       password_hash,    
       role_id: role._id,    
-      // MODIFIÉ: Statut conditionnel selon le rôle  
       statut: (role_code === 'ADMIN' || role_code === 'EMPLOYE' || role_code === 'EMPLOYE_MAGASIN') ? 'ACTIF' : 'EN_ATTENTE',  
       email_verified: (role_code === 'ADMIN' || role_code === 'EMPLOYE' || role_code === 'EMPLOYE_MAGASIN') ? true : false  
     });        
     
     // Générer un code de vérification
-   if (role_code === 'CLIENT') {  
-    const verificationCode = crypto.randomInt(100000, 999999).toString();    
-    const verificationExpires = new Date(Date.now() + 15 * 60 * 1000);  
-    
-    newUser.verification_code = verificationCode;    
-    newUser.verification_code_expires = verificationExpires;   
-    
-    await newUser.save();  
+    if (role_code === 'CLIENT') {  
+      const verificationCode = crypto.randomInt(100000, 999999).toString();    
+      const verificationExpires = new Date(Date.now() + 15 * 60 * 1000);  
       
-    // Envoyer l'email de vérification seulement aux clients  
-    await sendVerificationEmail(email, verificationCode);  
-  } else {  
-    // Pour admin et employés, sauvegarder directement sans code de vérification  
-    await newUser.save();  
-  }
-
-   
+      newUser.verification_code = verificationCode;    
+      newUser.verification_code_expires = verificationExpires;   
+      
+      await newUser.save();  
+        
+      // Envoyer l'email de vérification seulement aux clients  
+      await sendVerificationEmail(email, verificationCode);  
+    } else {  
+      // Pour admin et employés, sauvegarder directement sans code de vérification  
+      await newUser.save();  
+    }
       
     let responseData = {        
       user: {        
@@ -115,13 +123,31 @@ const register = async (req, res) => {
         first_name: profile.first_name,  
         last_name: profile.last_name,  
         civilite: profile.civilite,  
-        date_naissance: profile.date_naissance,  
-        telephone_principal: profile.telephone_principal,  
-        adresse_principale: profile.adresse_principale,  
-        city_id: profile.city_id || null,  
-        region_principale: profile.region_principale || null  
+        telephone_principal: profile.telephone_principal
       });        
-      await physicalUser.save();        
+      await physicalUser.save();       
+      
+      // Créer l'adresse principale
+      if (profile.adresse_principale) {  
+        
+        const newAddress = new Address({  
+          user_id: newUser._id,
+          street: profile.adresse_principale,  
+          city_id: profile.city_id,
+          latitude: profile.latitude || null,
+          longitude: profile.longitude || null,
+          type_adresse: 'DOMICILE',  
+          is_principal: true  
+        });  
+        const savedAddress = await newAddress.save();  
+        
+        const userAddress = new UserAddress({  
+          physical_user_id: physicalUser._id,  
+          address_id: savedAddress._id,  
+          is_principal: true  
+        });  
+        await userAddress.save();  
+      }
       
       responseData.physical_user = physicalUser;        
       
@@ -147,7 +173,7 @@ const register = async (req, res) => {
         }    
       
         // Déterminer le rôle selon la fonction      
-        let finalRoleCode = 'EMPLOYE'; // Par défaut pour chauffeurs et accompagnants        
+        let finalRoleCode = 'EMPLOYE';        
         if (profile.fonction === 'MAGASINIER') {        
           finalRoleCode = 'EMPLOYE_MAGASIN';        
         }      
@@ -192,13 +218,32 @@ const register = async (req, res) => {
         patente: profile.patente,        
         rc: profile.rc,        
         ville_rc: profile.ville_rc,        
-        telephone_principal: profile.telephone_principal,        
-        adresse_principale: profile.adresse_principale,        
-        city_id: profile.city_id || null,  
-        region_principale: profile.region_principale || null   
+        telephone_principal: profile.telephone_principal
       });        
       await moralUser.save();        
       
+      // Créer l'adresse principale
+      if (profile.adresse_principale) {  
+        
+        const newAddress = new Address({  
+          user_id: newUser._id,
+          street: profile.adresse_principale,  
+          city_id: profile.city_id,
+          latitude: profile.latitude || null,
+          longitude: profile.longitude || null,
+          type_adresse: 'SIÈGE SOCIAL',  
+          is_principal: true  
+        });  
+        const savedAddress = await newAddress.save();  
+        
+        const userAddress = new UserAddress({  
+          moral_user_id: moralUser._id,  
+          address_id: savedAddress._id,  
+          is_principal: true  
+        });  
+        await userAddress.save();  
+      }
+
       responseData.moral_user = moralUser;        
       
       // Seules les entreprises peuvent être clients        
@@ -225,7 +270,6 @@ const register = async (req, res) => {
       data: responseData          
     });
        
-      
   } catch (error) {        
     console.error('Erreur lors de l\'inscription:', error);        
             
@@ -242,12 +286,11 @@ const register = async (req, res) => {
     res.status(500).json({        
       success: false,        
       message: 'Erreur interne du serveur',        
-      error: error.message,  
-      
+      error: error.message
     });        
   }        
 };        
-      
+
 const login = async (req, res) => {        
   try {        
     const { email, password } = req.body;        
@@ -300,226 +343,273 @@ const login = async (req, res) => {
     const requiresPasswordChange = (user.password_temporary || user.first_login) &&   
                               (user.role_id.code === 'EMPLOYE' || user.role_id.code === 'EMPLOYE_MAGASIN');  
     
-    // Récupérer les informations utilisateur  
-    const physicalUser = await PhysicalUser.findOne({ user_id: user._id });    
-    const moralUser = await MoralUser.findOne({ user_id: user._id });    
+    // Récupérer les informations utilisateur    
+    const physicalUser = await PhysicalUser.findOne({ user_id: user._id });      
+    const moralUser = await MoralUser.findOne({ user_id: user._id });      
+        
+    // Vérification du statut selon le rôle    
+    if (user.role_id.code === 'CLIENT') {      
+      const customer = await Customer.findOne({      
+        $or: [{ physical_user_id: physicalUser?._id }, { moral_user_id: moralUser?._id }]      
+      });      
+      if (customer && customer.statut !== 'ACTIF') {      
+        return res.status(401).json({        
+          success: false,        
+          message: 'Compte client suspendu'        
+        });        
+      }        
+    } else if (user.role_id.code === 'EMPLOYE' || user.role_id.code === 'EMPLOYE_MAGASIN') {        
+      const employe = await Employe.findOne({ physical_user_id: physicalUser._id });        
+      if (employe && employe.statut !== 'ACTIF') {        
+        return res.status(401).json({        
+          success: false,        
+          message: 'Employé indisponible'        
+        });        
+      }        
+    }      
+        
+    // Déterminer le type d'utilisateur et informations additionnelles        
+    let userType = null;        
+    let additionalInfo = {};        
+        
+    if (physicalUser) {        
+      userType = 'PHYSIQUE';        
+      additionalInfo = {        
+        first_name: physicalUser.first_name,        
+        last_name: physicalUser.last_name,        
+        physical_user_id: physicalUser._id        
+      };        
+    }        
+        
+    if (moralUser) {        
+      userType = 'MORAL';        
+      additionalInfo = {        
+        raison_sociale: moralUser.raison_sociale,        
+        moral_user_id: moralUser._id        
+      };        
+    }        
+          
+    // Générer le token JWT            
+    const token = jwt.sign(            
+      {             
+        userId: user._id,             
+        email: user.email,             
+        role: user.role_id.code             
+      },            
+      process.env.JWT_SECRET,            
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }            
+    );            
+          
+    // Mettre à jour la dernière connexion            
+    await User.findByIdAndUpdate(user._id, {             
+      last_login: new Date()             
+    });            
+        
+    res.json({              
+      success: true,              
+      message: 'Connexion réussie',              
+      data: {              
+        token,              
+        user: {              
+          id: user._id,              
+          email: user.email,              
+          role: user.role_id.code,              
+          statut: user.statut,          
+          type: userType,        
+          requiresPasswordChange,      
+          ...additionalInfo        
+        }              
+      }              
+    });              
+            
+  } catch (error) {              
+    console.error('Erreur lors de la connexion:', error);              
+    res.status(500).json({              
+      success: false,              
+      message: 'Erreur interne du serveur',              
+      error: error.message              
+    });              
+  }              
+};         
+    
+const completeProfile = async (req, res) => {        
+  try {        
+    const userId = req.user._id;        
+    const { type_personne, profile } = req.body;        
+        
+    // Validation des données requises        
+    if (!type_personne || !profile) {        
+      return res.status(400).json({        
+        success: false,        
+        message: 'Type de personne et profil sont requis'        
+      });        
+    }        
       
-    // Vérification du statut selon le rôle  
-    if (user.role_id.code === 'CLIENT') {    
-      const customer = await Customer.findOne({    
-        $or: [{ physical_user_id: physicalUser?._id }, { moral_user_id: moralUser?._id }]    
+    // ✅ SUPPRIMER toutes les validations de région et ville  
+      
+    // Validation des coordonnées GPS (si fournies)    
+    if (profile?.latitude && (profile.latitude < -90 || profile.latitude > 90)) {    
+      return res.status(400).json({    
+        success: false,    
+        message: 'Latitude invalide (doit être entre -90 et 90)'    
       });    
-      if (customer && customer.statut !== 'ACTIF') {    
-        return res.status(401).json({    
-          success: false,    
-          message: 'Compte client suspendu'    
-        });    
-      }    
-    } else if (user.role_id.code === 'EMPLOYE' || user.role_id.code === 'EMPLOYE_MAGASIN') {    
-      const employe = await Employe.findOne({ physical_user_id: physicalUser._id });    
-      if (employe && employe.statut !== 'ACTIF') {    
-        return res.status(401).json({    
-          success: false,    
-          message: 'Employé indisponible'    
-        });    
-      }    
-    }  
-    
-    // Déterminer le type d'utilisateur et informations additionnelles    
-    let userType = null;    
-    let additionalInfo = {};    
-    
-    if (physicalUser) {    
-      userType = 'PHYSIQUE';    
-      additionalInfo = {    
-        first_name: physicalUser.first_name,    
-        last_name: physicalUser.last_name,    
-        physical_user_id: physicalUser._id    
-      };    
     }    
     
-    if (moralUser) {    
-      userType = 'MORAL';    
-      additionalInfo = {    
-        raison_sociale: moralUser.raison_sociale,    
-        moral_user_id: moralUser._id    
-      };    
+    if (profile?.longitude && (profile.longitude < -180 || profile.longitude > 180)) {    
+      return res.status(400).json({    
+        success: false,    
+        message: 'Longitude invalide (doit être entre -180 et 180)'    
+      });    
     }    
-      
-    // Générer le token JWT        
-    const token = jwt.sign(        
-      {         
-        userId: user._id,         
-        email: user.email,         
-        role: user.role_id.code         
-      },        
-      process.env.JWT_SECRET,        
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }        
-    );        
-      
-    // Mettre à jour la dernière connexion        
-    await User.findByIdAndUpdate(user._id, {         
-      last_login: new Date()         
+
+    if (!profile?.city_id) {  
+      return res.status(400).json({  
+        success: false,  
+        message: 'La sélection d\'une ville est requise'  
+      });  
+    }
+        
+    // Créer PhysicalUser ou MoralUser selon le type        
+    if (type_personne === 'PHYSIQUE') {        
+      // Validation pour personne physique        
+      if (!profile.first_name || !profile.last_name || !profile.civilite) {        
+        return res.status(400).json({        
+          success: false,        
+          message: 'Prénom, nom et civilité sont requis pour une personne physique'        
+        });        
+      }        
+        
+      const physicalUser = new PhysicalUser({        
+        user_id: userId,        
+        first_name: profile.first_name,        
+        last_name: profile.last_name,        
+        civilite: profile.civilite,        
+        telephone_principal: profile.telephone_principal      
+      });        
+      await physicalUser.save();        
+    
+      // Créer l'adresse principale 
+      if (profile.adresse_principale) {      
+          
+        const newAddress = new Address({      
+          user_id: userId,  
+          street: profile.adresse_principale,      
+          city_id: profile.city_id,  
+          latitude: profile.latitude || null,  
+          longitude: profile.longitude || null,  
+          type_adresse: 'DOMICILE',      
+          is_principal: true      
+        });      
+        const savedAddress = await newAddress.save();      
+            
+        const userAddress = new UserAddress({      
+          physical_user_id: physicalUser._id,      
+          address_id: savedAddress._id,      
+          is_principal: true      
+        });      
+        await userAddress.save();      
+      }    
+        
+      // Créer Customer        
+      const customer_code = await generateCustomerCode('PHYSIQUE');        
+      const customer = new Customer({        
+        customer_code,        
+        type_client: 'PHYSIQUE',        
+        physical_user_id: physicalUser._id,        
+        statut: 'ACTIF'        
+      });        
+      await customer.save();        
+        
+    } else if (type_personne === 'MORAL') {        
+      // Validation pour personne morale        
+      if (!profile.raison_sociale) {        
+        return res.status(400).json({        
+          success: false,        
+          message: 'Raison sociale est requise pour une entreprise'        
+        });        
+      }        
+        
+      const moralUser = new MoralUser({        
+        user_id: userId,        
+        raison_sociale: profile.raison_sociale,        
+        ice: profile.ice,        
+        patente: profile.patente,        
+        rc: profile.rc,        
+        ville_rc: profile.ville_rc,        
+        telephone_principal: profile.telephone_principal  
+        // ✅ SUPPRIMER city_id et region_principale        
+      });        
+      await moralUser.save();       
+          
+      // Créer l'adresse principale 
+      if (profile.adresse_principale) {      
+          
+        const newAddress = new Address({      
+          user_id: userId,  
+          street: profile.adresse_principale,      
+          city_id: profile.city_id, 
+          latitude: profile.latitude || null,  
+          longitude: profile.longitude || null,  
+          type_adresse: 'SIÈGE SOCIAL',      
+          is_principal: true      
+        });      
+        const savedAddress = await newAddress.save();      
+            
+        const userAddress = new UserAddress({      
+          moral_user_id: moralUser._id,      
+          address_id: savedAddress._id,      
+          is_principal: true      
+        });      
+        await userAddress.save();      
+      }    
+        
+      // Créer Customer        
+      const customer_code = await generateCustomerCode('MORAL');        
+      const customer = new Customer({        
+        customer_code,        
+        type_client: 'MORAL',        
+        moral_user_id: moralUser._id,        
+        statut: 'ACTIF'        
+      });        
+      await customer.save();        
+        
+    } else {        
+      return res.status(400).json({        
+        success: false,        
+        message: 'Type de personne invalide. Doit être PHYSIQUE ou MORAL'        
+      });        
+    }        
+        
+    // Activer l'utilisateur        
+    await User.findByIdAndUpdate(userId, { statut: 'ACTIF' });        
+        
+    res.json({         
+      success: true,         
+      message: 'Profil complété avec succès. Votre compte est maintenant actif.'         
     });        
-    res.json({          
-      success: true,          
-      message: 'Connexion réussie',          
-      data: {          
-        token,          
-        user: {          
-          id: user._id,          
-          email: user.email,          
-          role: user.role_id.code,          
-          statut: user.statut,      
-          type: userType,    
-          requiresPasswordChange,  
-          ...additionalInfo    
-        }          
-      }          
-    });          
         
-  } catch (error) {          
-    console.error('Erreur lors de la connexion:', error);          
-    res.status(500).json({          
-      success: false,          
-      message: 'Erreur interne du serveur',          
-      error: error.message          
-    });          
-  }          
-};     
-  
-const completeProfile = async (req, res) => {    
-  try {    
-    const userId = req.user._id;    
-    const { type_personne, profile } = req.body;    
-    
-    // Validation des données requises    
-    if (!type_personne || !profile) {    
-      return res.status(400).json({    
-        success: false,    
-        message: 'Type de personne et profil sont requis'    
-      });    
-    }    
-  
-    // Validation des régions avec ObjectId (si fournie)  
-    if (profile?.region_principale && !mongoose.Types.ObjectId.isValid(profile.region_principale)) {  
-      return res.status(400).json({  
-        success: false,  
-        message: 'ID de région invalide'  
-      });  
-    }  
-  
-    // Validation des villes avec ObjectId (si fournie)  
-    if (profile?.city_id && !mongoose.Types.ObjectId.isValid(profile.city_id)) {  
-      return res.status(400).json({  
-        success: false,  
-        message: 'ID de ville invalide'  
-      });  
-    }  
-    
-    // Créer PhysicalUser ou MoralUser selon le type    
-    if (type_personne === 'PHYSIQUE') {    
-      // Validation pour personne physique    
-      if (!profile.first_name || !profile.last_name || !profile.civilite) {    
-        return res.status(400).json({    
-          success: false,    
-          message: 'Prénom, nom et civilité sont requis pour une personne physique'    
-        });    
-      }    
-    
-      const physicalUser = new PhysicalUser({    
-        user_id: userId,    
-        first_name: profile.first_name,    
-        last_name: profile.last_name,    
-        civilite: profile.civilite,    
-        telephone_principal: profile.telephone_principal,    
-        adresse_principale: profile.adresse_principale,    
-        city_id: profile.city_id || null,  
-        region_principale: profile.region_principale || null,    
-        date_naissance: profile.date_naissance    
-      });    
-      await physicalUser.save();    
-    
-      // Créer Customer    
-      const customer_code = await generateCustomerCode('PHYSIQUE');    
-      const customer = new Customer({    
-        customer_code,    
-        type_client: 'PHYSIQUE',    
-        physical_user_id: physicalUser._id,    
-        statut: 'ACTIF'    
-      });    
-      await customer.save();    
-    
-    } else if (type_personne === 'MORAL') {    
-      // Validation pour personne morale    
-      if (!profile.raison_sociale) {    
-        return res.status(400).json({    
-          success: false,    
-          message: 'Raison sociale est requise pour une entreprise'    
-        });    
-      }    
-    
-      const moralUser = new MoralUser({    
-        user_id: userId,    
-        raison_sociale: profile.raison_sociale,    
-        ice: profile.ice,    
-        patente: profile.patente,    
-        rc: profile.rc,    
-        ville_rc: profile.ville_rc,    
-        telephone_principal: profile.telephone_principal,    
-        adresse_principale: profile.adresse_principale,    
-        city_id: profile.city_id || null,  
-        region_principale: profile.region_principale || null    
-      });    
-      await moralUser.save();    
-    
-      // Créer Customer    
-      const customer_code = await generateCustomerCode('MORAL');    
-      const customer = new Customer({    
-        customer_code,    
-        type_client: 'MORAL',    
-        moral_user_id: moralUser._id,    
-        statut: 'ACTIF'    
-      });    
-      await customer.save();    
-    
-    } else {    
-      return res.status(400).json({    
-        success: false,    
-        message: 'Type de personne invalide. Doit être PHYSIQUE ou MORAL'    
-      });    
-    }    
-    
-    // Activer l'utilisateur    
-    await User.findByIdAndUpdate(userId, { statut: 'ACTIF' });    
-    
-    res.json({     
-      success: true,     
-      message: 'Profil complété avec succès. Votre compte est maintenant actif.'     
-    });    
-    
-  } catch (error) {    
-    console.error('Erreur lors de la complétion du profil:', error);    
+  } catch (error) {        
+    console.error('Erreur lors de la complétion du profil:', error);        
+            
+    // Gestion spécifique des erreurs de duplication        
+    if (error.code === 11000) {        
+      const field = Object.keys(error.keyPattern)[0];        
+      return res.status(400).json({        
+        success: false,        
+        message: `Ce ${field} est déjà utilisé par un autre utilisateur`        
+      });        
+    }        
         
-    // Gestion spécifique des erreurs de duplication    
-    if (error.code === 11000) {    
-      const field = Object.keys(error.keyPattern)[0];    
-      return res.status(400).json({    
-        success: false,    
-        message: `Ce ${field} est déjà utilisé par un autre utilisateur`    
-      });    
-    }    
-    
-    res.status(500).json({     
-      success: false,     
-      message: 'Erreur interne du serveur',    
-      error: error.message     
-    });    
-  }    
-};  
-        
-module.exports = {          
-  register,          
-  login,   
-  completeProfile  
+    res.status(500).json({         
+      success: false,         
+      message: 'Erreur interne du serveur',        
+      error: error.message         
+    });        
+  }        
+};      
+            
+module.exports = {              
+  register,              
+  login,       
+  completeProfile      
 };

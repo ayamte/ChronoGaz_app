@@ -16,6 +16,7 @@ import {
 import "./gestionCamion.css"  
 import truckService from '../../../services/truckService' 
 import { employeeService } from '../../../services/employeeService'
+import SidebarNavigation from '../../../components/admin/Sidebar/Sidebar'
 
 export default function TruckManagement() {  
   const navigate = useNavigate()    
@@ -56,13 +57,17 @@ export default function TruckManagement() {
         employeeService.getAll()
       ])
       
+      console.log('Trucks response:', trucksResponse)
+      console.log('Employees response:', employeesResponse)
+      
       setTrucks(trucksResponse.data || [])
       setEmployees(employeesResponse.data || [])
       setError(null)      
     } catch (err) {      
       console.error("Erreur lors du chargement des données:", err)      
       setError("Erreur lors du chargement des données")      
-      setTrucks([])      
+      setTrucks([])
+      setEmployees([])      
     } finally {      
       setLoading(false)      
     }      
@@ -83,19 +88,46 @@ export default function TruckManagement() {
     }    
   }
 
-  const getEmployeeName = (employee) => {
-    if (!employee) return 'Non assigné'
-    if (employee.name) return employee.name
-    if (employee.physical_user_id) {
-      return `${employee.physical_user_id.first_name} ${employee.physical_user_id.last_name}`
+  // ✅ CORRIGÉ: Fonction qui gère les deux structures de données
+  const getEmployeeName = (employee) => {    
+    if (!employee) return 'Non assigné'    
+    if (employee.name) return employee.name    
+      
+    // Nouvelle structure (API employees avec user_info)
+    if (employee.user_info) {    
+      return `${employee.user_info.first_name} ${employee.user_info.last_name}`    
+    }  
+      
+    // Ancienne structure (API trucks avec populate physical_user_id)
+    if (employee.physical_user_id) {  
+      return `${employee.physical_user_id.first_name} ${employee.physical_user_id.last_name}`  
+    }  
+      
+    return 'Non assigné'    
+  }
+
+  // ✅ CORRIGÉ: Fonction pour obtenir l'email avec les deux structures
+  const getEmployeeEmail = (employee) => {
+    if (!employee) return null
+    
+    // Nouvelle structure (API employees)
+    if (employee.user_info?.email) {
+      return employee.user_info.email
     }
-    return 'Non assigné'
+    
+    // Ancienne structure (API trucks avec populate)
+    if (employee.physical_user_id?.email) {
+      return employee.physical_user_id.email
+    }
+    
+    return null
   }
 
   const handleViewDetails = async (truckId) => {
     try {
       const response = await truckService.getTruckById(truckId)
       if (response.success) {
+        console.log('Truck details:', response.data)
         setSelectedTruck(response.data)
         setIsDetailModalOpen(true)
       }
@@ -228,14 +260,28 @@ export default function TruckManagement() {
   const maintenanceTrucks = trucks.filter((truck) => truck.status === 'En maintenance').length
     
   return (    
-    <div className="truck-management-layout">    
+    <div className="truck-management-layout">
+      <SidebarNavigation />    
       <div className="truck-management-wrapper">    
         <div className="truck-management-container">    
           <div className="truck-management-content">    
             {/* En-tête */}    
             <div className="page-header">    
               <h1 className="page-title">Gestion des Camions</h1>    
-            </div>    
+            </div>
+
+            {/* Affichage des erreurs */}
+            {error && (
+              <div className="error-alert" style={{
+                backgroundColor: '#fee',
+                color: '#c33',
+                padding: '10px',
+                borderRadius: '4px',
+                marginBottom: '20px'
+              }}>
+                {error}
+              </div>
+            )}
     
             {/* 3 Cards en haut avec gradient */}    
             <div className="camion-stats-grid">    
@@ -348,360 +394,359 @@ export default function TruckManagement() {
                             <td>{getEmployeeName(truck.accompagnant)}</td>  
                             <td>{getStatusBadge(truck.status)}</td>
                              <td>  
-                              <div className="action-buttons">  
-                                <button     
-                                  className="details-button"    
-                                  onClick={() => handleViewDetails(truck._id)}  
-                                  title="Voir détails"  
+                              <div className="action-buttons">    
+                                <button       
+                                  className="details-button"      
+                                  onClick={() => handleViewDetails(truck._id)}    
+                                  title="Voir détails"    
+                                >      
+                                  <Eye className="details-icon" />      
+                                </button>    
+                                <button    
+                                  className="edit-button"    
+                                  onClick={() => handleEdit(truck._id)}    
+                                  title="Modifier"    
                                 >    
-                                  <Eye className="details-icon" />    
-                                </button>  
-                                <button  
-                                  className="edit-button"  
-                                  onClick={() => handleEdit(truck._id)}  
-                                  title="Modifier"  
-                                >  
-                                  <Edit className="action-icon" />  
-                                </button>  
-                                <button  
-                                  className="delete-button"  
-                                  onClick={() => handleDelete(truck._id)}  
-                                  title="Supprimer"  
-                                >  
-                                  <Delete className="action-icon" />  
-                                </button>  
-                              </div>  
-                            </td> 
-                          </tr>  
-                        ))}  
-                      </tbody>   
-                    </table>  
-                  )}  
+                                  <Edit className="action-icon" />    
+                                </button>    
+                                <button    
+                                  className="delete-button"    
+                                  onClick={() => handleDelete(truck._id)}    
+                                  title="Supprimer"    
+                                >    
+                                  <Delete className="action-icon" />    
+                                </button>    
+                              </div>    
+                            </td>   
+                          </tr>    
+                        ))}    
+                      </tbody>     
+                    </table>    
+                  )}    
+      
+                  {!loading && filteredTrucks.length === 0 && (      
+                    <div className="no-results">      
+                      Aucun camion trouvé pour votre recherche.      
+                    </div>      
+                  )}      
+                </div>        
+              </div>        
+            </div>        
+          </div>        
+        </div>        
+      </div>        
     
-                  {!loading && filteredTrucks.length === 0 && (    
-                    <div className="no-results">    
-                      Aucun camion trouvé pour votre recherche.    
+      {/* Modal de détails */}    
+      {isDetailModalOpen && selectedTruck && (    
+        <div className="modal-overlay" onClick={() => setIsDetailModalOpen(false)}>    
+          <div className="modal-content detail-modal" onClick={(e) => e.stopPropagation()}>    
+            <div className="modal-header">    
+              <h2 className="modal-title">Détails du Camion - {selectedTruck.matricule}</h2>    
+              <button className="modal-close" onClick={() => setIsDetailModalOpen(false)}>    
+                <X className="close-icon" />    
+              </button>    
+            </div>    
+                
+            <div className="detail-content">    
+              {/* Image du camion */}    
+              <div className="detail-image-section">    
+                {selectedTruck.image && selectedTruck.image.data ? (    
+                  <img     
+                    src={`data:image/png;base64,${btoa(    
+                      new Uint8Array(selectedTruck.image.data).reduce((data, byte) => data + String.fromCharCode(byte), '')    
+                    )}`}    
+                    alt="Camion"     
+                    className="detail-truck-image"    
+                  />    
+                ) : (    
+                  <div className="no-image-placeholder">    
+                    <ImageIcon className="no-image-icon-large" />    
+                    <p>Aucune image disponible</p>    
+                  </div>    
+                )}    
+              </div>    
+    
+              {/* Informations détaillées */}    
+              <div className="detail-info-grid">    
+                <div className="detail-section">    
+                  <h3>Informations Générales</h3>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Matricule:</span>    
+                    <span className="detail-value">{selectedTruck.matricule}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Marque:</span>    
+                    <span className="detail-value">{selectedTruck.brand}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Modèle:</span>    
+                    <span className="detail-value">{selectedTruck.modele}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Capacité:</span>    
+                    <span className="detail-value">{selectedTruck.capacite}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Carburant:</span>    
+                    <span className="detail-value">{selectedTruck.fuel}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Année:</span>    
+                    <span className="detail-value">{selectedTruck.anneecontruction}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Puissance fiscale:</span>    
+                    <span className="detail-value">{selectedTruck.puissancefiscale} CV</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">GPS:</span>    
+                    <span className="detail-value">{selectedTruck.gps || 'Non spécifié'}</span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Statut:</span>    
+                    <span className="detail-value">{getStatusBadge(selectedTruck.status)}</span>    
+                  </div>    
+                </div>    
+    
+                <div className="detail-section">    
+                  <h3>Équipe Assignée</h3>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Chauffeur:</span>    
+                    <span className="detail-value">    
+                      {selectedTruck.driver ? (    
+                        <div className="employee-info">    
+                          <Person className="employee-icon" />    
+                          <div>    
+                            <div className="employee-name">{getEmployeeName(selectedTruck.driver)}</div>    
+                            {getEmployeeEmail(selectedTruck.driver) && (        
+                              <div className="employee-email">{getEmployeeEmail(selectedTruck.driver)}</div>        
+                            )}    
+                          </div>    
+                        </div>    
+                      ) : (    
+                        'Non assigné'    
+                      )}    
+                    </span>    
+                  </div>    
+                  <div className="detail-item">    
+                    <span className="detail-label">Accompagnant:</span>    
+                    <span className="detail-value">    
+                      {selectedTruck.accompagnant ? (    
+                        <div className="employee-info">    
+                          <Person className="employee-icon" />    
+                          <div>    
+                            <div className="employee-name">{getEmployeeName(selectedTruck.accompagnant)}</div>    
+                            {getEmployeeEmail(selectedTruck.accompagnant) && (      
+                              <div className="employee-email">{getEmployeeEmail(selectedTruck.accompagnant)}</div>      
+                            )}   
+                          </div>    
+                        </div>    
+                      ) : (    
+                        'Non assigné'    
+                      )}    
+                    </span>    
+                  </div>    
+                </div>    
+              </div>    
+    
+              {/* Description */}    
+              {selectedTruck.description && (    
+                <div className="detail-section">    
+                  <h3>Description</h3>    
+                  <p className="detail-description">{selectedTruck.description}</p>    
+                </div>    
+              )}    
+            </div>    
+          </div>    
+        </div>    
+      )}    
+    
+      {/* Modal de modification */}    
+      {isEditModalOpen && (    
+        <div className="modal-overlay" onClick={() => setIsEditModalOpen(false)}>    
+          <div className="modal-content edit-modal" onClick={(e) => e.stopPropagation()}>    
+            <div className="modal-header">    
+              <h2 className="modal-title">Modifier le Camion</h2>    
+              <button className="modal-close" onClick={() => setIsEditModalOpen(false)}>    
+                <X className="close-icon" />    
+              </button>    
+            </div>    
+                
+            <form onSubmit={handleSubmitEdit} className="modal-form">    
+              <div className="form-grid">    
+                <div className="form-group">    
+                  <label className="form-label">Matricule</label>    
+                  <input    
+                    type="text"    
+                    value={formData.matricule}    
+                    onChange={(e) => handleInputChange("matricule", e.target.value)}    
+                    className="form-input"    
+                    required    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Marque</label>    
+                  <input    
+                    type="text"    
+                    value={formData.brand}    
+                    onChange={(e) => handleInputChange("brand", e.target.value)}    
+                    className="form-input"    
+                    required    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Modèle</label>    
+                  <input    
+                    type="text"    
+                    value={formData.modele}    
+                    onChange={(e) => handleInputChange("modele", e.target.value)}    
+                    className="form-input"    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Capacité</label>    
+                  <input    
+                    type="text"    
+                    value={formData.capacite}    
+                    onChange={(e) => handleInputChange("capacite", e.target.value)}    
+                    className="form-input"    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Carburant</label>    
+                  <select    
+                    value={formData.fuel}    
+                    onChange={(e) => handleInputChange("fuel", e.target.value)}    
+                    className="form-select"    
+                  >    
+                    <option value="DIESEL">Diesel</option>    
+                    <option value="ESSENCE">Essence</option>    
+                    <option value="ELECTRIQUE">Électrique</option>    
+                    <option value="HYBRIDE">Hybride</option>    
+                  </select>    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Année de construction</label>    
+                  <input    
+                    type="number"    
+                    value={formData.anneecontruction}    
+                    onChange={(e) => handleInputChange("anneecontruction", e.target.value)}    
+                    className="form-input"    
+                    min="1990"    
+                    max="2030"    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Puissance fiscale (CV)</label>    
+                  <input    
+                    type="number"    
+                    value={formData.puissancefiscale}    
+                    onChange={(e) => handleInputChange("puissancefiscale", e.target.value)}    
+                    className="form-input"    
+                    min="1"    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">GPS</label>    
+                  <input    
+                    type="text"    
+                    value={formData.gps}    
+                    onChange={(e) => handleInputChange("gps", e.target.value)}    
+                    className="form-input"    
+                  />    
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Chauffeur</label>    
+                  <select      
+                    value={formData.driver}      
+                    onChange={(e) => handleInputChange("driver", e.target.value)}      
+                    className="form-select"      
+                  >      
+                    <option value="">Aucun chauffeur</option>      
+                    {employees.filter(emp => emp.fonction === 'CHAUFFEUR').map(emp => (      
+                      <option key={emp.id} value={emp.id}>      
+                        {emp.user_info?.first_name} {emp.user_info?.last_name}    
+                      </option>      
+                    ))}      
+                  </select>     
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Accompagnant</label>    
+                  <select      
+                    value={formData.accompagnant}      
+                    onChange={(e) => handleInputChange("accompagnant", e.target.value)}      
+                    className="form-select"      
+                  >      
+                    <option value="">Aucun accompagnant</option>      
+                    {employees.filter(emp => emp.fonction === 'ACCOMPAGNANT').map(emp => (      
+                      <option key={emp.id} value={emp.id}>      
+                        {emp.user_info?.first_name} {emp.user_info?.last_name}    
+                      </option>      
+                    ))}      
+                  </select>   
+                </div>    
+    
+                <div className="form-group">    
+                  <label className="form-label">Statut</label>    
+                  <select    
+                    value={formData.status}    
+                    onChange={(e) => handleInputChange("status", e.target.value)}    
+                    className="form-select"    
+                  >    
+                    <option value="Disponible">Disponible</option>    
+                    <option value="En mission">En mission</option>    
+                    <option value="En maintenance">En maintenance</option>    
+                    <option value="Hors service">Hors service</option>    
+                  </select>    
+                </div>    
+    
+                <div className="form-group full-width">    
+                  <label className="form-label">Image</label>    
+                  <input    
+                    type="file"    
+                    accept="image/*"    
+                    onChange={handleImageChange}    
+                    className="form-input"    
+                  />    
+                  {imagePreview && (    
+                    <div className="image-preview">    
+                      <img src={imagePreview} alt="Aperçu" className="preview-image" />    
                     </div>    
                   )}    
-                </div>      
-              </div>      
-            </div>      
-          </div>      
-        </div>      
-      </div>      
-  
-      {/* Modal de détails */}  
-      {isDetailModalOpen && selectedTruck && (  
-        <div className="modal-overlay" onClick={() => setIsDetailModalOpen(false)}>  
-          <div className="modal-content detail-modal" onClick={(e) => e.stopPropagation()}>  
-            <div className="modal-header">  
-              <h2 className="modal-title">Détails du Camion - {selectedTruck.matricule}</h2>  
-              <button className="modal-close" onClick={() => setIsDetailModalOpen(false)}>  
-                <X className="close-icon" />  
-              </button>  
-            </div>  
-              
-            <div className="detail-content">  
-              {/* Image du camion */}  
-              <div className="detail-image-section">  
-                {selectedTruck.image && selectedTruck.image.data ? (  
-                  <img   
-                    src={`data:image/png;base64,${btoa(  
-                      new Uint8Array(selectedTruck.image.data).reduce((data, byte) => data + String.fromCharCode(byte), '')  
-                    )}`}  
-                    alt="Camion"   
-                    className="detail-truck-image"  
-                  />  
-                ) : (  
-                  <div className="no-image-placeholder">  
-                    <ImageIcon className="no-image-icon-large" />  
-                    <p>Aucune image disponible</p>  
-                  </div>  
-                )}  
-              </div>  
-  
-              {/* Informations détaillées */}  
-              <div className="detail-info-grid">  
-                <div className="detail-section">  
-                  <h3>Informations Générales</h3>  
-                  <div className="detail-item">  
-                    <span className="detail-label">Matricule:</span>  
-                    <span className="detail-value">{selectedTruck.matricule}</span>  
-                  </div>  
-                  <div className="detail-item">  
-                    <span className="detail-label">Marque:</span>  
-                    <span className="detail-value">{selectedTruck.brand}</span>  
-                  </div>  
-                  <div className="detail-item">  
-                    <span className="detail-label">Modèle:</span>  
-                    <span className="detail-value">{selectedTruck.modele}</span>  
-                  </div>  
-                  <div className="detail-item">  
-                    <span className="detail-label">Capacité:</span>  
-                    <span className="detail-value">{selectedTruck.capacite}</span>  
-                  </div>  
-                  <div className="detail-item">  
-                    <span className="detail-label">Carburant:</span>  
-                    <span className="detail-value">{selectedTruck.fuel}</span>  
-                  </div>  
-                  <div className="detail-item">  
-                    <span className="detail-label">Année:</span>  
-                    <span className="detail-value">{selectedTruck.anneecontruction}</span>  
-                  </div>  
-                  <div className="detail-item">  
-                    <span className="detail-label">Puissance fiscale:</span>  
-                    <span className="detail-value">{selectedTruck.puissancefiscale} CV</span>  
-                  </div>  
-                  <div className="detail-item">  
-                    <span className="detail-label">GPS:</span>  
-                    <span className="detail-value">{selectedTruck.gps || 'Non spécifié'}</span>  
-                  </div>  
-                  <div className="detail-item">  
-                    <span className="detail-label">Statut:</span>  
-                    <span className="detail-value">{getStatusBadge(selectedTruck.status)}</span>  
-                  </div>  
-                </div>  
-  
-                <div className="detail-section">  
-                  <h3>Équipe Assignée</h3>  
-                  <div className="detail-item">  
-                    <span className="detail-label">Chauffeur:</span>  
-                    <span className="detail-value">  
-                      {selectedTruck.driver ? (  
-                        <div className="employee-info">  
-                          <Person className="employee-icon" />  
-                          <div>  
-                            <div className="employee-name">{getEmployeeName(selectedTruck.driver)}</div>  
-                            {selectedTruck.driver.physical_user_id?.email && (  
-                              <div className="employee-email">{selectedTruck.driver.physical_user_id.email}</div>  
-                            )}  
-                          </div>  
-                        </div>  
-                      ) : (  
-                        'Non assigné'  
-                      )}  
-                    </span>  
-                  </div>  
-                  <div className="detail-item">  
-                    <span className="detail-label">Accompagnant:</span>  
-                    <span className="detail-value">  
-                      {selectedTruck.accompagnant ? (  
-                        <div className="employee-info">  
-                          <Person className="employee-icon" />  
-                          <div>  
-                            <div className="employee-name">{getEmployeeName(selectedTruck.accompagnant)}</div>  
-                            {selectedTruck.accompagnant.physical_user_id?.email && (  
-                              <div className="employee-email">{selectedTruck.accompagnant.physical_user_id.email}</div>  
-                            )}  
-                          </div>  
-                        </div>  
-                      ) : (  
-                        'Non assigné'  
-                      )}  
-                    </span>  
-                  </div>  
-                </div>  
-              </div>  
-  
-              {/* Description */}  
-              {selectedTruck.description && (  
-                <div className="detail-section">  
-                  <h3>Description</h3>  
-                  <p className="detail-description">{selectedTruck.description}</p>  
-                </div>  
-              )}  
-            </div>  
-          </div>  
-        </div>  
-      )}  
-  
-      {/* Modal de modification */}  
-      {isEditModalOpen && (  
-        <div className="modal-overlay" onClick={() => setIsEditModalOpen(false)}>  
-          <div className="modal-content edit-modal" onClick={(e) => e.stopPropagation()}>  
-            <div className="modal-header">  
-              <h2 className="modal-title">Modifier le Camion</h2>  
-              <button className="modal-close" onClick={() => setIsEditModalOpen(false)}>  
-                <X className="close-icon" />  
-              </button>  
-            </div>  
-              
-            <form onSubmit={handleSubmitEdit} className="modal-form">  
-              <div className="form-grid">  
-                <div className="form-group">  
-                  <label className="form-label">Matricule</label>  
-                  <input  
-                    type="text"  
-                    value={formData.matricule}  
-                    onChange={(e) => handleInputChange("matricule", e.target.value)}  
-                    className="form-input"  
-                    required  
-                  />  
-                </div>  
-  
-                <div className="form-group">  
-                  <label className="form-label">Marque</label>  
-                  <input  
-                    type="text"  
-                    value={formData.brand}  
-                    onChange={(e) => handleInputChange("brand", e.target.value)}  
-                    className="form-input"  
-                    required  
-                  />  
-                </div>  
-  
-                <div className="form-group">  
-                  <label className="form-label">Modèle</label>  
-                  <input  
-                    type="text"  
-                    value={formData.modele}  
-                    onChange={(e) => handleInputChange("modele", e.target.value)}  
-                    className="form-input"  
-                  />  
-                </div>  
-  
-                <div className="form-group">  
-                  <label className="form-label">Capacité</label>  
-                  <input  
-                    type="text"  
-                    value={formData.capacite}  
-                    onChange={(e) => handleInputChange("capacite", e.target.value)}  
-                    className="form-input"  
-                  />  
-                </div>  
-  
-                <div className="form-group">  
-                  <label className="form-label">Carburant</label>  
-                  <select  
-                    value={formData.fuel}  
-                    onChange={(e) => handleInputChange("fuel", e.target.value)}  
-                    className="form-select"  
-                  >  
-                    <option value="DIESEL">Diesel</option>  
-                    <option value="ESSENCE">Essence</option>  
-                    <option value="ELECTRIQUE">Électrique</option>  
-                    <option value="HYBRIDE">Hybride</option>  
-                  </select>  
-                </div>  
-  
-                <div className="form-group">  
-                  <label className="form-label">Année de construction</label>  
-                  <input  
-                    type="number"  
-                    value={formData.anneecontruction}  
-                    onChange={(e) => handleInputChange("anneecontruction", e.target.value)}  
-                    className="form-input"  
-                    min="1990"  
-                    max="2030"  
-                  />  
-                </div>  
-  
-                <div className="form-group">  
-                  <label className="form-label">Puissance fiscale (CV)</label>  
-                  <input  
-                    type="number"  
-                    value={formData.puissancefiscale}  
-                    onChange={(e) => handleInputChange("puissancefiscale", e.target.value)}  
-                    className="form-input"  
-                    min="1"  
-                  />  
-                </div>  
-  
-                <div className="form-group">  
-                  <label className="form-label">GPS</label>  
-                  <input  
-                    type="text"  
-                    value={formData.gps}  
-                    onChange={(e) => handleInputChange("gps", e.target.value)}  
-                    className="form-input"  
-                  />  
-                </div>  
-  
-                <div className="form-group">  
-                  <label className="form-label">Chauffeur</label>  
-                  <select  
-                    value={formData.driver}  
-                    onChange={(e) => handleInputChange("driver", e.target.value)}  
-                    className="form-select"  
-                  >  
-                    <option value="">Aucun chauffeur</option>  
-                    {employees.filter(emp => emp.fonction === 'CHAUFFEUR').map(emp => (  
-                      <option key={emp._id} value={emp._id}>  
-                        {emp.physical_user_id?.first_name} {emp.physical_user_id?.last_name}  
-                      </option>  
-                    ))}  
-                  </select>  
-                </div>  
-  
-                <div className="form-group">  
-                  <label className="form-label">Accompagnant</label>  
-                  <select  
-                    value={formData.accompagnant}  
-                    onChange={(e) => handleInputChange("accompagnant", e.target.value)}  
-                    className="form-select"  
-                  >  
-                    <option value="">Aucun accompagnant</option>  
-                    {employees.filter(emp => emp.fonction === 'ACCOMPAGNANT').map(emp => (  
-                      <option key={emp._id} value={emp._id}>  
-                        {emp.physical_user_id?.first_name} {emp.physical_user_id?.last_name}  
-                      </option>  
-                    ))}  
-                  </select>  
-                </div>  
-  
-                <div className="form-group">  
-                  <label className="form-label">Statut</label>  
-                  <select  
-                    value={formData.status}  
-                    onChange={(e) => handleInputChange("status", e.target.value)}  
-                    className="form-select"  
-                  >  
-                    <option value="Disponible">Disponible</option>  
-                    <option value="En mission">En mission</option>  
-                    <option value="En maintenance">En maintenance</option>  
-                    <option value="Hors service">Hors service</option>  
-                  </select>  
-                </div>  
-  
-                <div className="form-group full-width">  
-                  <label className="form-label">Image</label>  
-                  <input  
-                    type="file"  
-                    accept="image/*"  
-                    onChange={handleImageChange}  
-                    className="form-input"  
-                  />  
-                  {imagePreview && (  
-                    <div className="image-preview">  
-                      <img src={imagePreview} alt="Aperçu" className="preview-image" />  
-                    </div>  
-                  )}  
-                </div>  
-  
-                <div className="form-group full-width">  
-                  <label className="form-label">Description</label>  
-                  <textarea  
-                    value={formData.description}  
-                    onChange={(e) => handleInputChange("description", e.target.value)}  
-                    className="form-textarea"  
-                    rows="3"  
-                  />  
-                </div>  
-              </div>  
-  
-              <div className="form-actions">  
-                <button type="button" className="cancel-button" onClick={() => setIsEditModalOpen(false)}>  
-                  Annuler  
-                </button>  
-                <button type="submit" className="submit-button">  
-                  Sauvegarder  
-                </button>  
-              </div>  
-            </form>  
-          </div>  
-        </div>  
-      )}  
-    </div>      
-  )      
-}
-
+                </div>    
+    
+                <div className="form-group full-width">    
+                  <label className="form-label">Description</label>    
+                  <textarea    
+                    value={formData.description}    
+                    onChange={(e) => handleInputChange("description", e.target.value)}    
+                    className="form-textarea"    
+                    rows="3"    
+                  />    
+                </div>    
+              </div>    
+    
+              <div className="form-actions">    
+                <button type="button" className="cancel-button" onClick={() => setIsEditModalOpen(false)}>    
+                  Annuler    
+                </button>    
+                <button type="submit" className="submit-button">    
+                  Sauvegarder    
+                </button>    
+              </div>    
+            </form>    
+          </div>    
+        </div>    
+      )}    
+    </div>        
+  )        
+}  

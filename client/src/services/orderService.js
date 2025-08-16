@@ -1,372 +1,539 @@
-import axios from 'axios';
-import api from './api';
-import { authService } from './authService'; // AJOUTÉ pour résoudre l'erreur
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
-// Fonction utilitaire pour générer le numéro de commande - DÉPLACÉE EN HAUT
-const generateOrderNumber = () => 'CMD-' + Date.now();
-
-// Création de l'adresse de livraison
-export const createDeliveryAddress = async (addressData) => {
-  try {
-    const response = await axios.post(`${API_BASE_URL}/address`, {
-      num_appt: addressData.num_appt || '',
-      num_immeuble: addressData.num_immeuble || '',
-      rue: addressData.rue || addressData.fullAddress || 'Adresse inconnue',
-      quartier: addressData.quartier || '',
-      ville: addressData.ville || 'Casablanca',
-      code_postal: addressData.code_postal || '',
-      region_id: addressData.region_id,
-      latitude: addressData.latitude || null,
-      longitude: addressData.longitude || null,
-      type_adresse: 'LIVRAISON',
-      telephone: addressData.telephone || addressData.phone || '',
-      instructions_livraison: addressData.instructions_livraison || addressData.instructions || '',
-      actif: true
-    });
-    return response.data.data;
-  } catch (error) {
-    console.error("❌ Erreur création adresse:", error);
-    throw error;
-  }
-};
-
-// Création de commande complète
-export const createOrderFromSteps = async (orderData) => {
-  try {
-    console.log('🛒 Création de commande avec:', orderData);
-
-    let addressId = null;
-
-    // Utiliser l'ID client réel depuis auth-module
-    const user = authService.getUser();
-    const clientId = user?.id || orderData.clientId || '688bec637e0be4e53374e39e';
-
-    // Lignes de commande - DÉPLACÉ AVANT UTILISATION
-    const lignes = [];
-    orderData.products.forEach(product => {
-      const quantity = orderData.quantities[product.id];
-      const price = orderData.prices[product.id];
-      if (quantity > 0) {
-        lignes.push({
-          product_id: product.id,
-          um_id: product.um_id || null,
-          quantite: quantity,
-          prix_unitaire: price
-        });
-      }
-    });
-
-    if (lignes.length === 0) {
-      throw new Error("Aucun produit sélectionné");
-    }
-
-    // Cas GPS
-    if (orderData.useGPS && orderData.gpsLocation) {
-      const gpsAddress = await createDeliveryAddress({
-        rue: 'Position GPS',
-        ville: 'Casablanca',
-        region_id: orderData.address?.region_id || null,
-        latitude: orderData.gpsLocation.latitude,
-        longitude: orderData.gpsLocation.longitude,
-        telephone: orderData.customerPhone || orderData.address?.telephone || ''
-      });
-      addressId = gpsAddress._id;
-    }
-    // Cas adresse manuelle
-    else if (orderData.address) {
-      if (!orderData.address.rue || !orderData.address.ville || !orderData.address.region_id) {
-        throw new Error("Veuillez remplir tous les champs obligatoires: rue, ville et région");
-      }
-      const manualAddress = await createDeliveryAddress(orderData.address);
-      addressId = manualAddress._id;
-    }
-    else {
-      throw new Error("Aucune adresse de livraison fournie");
-    }
-
-    // Créer la commande avec le bon customer_id
-    const response = await axios.post(`${API_BASE_URL}/commands`, {
-      numero_commande: generateOrderNumber(),
-      customer_id: clientId, // Utiliser l'ID client réel
-      address_livraison_id: addressId,
-      lignes: lignes,
-      date_commande: new Date(),
-      date_souhaite: orderData.desiredDate || null,
-      urgent: false,
-      commentaires: orderData.additionalInfo || '',
-      total_ht: orderData.subtotal || 0,
-      total_tva: orderData.tva || 0,
-      total_ttc: orderData.total || 0,
-      statut_id: '688bec6361019bd9d174e3b0'
-    });
-
-    return response.data.data;
-  } catch (error) {
-    console.error("❌ Erreur création commande:", error);
-    throw error;
-  }
-};
-
-// Validation d'adresse
-export const validateAddress = (address, useGPS) => {
-  if (useGPS) return true;
-  const requiredFields = ['rue', 'ville', 'region_id', 'telephone'];
-  const missingFields = requiredFields.filter(field => !address[field]);
-  if (missingFields.length > 0) {
-    console.warn('Champs manquants:', missingFields);
-    return false;
-  }
-  return true;
-};
-
-// Service principal
-export const orderService = {
-  createDeliveryAddress,
-  createOrderFromSteps,
-  validateAddress,
-
-  async getOrders(params = {}) {
-    const {
-      page = 1,
-      limit = 20,
-      search,
-      status,
-      priority,
-      dateFrom,
-      dateTo,
-      customerId
-    } = params;
+import api from './api';    
+import { authService } from './authService';    
     
-    const backendStatus = status ? this.mapLocalStatusToBackend(status) : null;
-    console.log('➡️ Statut local converti en statut backend:', status, '->', backendStatus);
-
-    try {
-      const response = await api.get('/commands', { 
-        params: {
-          page,
-          limit,
-          search,
-          status: backendStatus,
-          priority,
-          dateFrom,
-          dateTo,
-          ...(customerId && { customerId })
-        }
-      });
-
-      const transformedData = response.data.data.map(command => ({
-        id: command._id,
-        orderNumber: command.numero_commande,
-        customer: {
-          id: command.customer_id._id,
-          name: command.customer_id?.physical_user_id?.first_name || command.customer_id.customer_code,
-          phone: command.customer_id.physical_user_id?.telephone_principal || '',
-        },
-        deliveryAddress: {
-          id: command.address_livraison_id._id,
-          street: command.address_livraison_id.rue,
-          city: command.address_livraison_id.ville,
-          postalCode: command.address_livraison_id.code_postal,
-        },
-        orderDate: command.date_commande,
-        requestedDeliveryDate: command.date_souhaite || command.date_commande,
-        status: this.mapStatusToLocal(command.statut_id.code),
-        priority: command.urgent ? 'high' : 'medium',
-        assignedTruckId: command.planification?.truck_id?._id || null,
-        assignedTruck: command.planification?.truck_id ? {
-          id: command.planification.truck_id._id,
-          plateNumber: command.planification.truck_id.matricule,
-          model: command.planification.truck_id.marque,
-          driverName: command.planification.livreur_id?.physical_user_id?.first_name + ' ' + 
-                     command.planification.livreur_id?.physical_user_id?.last_name
-        } : null,
-        products: command.lignes || [],
-        totalAmount: command.total_ttc,
-        customerNotes: command.commentaires || '',
-        orderSource: 'website',
-        createdAt: command.createdAt,
-        updatedAt: command.updatedAt
-      }));
-
-      return {
-        data: transformedData,
-        total: response.data.count || transformedData.length,
-        totalPages: Math.ceil((response.data.count || transformedData.length) / limit)
-      };
-    } catch (error) {
-      console.error('Erreur getOrders:', error);
-      throw error;
-    }
-  },
-
-  async getOrder(orderId) {
-    try {
-      const response = await api.get(`/commands/${orderId}`);
-      const command = response.data.data.command;
+// Création de commande avec nouvelle architecture d'adresses    
+export const createOrderFromSteps = async (orderData) => {        
+  try {        
+    console.log('🛒 Création de commande avec:', orderData);        
+        
+    const user = authService.getUser();        
+    const clientId = user?.customer_id || orderData.clientId;      
+        
+    // Lignes de commande      
+    const lignes = [];        
+    orderData.products.forEach(product => {        
+      const quantity = orderData.quantities[product._id];        
+      const price = orderData.prices[product._id];        
+      if (quantity > 0) {        
+        lignes.push({        
+          product_id: product._id,        
+          UM_id: product.unites_mesure?.[0]?.UM_id || null,        
+          quantity: quantity,        
+          price: price        
+        });        
+      }        
+    });        
+        
+    if (lignes.length === 0) {        
+      throw new Error("Aucun produit sélectionné");        
+    }        
+        
+    // Structure d'adresse corrigée selon le contrôleur    
+    let addressPayload = {};        
+        
+    if (orderData.useGPS && orderData.gpsLocation) {        
+      addressPayload = {        
+        use_existing_address: false,        
+        new_address: {        
+          street: 'Position GPS',        
+          latitude: orderData.gpsLocation.latitude,        
+          longitude: orderData.gpsLocation.longitude,        
+          type_adresse: 'LIVRAISON'    
+        }        
+      };        
+    } else if (orderData.selectedExistingAddress) {        
+      addressPayload = {        
+        use_existing_address: true,        
+        address_id: orderData.selectedExistingAddress._id        
+      };        
+    } else if (orderData.address && orderData.address.new_address) {        
+      addressPayload = {        
+        use_existing_address: false,        
+        new_address: orderData.address.new_address    
+      };        
+    } else {        
+      throw new Error("Aucune adresse de livraison fournie");        
+    }        
+        
+    // Utiliser l'objet api au lieu d'axios directement  
+    const response = await api.post('/commands', {      
+      customer_id: clientId,      
+      address: addressPayload,  
+      details: orderData.additionalInfo || '',      
+      urgent: false,      
+      lignes: lignes      
+    });    
+        
+    return response.data.data;        
+  } catch (error) {        
+    console.error("❌ Erreur création commande:", error);        
+    throw error;        
+  }        
+};  
+    
+// ✅ Validation d'adresse corrigée - Sans région    
+export const validateAddress = (address, useGPS, selectedExistingAddress) => {    
+  if (useGPS) return true;    
+  if (selectedExistingAddress) return true;    
       
-      return {
-        id: command._id,
-        orderNumber: command.numero_commande,
-        customer: {
-          id: command.customer_id._id,
-          name: command.customer_id.physical_user_id?.first_name + ' ' + command.customer_id.physical_user_id?.last_name || command.customer_id.nom_commercial || command.customer_id.customer_code,
-          phone: command.customer_id.physical_user_id?.telephone_principal || command.customer_id.telephone || '',
-          email: command.customer_id.email || ''
-        },
-        deliveryAddress: {
-          id: command.address_livraison_id._id,
-          street: command.address_livraison_id.rue,
-          city: command.address_livraison_id.ville,
-          postalCode: command.address_livraison_id.code_postal,
-        },
-        orderDate: command.date_commande,
-        requestedDeliveryDate: command.date_souhaite || command.date_commande,
-        status: this.mapStatusToLocal(command.statut_id.code),
-        priority: command.urgent ? 'high' : 'medium',
-        products: response.data.data.lignes || [],
-        totalAmount: command.total_ttc,
-        customerNotes: command.commentaires || '',
-        assignedTruck: response.data.data.planification?.truck_id || null,
-        history: this.generateHistory(command)
-      };
-    } catch (error) {
-      console.error('Erreur getOrder:', error);
-      throw error;
+  // ✅ SUPPRIMER 'region_id' des champs requis    
+  const requiredFields = ['street', 'city_id', 'telephone'];    
+  const missingFields = requiredFields.filter(field => !address[field]);    
+  if (missingFields.length > 0) {    
+    console.warn('Champs manquants:', missingFields);    
+    return false;    
+  }    
+  return true;    
+};    
+    
+// Service principal avec toutes les fonctions    
+export const orderService = {    
+  createOrderFromSteps,    
+  validateAddress,    
+    
+  async getOrders(params = {}) {    
+    const {    
+      page = 1,    
+      limit = 20,    
+      search,    
+      status,    
+      priority,    
+      dateFrom,    
+      dateTo,    
+      customerId    
+    } = params;    
+          
+    // ✅ MODIFIÉ: Ne plus mapper les statuts car le backend gère maintenant les planifications
+    try {    
+      const response = await api.get('/commands', {    
+        params: {    
+          page,    
+          limit,    
+          search,    
+          status, // Passer directement le statut frontend
+          priority,    
+          dateFrom,    
+          dateTo,    
+          ...(customerId && { customerId })    
+        }    
+      });    
+    
+      const transformedData = response.data.data.map(command => ({    
+        id: command._id,    
+        orderNumber: command.numero_commande,    
+        customer: {    
+          id: command.customer_id._id,    
+          name: command.customer_id?.physical_user_id?.first_name ||    
+                command.customer_id?.moral_user_id?.raison_sociale ||    
+                command.customer_id.customer_code,    
+          phone: command.customer_id.physical_user_id?.telephone_principal ||    
+                 command.customer_id.moral_user_id?.telephone_principal || '',    
+        },    
+        deliveryAddress: command.address_id ? {    
+          address: `${command.address_id.numimmeuble || ''} ${command.address_id.street || ''}`.trim(),    
+          city: command.address_id.city_id?.name || 'Casablanca',  
+          quartier: command.address_id.quartier || '',    
+          latitude: command.address_id.latitude,    
+          longitude: command.address_id.longitude    
+        } : null,    
+        orderDate: command.date_commande,    
+        requestedDeliveryDate: command.date_souhaite || command.date_commande,    
+        // ✅ MODIFIÉ: Déterminer le statut basé sur la planification
+        status: this.mapPlanificationToStatus(command.planification, command.livraison),    
+        // ✅ MODIFIÉ: Priorité basée sur la planification
+        priority: command.planification?.priority || (command.urgent ? 'high' : 'medium'),    
+        assignedTruckId: command.planification?.trucks_id?._id || null,    
+        assignedTruck: command.planification?.trucks_id ? {    
+          id: command.planification.trucks_id._id,    
+          plateNumber: command.planification.trucks_id.matricule,    
+          model: command.planification.trucks_id.marque,    
+          capacity: command.planification.trucks_id.capacite,
+          driverName: command.planification.livreur_employee_id?.physical_user_id 
+            ? `${command.planification.livreur_employee_id.physical_user_id.first_name} ${command.planification.livreur_employee_id.physical_user_id.last_name}`
+            : 'Non assigné'
+        } : null,    
+        products: command.lignes || [],    
+        customerNotes: command.details || '',    
+        orderSource: 'website',    
+        createdAt: command.createdAt,    
+        updatedAt: command.updatedAt,
+        // ✅ NOUVEAU: Ajouter les données de planification et livraison
+        planification: command.planification,
+        livraison: command.livraison
+      }));    
+    
+      return {    
+        data: transformedData,    
+        total: response.data.count || transformedData.length,    
+        totalPages: Math.ceil((response.data.count || transformedData.length) / limit)    
+      };    
+    } catch (error) {    
+      console.error('Erreur getOrders:', error);    
+      throw error;    
+    }    
+  },    
+    
+  async getOrder(orderId) {    
+    try {    
+      const response = await api.get(`/commands/${orderId}`);    
+      const command = response.data.data.command;    
+      const planification = response.data.data.planification;
+            
+      return {    
+        id: command._id,    
+        orderNumber: command.numero_commande,    
+        customer: {    
+          id: command.customer_id._id,    
+          name: command.customer_id.physical_user_id?.first_name + ' ' + command.customer_id.physical_user_id?.last_name ||    
+                command.customer_id.moral_user_id?.raison_sociale ||    
+                command.customer_id.customer_code,    
+          phone: command.customer_id.physical_user_id?.telephone_principal ||    
+                 command.customer_id.moral_user_id?.telephone_principal || '',    
+          email: command.customer_id.email || ''    
+        },    
+        deliveryAddress: command.address_id ? {    
+          address: `${command.address_id.numimmeuble || ''} ${command.address_id.street || ''}`.trim(),    
+          city: command.address_id.city_id?.name || 'Casablanca',  
+          quartier: command.address_id.quartier || '',    
+          latitude: command.address_id.latitude,    
+          longitude: command.address_id.longitude    
+        } : null,    
+        orderDate: command.date_commande,    
+        requestedDeliveryDate: command.date_souhaite || command.date_commande,    
+        // ✅ MODIFIÉ: Statut basé sur la planification
+        status: this.mapPlanificationToStatus(planification),    
+        priority: planification?.priority || (command.urgent ? 'high' : 'medium'),    
+        products: response.data.data.lignes || [],    
+        customerNotes: command.details || '',    
+        assignedTruck: planification?.trucks_id || null,    
+        history: this.generateHistory(command, planification)    
+      };    
+    } catch (error) {    
+      console.error('Erreur getOrder:', error);    
+      throw error;    
+    }    
+  },    
+    
+  async updateOrder(orderId, updateData) {    
+    try {    
+      const response = await api.put(`/commands/${orderId}`, updateData);    
+      return response.data.data;    
+    } catch (error) {    
+      console.error('Erreur updateOrder:', error);    
+      throw error;    
+    }    
+  },    
+    
+  // ✅ MODIFIÉ: Statistiques basées sur les planifications
+  async getOrderStats() {    
+    try {    
+      const response = await api.get('/commands/stats');    
+      const stats = response.data.data;    
+            
+      // ✅ MODIFIÉ: Utiliser les nouvelles statistiques du backend
+      return {    
+        total: stats.totalCommandes,    
+        pending: stats.pending || 0,    
+        assigned: stats.assigned || 0,    
+        inProgress: stats.inProgress || 0,    
+        delivered: stats.delivered || 0    
+      };    
+    } catch (error) {    
+      console.error('Erreur getOrderStats:', error);    
+      throw error;    
+    }    
+  },    
+    
+  async assignTruck(orderId, payload) {    
+    try {    
+      const response = await api.put(`/commands/${orderId}/status`, payload);    
+      return response.data.data;    
+    } catch (error) {    
+      console.error('Erreur assignTruck:', error);    
+      throw error;    
+    }    
+  },    
+    
+  // ✅ MODIFIÉ: Utiliser la nouvelle route pour annuler planification
+  async cancelAssignment(orderId) {    
+    try {    
+      const response = await api.put(`/commands/${orderId}/cancel-planification`);    
+      return response.data.data;    
+    } catch (error) {    
+      console.error('Erreur cancelAssignment:', error);    
+      throw error;    
+    }    
+  },    
+    
+  // ✅ MODIFIÉ: Fonction simplifiée pour la planification
+  async updateOrderStatus(orderId, status, notes = '') {    
+    try {    
+      // Cette fonction n'est plus utilisée avec le nouveau workflow
+      console.warn('updateOrderStatus est dépréciée, utiliser assignTruck à la place');
+      const response = await api.put(`/commands/${orderId}/status`, {    
+        details: notes    
+      });    
+      return response.data.data;    
+    } catch (error) {    
+      console.error('Erreur updateOrderStatus:', error);    
+      throw error;    
+    }    
+  },    
+    
+  // Utiliser l'endpoint existant pour les commandes client  
+  async getClientOrders(customerId) {    
+    try {    
+      const response = await api.get(`/commands/customer/${customerId}`);  
+      return response.data;    
+    } catch (error) {    
+      console.error('Erreur récupération commandes client:', error);    
+      throw error;    
+    }    
+  },    
+    
+  // Alias pour compatibilité  
+  async getOrderById(orderId) {    
+    return this.getOrder(orderId);  
+  },    
+    
+  async cancelOrder(orderId, raison_annulation = '') {    
+    try {    
+      const response = await api.put(`/commands/${orderId}/cancel`, {  
+        raison_annulation  
+      });    
+      return response.data;    
+    } catch (error) {    
+      console.error('Erreur annulation commande:', error);    
+      throw error;    
+    }    
+  },    
+    
+  // ✅ NOUVEAU: Mapper l'état de planification vers le statut frontend
+  mapPlanificationToStatus(planification, livraison = null) {
+    if (!planification) return 'pending';
+    
+    // Si il y a une livraison, utiliser son état
+    if (livraison) {
+      switch(livraison.etat) {
+        case 'EN_COURS': return 'in_progress';
+        case 'LIVRE': return 'delivered';
+        case 'ECHEC': return 'cancelled';
+        case 'PARTIELLE': return 'in_progress';
+        default: return 'assigned';
+      }
+    }
+    
+    // Sinon utiliser l'état de la planification
+    switch(planification.etat) {
+      case 'PLANIFIE': return 'assigned';
+      case 'EN_COURS': return 'in_progress';
+      case 'LIVRE': return 'delivered';
+      case 'ANNULE': return 'cancelled';
+      case 'REPORTE': return 'assigned';
+      default: return 'pending';
     }
   },
-
-  async updateOrder(orderId, updateData) {
-    try {
-      const response = await api.put(`/commands/${orderId}`, updateData);
-      return response.data.data;
-    } catch (error) {
-      console.error('Erreur updateOrder:', error);
-      throw error;
-    }
-  },
-
-  async getOrderStats() {
-    try {
-      const response = await api.get('/commands/stats');
-      const stats = response.data.data;
+    
+  // ✅ MODIFIÉ: Fonctions de mapping dépréciées mais conservées pour compatibilité
+  mapLocalStatusToBackend(localStatus) {    
+    console.warn('mapLocalStatusToBackend est déprécié avec le nouveau workflow');
+    const mapping = {    
+      'pending': null, // Pas de planification
+      'assigned': 'PLANIFIE',    
+      'in_progress': 'EN_COURS',    
+      'delivered': 'LIVRE',    
+      'cancelled': 'ANNULE'    
+    };    
+    return mapping[localStatus] || localStatus;    
+  },    
+    
+  mapStatusToLocal(backendStatus) {    
+    console.warn('mapStatusToLocal est déprécié avec le nouveau workflow');
+    const mapping = {      
+      'EN_ATTENTE': 'pending',      
+      'PLANIFIEE': 'assigned',      
+      'EN_COURS': 'in_progress',      
+      'LIVREE': 'delivered',      
+      'ANNULEE': 'cancelled'      
+    };      
+    return mapping[backendStatus] || backendStatus;      
+  },      
       
-      let pending = 0, assigned = 0, inProgress = 0, delivered = 0;
+  // ✅ MODIFIÉ: Historique basé sur les planifications et livraisons  
+  generateHistory(command, planification = null) {      
+    const history = [{      
+      id: 'hist-1',      
+      action: 'Commande créée',      
+      details: 'Commande créée dans le système',      
+      timestamp: command.createdAt || command.date_commande,      
+      userId: 'system',      
+      userName: 'Système'      
+    }];      
       
-      stats.repartitionParStatut.forEach(stat => {
-        const statusCode = stat.statut[0]?.code;
-        switch(statusCode) {
-          case 'EN_ATTENTE': pending = stat.count; break;
-          case 'PLANIFIEE': assigned = stat.count; break;
-          case 'EN_COURS': inProgress = stat.count; break;
-          case 'LIVREE': delivered = stat.count; break;
-        }
-      });
+    if (command.updatedAt && command.updatedAt !== command.createdAt) {      
+      history.push({      
+        id: 'hist-2',      
+        action: 'Commande mise à jour',      
+        details: 'Commande modifiée',      
+        timestamp: command.updatedAt,      
+        userId: 'system',      
+        userName: 'Système'      
+      });      
+    }      
       
-      return {
-        total: stats.totalCommandes,
-        pending,
-        assigned,
-        inProgress,
-        delivered
-      };
-    } catch (error) {
-      console.error('Erreur getOrderStats:', error);
-      throw error;
-    }
-  },
-
-  async assignTruck(orderId, payload) {
-    try {
-      const response = await api.put(`/commands/${orderId}/status`, payload);
-      return response.data.data;
-    } catch (error) {
-      console.error('Erreur assignTruck:', error);
-      throw error;
-    }
-  },
-
-  async cancelAssignment(orderId) {
-    try {
-      const response = await api.put(`/commands/${orderId}/cancel`);
-      return response.data.data;
-    } catch (error) {
-      console.error('Erreur cancelAssignment:', error);
-      throw error;
-    }
-  },
-
-  async updateOrderStatus(orderId, status, notes = '') {
-    try {
-      const statusId = await this.getStatusId(this.mapLocalStatusToBackend(status));
-      const response = await api.put(`/commands/${orderId}/status`, {
-        statut_id: statusId,
-        commentaires: notes
-      });
-      return response.data.data;
-    } catch (error) {
-      console.error('Erreur updateOrderStatus:', error);
-      throw error;
-    }
-  },
-
-  // Fonctions de mapping des statuts
-  mapLocalStatusToBackend(localStatus) {
-    const mapping = {
-      'pending': 'EN_ATTENTE',
-      'assigned': 'PLANIFIEE',
-      'in-progress': 'EN_COURS',
-      'delivered': 'LIVREE',
-      'cancelled': 'ANNULEE'
-    };
-    return mapping[localStatus] || localStatus;
-  },
-
-  mapStatusToLocal(backendStatus) {
-    const mapping = {
-      'EN_ATTENTE': 'pending',
-      'PLANIFIEE': 'assigned',
-      'EN_COURS': 'in-progress',
-      'LIVREE': 'delivered',
-      'ANNULEE': 'cancelled'
-    };
-    return mapping[backendStatus] || backendStatus;
-  },
-
-  async getStatusId(statusCode) {
-    try {
-      const response = await api.get('/statuts');
-      const statut = response.data.find(s => s.code === statusCode);
-      return statut?._id;
-    } catch (error) {
-      console.error('Erreur getStatusId:', error);
-      throw error;
-    }
-  },
-
-  generateHistory(command) {
-    const history = [{
-      id: 'hist-1',
-      action: 'Commande créée',
-      details: 'Commande créée dans le système',
-      timestamp: command.createdAt || command.date_commande,
-      userId: 'system',
-      userName: 'Système'
-    }];
-
-    if (command.updatedAt && command.updatedAt !== command.createdAt) {
-      history.push({
-        id: 'hist-2',
-        action: 'Commande mise à jour',
-        details: 'Commande modifiée',
-        timestamp: command.updatedAt,
-        userId: 'system',
-        userName: 'Système'
-      });
-    }
-    return history;
-  }
-};
-
+    // ✅ MODIFIÉ: Utiliser la planification au lieu du statut  
+    if (planification) {      
+      history.push({      
+        id: 'hist-3',      
+        action: 'Camion assigné',      
+        details: `Camion ${planification.trucks_id?.matricule} assigné`,      
+        timestamp: planification.createdAt,      
+        userId: planification.created_by || 'system',      
+        userName: 'Administrateur'      
+      });      
+  
+      if (planification.etat === 'EN_COURS') {      
+        history.push({      
+          id: 'hist-4',      
+          action: 'Livraison en cours',      
+          details: 'Le chauffeur a commencé la livraison',      
+          timestamp: planification.updatedAt,      
+          userId: 'driver',      
+          userName: 'Chauffeur'      
+        });      
+      }      
+        
+      if (planification.etat === 'LIVRE') {      
+        history.push({      
+          id: 'hist-5',      
+          action: 'Livraison terminée',      
+          details: 'Commande livrée avec succès',      
+          timestamp: planification.updatedAt,      
+          userId: 'driver',      
+          userName: 'Chauffeur'      
+        });      
+      }  
+    }      
+      
+    return history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));      
+  },      
+      
+  // Fonction pour créer une commande depuis les étapes du workflow client      
+  async createOrder(orderData) {      
+    try {      
+      const response = await api.post('/commands', orderData);      
+      return response.data;      
+    } catch (error) {      
+      console.error('Erreur création commande:', error);      
+      throw error;      
+    }      
+  },      
+      
+  // ✅ MODIFIÉ: Fonction pour obtenir les commandes par statut (utilise le nouveau système)  
+  async getOrdersByStatus(status) {      
+    try {      
+      const response = await api.get('/commands', {      
+        params: { status } // Passer directement le statut frontend  
+      });      
+      return response.data.data;      
+    } catch (error) {      
+      console.error('Erreur récupération commandes par statut:', error);      
+      throw error;      
+    }      
+  },      
+      
+  // Fonction pour obtenir les commandes urgentes      
+  async getUrgentOrders() {      
+    try {      
+      const response = await api.get('/commands', {      
+        params: { priority: 'urgent' }      
+      });      
+      return response.data.data;      
+    } catch (error) {      
+      console.error('Erreur récupération commandes urgentes:', error);      
+      throw error;      
+    }      
+  },      
+      
+  // Fonction pour marquer une commande comme urgente (via update)    
+  async markOrderAsUrgent(orderId) {      
+    try {      
+      const response = await api.put(`/commands/${orderId}`, {      
+        urgent: true      
+      });      
+      return response.data.data;      
+    } catch (error) {      
+      console.error('Erreur marquage commande urgente:', error);      
+      throw error;      
+    }      
+  },      
+      
+  // Fonction pour obtenir les commandes d'une période      
+  async getOrdersByDateRange(startDate, endDate) {      
+    try {      
+      const response = await api.get('/commands', {      
+        params: {      
+          dateFrom: startDate,      
+          dateTo: endDate      
+        }      
+      });      
+      return response.data.data;      
+    } catch (error) {      
+      console.error('Erreur récupération commandes par période:', error);      
+      throw error;      
+    }      
+  },  
+  
+  // ✅ NOUVEAU: Service pour les livraisons  
+  async startDelivery(planificationId, deliveryData) {  
+    try {  
+      const response = await api.post(`/livraisons/start/${planificationId}`, deliveryData);  
+      return response.data.data;  
+    } catch (error) {  
+      console.error('Erreur démarrage livraison:', error);  
+      throw error;  
+    }  
+  },  
+  
+  async completeDelivery(livraisonId, completionData) {  
+    try {  
+      const response = await api.put(`/livraisons/${livraisonId}/complete`, completionData);  
+      return response.data.data;  
+    } catch (error) {  
+      console.error('Erreur finalisation livraison:', error);  
+      throw error;  
+    }  
+  },  
+  
+  async getDeliveries(params = {}) {  
+    try {  
+      const response = await api.get('/livraisons', { params });  
+      return response.data;  
+    } catch (error) {  
+      console.error('Erreur récupération livraisons:', error);  
+      throw error;  
+    }  
+  },  
+  
+  async getDeliveryById(livraisonId) {  
+    try {  
+      const response = await api.get(`/livraisons/${livraisonId}`);  
+      return response.data.data;  
+    } catch (error) {  
+      console.error('Erreur récupération livraison:', error);  
+      throw error;  
+    }  
+  },  
+  
+  async updateDeliveryLines(livraisonId, lignes) {  
+    try {  
+      const response = await api.put(`/livraisons/${livraisonId}/lines`, { lignes });  
+      return response.data.data;  
+    } catch (error) {  
+      console.error('Erreur mise à jour lignes livraison:', error);  
+      throw error;  
+    }  
+  }  
+};      
+      
 export default orderService;

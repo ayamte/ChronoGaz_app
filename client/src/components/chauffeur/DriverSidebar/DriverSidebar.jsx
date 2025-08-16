@@ -17,12 +17,7 @@ import "./DriverSidebar.css"
 import { authService } from '../../../services/authService';  
 /*import { redirectUserByRole } from '../../../utils/redirectUtils'; */
       
-const menuItems = [            
-  {      
-    icon: Route,      
-    label: "Ma tournée du jour",      
-    href: "/chauffeur/dailyroutepage",      
-  },      
+const menuItems = [                
   {      
     icon: Map,      
     label: "Vos commandes",      

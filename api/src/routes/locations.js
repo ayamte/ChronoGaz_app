@@ -1,19 +1,31 @@
 const express = require('express');  
-const router = express.Router();  
-const locationController = require('../controllers/LocationController');  
+const {   
+  getCities,  
+  createCity,  
+  getCityById,  
+  updateCity,  
+  deleteCity,  
+  searchCities,  
+  getCitiesStats,  
+  geocodeAddress  
+} = require('../controllers/LocationController');  
 const { authenticateToken } = require('../middleware/authMiddleware');  
+const { requireAdmin } = require('../middleware/adminAuthMiddleware');  
   
-// Routes pour les villes  
-router.get('/cities', locationController.getCities);  
-router.post('/cities', authenticateToken, locationController.createCity);  
-router.put('/cities/:id', authenticateToken, locationController.updateCity);  
-router.delete('/cities/:id', authenticateToken, locationController.deleteCity);  
+const router = express.Router();  
   
-// Routes pour les régions  
-router.get('/cities/:cityId/regions', locationController.getRegionsByCity);  
-router.post('/regions', authenticateToken, locationController.createRegion);  
-router.put('/regions/:id', authenticateToken, locationController.updateRegion);  
-router.delete('/regions/:id', authenticateToken, locationController.deleteRegion);  
-router.get('/regions', locationController.getAllRegions);
+// Routes publiques pour les villes  
+router.get('/cities', getCities);  
+router.get('/cities/search', searchCities);  
+router.get('/cities/:id', getCityById);  
+  
+// Routes administratives pour la gestion des villes  
+router.post('/cities', requireAdmin, createCity);  
+router.put('/cities/:id', requireAdmin, updateCity);  
+router.delete('/cities/:id', requireAdmin, deleteCity);  
+  
+// Routes pour les statistiques et utilitaires  
+router.get('/cities/stats/overview', requireAdmin, getCitiesStats);  
+router.post('/geocode', authenticateToken, geocodeAddress);  
   
 module.exports = router;

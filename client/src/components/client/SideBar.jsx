@@ -44,16 +44,17 @@ function SidebarNavigation({ userName = "Utilisateur", children }) {
   const [dropdownOpen, setDropdownOpen] = useState(false)      
     
   useEffect(() => {    
-    if (isCollapsed) {    
-      document.body.classList.add('sidebar-collapsed');    
-    } else {    
-      document.body.classList.remove('sidebar-collapsed');    
-    }    
-        
-    return () => {    
-      document.body.classList.remove('sidebar-collapsed');    
-    };    
-  }, [isCollapsed]);    
+  if (isCollapsed) {    
+    document.body.classList.add('sidebar-collapsed');    
+  } else {    
+    document.body.classList.remove('sidebar-collapsed');    
+  }    
+      
+  // Cleanup au démontage du composant    
+  return () => {    
+    document.body.classList.remove('sidebar-collapsed');    
+  };    
+}, [isCollapsed]); 
       
   const handleLogout = () => {  
    authService.logout();  
@@ -161,10 +162,7 @@ function SidebarNavigation({ userName = "Utilisateur", children }) {
         </div>      
       </header>      
         
-      {/* Zone de contenu principal */}  
-      <div className="client-page-wrapper">  
-        {children}  
-      </div>  
+      {children}
     </div>      
   )      
 }      

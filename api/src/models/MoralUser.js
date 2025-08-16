@@ -7,18 +7,7 @@ const MoralUserSchema = new mongoose.Schema({
   patente: String,      
   rc: String,      
   ville_rc: String,      
-  telephone_principal: String,      
-  adresse_principale: String,      
-  city_id: {  
-    type: mongoose.Schema.Types.ObjectId,  
-    ref: 'City',  
-    required: false  
-  },  
-  region_principale: {  
-    type: mongoose.Schema.Types.ObjectId,  
-    ref: 'Region',  
-    required: false  
-  },     
+  telephone_principal: String,         
 }, { timestamps: true });      
       
 MoralUserSchema.index({ user_id: 1 });      

@@ -52,10 +52,14 @@ exports.getAllProducts = async (req, res) => {
   }  
 };  
   
-// Récupérer un produit par ID  
+// Récupérer un produit par ID - CORRIGÉ  
 exports.getProductById = async (req, res) => {  
   try {  
-    const product = await Product.findById(req.params.id);  
+    const product = await Product.findById(req.params.id)
+      .populate('unites_mesure.UM_id', 'unitemesure');
+    // Suppression des lignes qui causaient l'erreur 500 :
+    // .populate('prix.ListePrix_listeprix_id', 'listeprix_id nom')  
+    // .populate('prix.UM_id', 'unitemesure');
       
     if (!product) {  
       return res.status(404).json({  
@@ -200,5 +204,37 @@ exports.getProductImage = async (req, res) => {
     });  
   }  
 };  
+
+// Ajouter/modifier les unités de mesure d'un produit  
+exports.updateProductUnits = async (req, res) => {  
+  try {  
+    const { id } = req.params;  
+    const { unites_mesure } = req.body;  
   
+    const product = await Product.findByIdAndUpdate(  
+      id,  
+      { unites_mesure },  
+      { new: true, runValidators: true }  
+    ).populate('unites_mesure.UM_id', 'unitemesure');  
+  
+    if (!product) {  
+      return res.status(404).json({  
+        success: false,  
+        error: 'Produit non trouvé'  
+      });  
+    }  
+  
+    res.status(200).json({  
+      success: true,  
+      data: product  
+    });  
+  } catch (error) {  
+    res.status(400).json({  
+      success: false,  
+      error: error.message  
+    });  
+  }  
+};
+
+// IMPORTANT : Export de upload nécessaire pour les routes
 exports.upload = upload;

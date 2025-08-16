@@ -1,23 +1,33 @@
 const express = require('express');  
-const { getProfile, updateProfile } = require('../controllers/userController');  
+const {   
+  getProfile,   
+  updateProfile,   
+  getAllUsers,   
+  getUserById,   
+  updateUserStatus,   
+  deleteUser,   
+  getUserStats   
+} = require('../controllers/userController');  
 const { authenticateToken } = require('../middleware/authMiddleware');  
-const { changePassword } = require('../controllers/passwordController');
+const { requireAdmin } = require('../middleware/adminAuthMiddleware');  
+const { changePassword } = require('../controllers/passwordController');  
 const { changeFirstLoginPassword } = require('../controllers/firstLoginController');  
-  
   
 const router = express.Router();  
   
-// Route pour récupérer le profil de l'utilisateur connecté  
+// Routes pour le profil utilisateur connecté  
 router.get('/profile', authenticateToken, getProfile);  
-  
-// Route pour mettre à jour le profil de l'utilisateur connecté  
 router.put('/profile', authenticateToken, updateProfile);  
-
-// Route pour changer le mot de passe
-router.put('/change-password', authenticateToken, changePassword);
-
-// Route pour le changement de mot de passe obligatoire à la première connexion  
-router.put('/first-login-password', authenticateToken, changeFirstLoginPassword);
+  
+// Routes pour la gestion des mots de passe  
+router.put('/change-password', authenticateToken, changePassword);  
+router.put('/first-login-password', authenticateToken, changeFirstLoginPassword);  
+  
+// Routes administratives pour la gestion des utilisateurs  
+router.get('/', requireAdmin, getAllUsers);  
+router.get('/stats', requireAdmin, getUserStats);  
+router.get('/:id', requireAdmin, getUserById);  
+router.put('/:id/status', requireAdmin, updateUserStatus);  
+router.delete('/:id', requireAdmin, deleteUser);  
   
 module.exports = router;
-

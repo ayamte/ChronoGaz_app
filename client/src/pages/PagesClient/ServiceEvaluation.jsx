@@ -3,6 +3,7 @@ import { Star, CheckCircle, Send, MessageSquare, Clock, Shield, Zap, Smartphone 
 import DriverInfo from '../../components/client/ServiceEvaluationPage/DriverInfo';
 import StarRating from '../../components/client/ServiceEvaluationPage/StarRating';
 import Title from '../../components/client/ServiceEvaluationPage/Title';
+import './ServiceEvaluation.css'; 
 
 
 const ServiceEvaluation = () => {
@@ -88,6 +89,10 @@ const ServiceEvaluation = () => {
     }
   
     return (
+            <div className="service-wrapper">  
+        <div className="service-container">  
+          <div className="service-content">  
+            <div className="service-page-content"> 
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white p-6 shadow-lg" style={{background: 'linear-gradient(135deg, #1F55A3 0%, #245FA6 100%)'}}>
@@ -180,6 +185,10 @@ const ServiceEvaluation = () => {
           </div>          
         </div>
       </div>
+             </div>  
+      </div>  
+    </div>  
+  </div> 
     );
   };
   

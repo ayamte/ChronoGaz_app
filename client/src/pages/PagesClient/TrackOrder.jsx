@@ -7,7 +7,8 @@ import OrderProgress from "../../components/client/TrackOrderPage/OrderProgress"
 import DeliveryDriverInfo from "../../components/client/TrackOrderPage/DeliveryDriverInfo";
 import InteractiveMap from "../../components/client/TrackOrderPage/InteractiveMap";
 import OrderSummary from "../../components/client/TrackOrderPage/OrderSummary";
-import CancelOrderButton from '../../components/client/TrackOrderPage/CancelOrderButton'; // adapte le chemin si nécessaire
+import CancelOrderButton from '../../components/client/TrackOrderPage/CancelOrderButton'; 
+import './TrackOrder.css'; 
 
 import { useParams } from 'react-router-dom';
 
@@ -253,6 +254,10 @@ const TrackOrder = () => {
   }
 
   return (
+          <div className="track-wrapper">  
+        <div className="track-container">  
+          <div className="track-content">  
+            <div className="track-page-content"> 
     <div className="min-h-screen bg-gray-50">
       <Title title="Suivre ma Commande" />
 
@@ -314,6 +319,10 @@ const TrackOrder = () => {
 
       </div>
     </div>
+           </div>  
+      </div>  
+    </div>  
+  </div> 
   );
 };
 

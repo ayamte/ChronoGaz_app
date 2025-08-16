@@ -1,149 +1,358 @@
+const mongoose = require('mongoose');  
 const City = require('../models/City');  
-const Region = require('../models/Region');  
+const Address = require('../models/Address');  
   
-exports.getCities = async (req, res) => {  
+// Récupérer toutes les villes actives  
+const getCities = async (req, res) => {  
   try {  
     const cities = await City.find({ actif: true }).sort({ name: 1 });  
-    res.json({ success: true, data: cities });  
+    res.status(200).json({   
+      success: true,   
+      message: 'Villes récupérées avec succès',  
+      data: cities   
+    });  
   } catch (error) {  
-    res.status(500).json({ success: false, error: error.message });  
+    console.error('Erreur récupération villes:', error);  
+    res.status(500).json({   
+      success: false,   
+      message: 'Erreur serveur lors de la récupération des villes',  
+      error: error.message   
+    });  
   }  
 };  
   
-exports.createCity = async (req, res) => {  
+// Créer une nouvelle ville  
+const createCity = async (req, res) => {  
   try {  
-    const city = await City.create(req.body);  
-    res.status(201).json({ success: true, data: city });  
-  } catch (error) {  
-    if (error.code === 11000) {  
-      return res.status(400).json({ success: false, error: 'Cette ville existe déjà' });  
-    }  
-    res.status(400).json({ success: false, error: error.message });  
-  }  
-};  
+    const { name, code, latitude, longitude, actif = true } = req.body;  
   
-exports.updateCity = async (req, res) => {  
-  try {  
-    const city = await City.findByIdAndUpdate(req.params.id, req.body, { new: true });  
-    if (!city) {  
-      return res.status(404).json({ success: false, error: 'Ville non trouvée' });  
-    }  
-    res.json({ success: true, data: city });  
-  } catch (error) {  
-    res.status(400).json({ success: false, error: error.message });  
-  }  
-};  
-  
-exports.deleteCity = async (req, res) => {  
-  try {  
-    const city = await City.findByIdAndUpdate(req.params.id, { actif: false }, { new: true });  
-    if (!city) {  
-      return res.status(404).json({ success: false, error: 'Ville non trouvée' });  
-    }  
-    res.json({ success: true, message: 'Ville supprimée' });  
-  } catch (error) {  
-    res.status(500).json({ success: false, error: error.message });  
-  }  
-};  
-  
-exports.getRegionsByCity = async (req, res) => {  
-  try {  
-    const { cityId } = req.params;  
-    const regions = await Region.find({  
-      city_id: cityId,  
-      actif: true  
-    }).sort({ nom: 1 });  
-    res.json({ success: true, data: regions });  
-  } catch (error) {  
-    res.status(500).json({ success: false, error: error.message });  
-  }  
-};  
-  
-exports.createRegion = async (req, res) => {  
-  try {  
-    console.log('=== CRÉATION RÉGION ===');  
-    console.log('Headers:', req.headers);  
-    console.log('Body complet:', JSON.stringify(req.body, null, 2));  
-    console.log('User:', req.user ? req.user._id : 'Non authentifié');  
-      
-    const { nom, code, city_id, description } = req.body;  
-      
-    console.log('Champs extraits:', { nom, code, city_id, description });  
-      
     // Validation des champs requis  
-    if (!nom || !code || !city_id) {  
-      console.log('❌ Validation échouée:', { nom: !!nom, code: !!code, city_id: !!city_id });  
+    if (!name) {  
       return res.status(400).json({  
         success: false,  
-        error: 'Les champs nom, code et city_id sont requis'  
+        message: 'Le nom de la ville est requis'  
       });  
     }  
-      
-    // Vérifier que la ville existe  
-    console.log('Recherche de la ville:', city_id);  
-    const city = await City.findById(city_id);  
-    if (!city) {  
-      console.log('❌ Ville non trouvée pour ID:', city_id);  
-      return res.status(400).json({  
-        success: false,  
-        error: 'Ville non trouvée'  
-      });  
-    }  
-    console.log('✅ Ville trouvée:', city.name);  
-      
-    console.log('Tentative de création avec:', req.body);  
-    const region = await Region.create(req.body);  
-    console.log('✅ Région créée:', region);  
-      
-    res.status(201).json({ success: true, data: region });  
-  } catch (error) {  
-    console.error('❌ Erreur complète:', error);  
-    console.error('Stack trace:', error.stack);  
-      
-    if (error.code === 11000) {  
-      console.log('Erreur de duplication:', error.keyValue);  
-      return res.status(400).json({  
-        success: false,  
-        error: 'Une région avec ce code existe déjà'  
-      });  
-    }  
-      
-    res.status(400).json({ success: false, error: error.message });  
-  }  
-};
   
-exports.updateRegion = async (req, res) => {  
-  try {  
-    const region = await Region.findByIdAndUpdate(req.params.id, req.body, { new: true });  
-    if (!region) {  
-      return res.status(404).json({ success: false, error: 'Région non trouvée' });  
+    // Vérifier si la ville existe déjà  
+    const existingCity = await City.findOne({   
+      $or: [  
+        { name: { $regex: new RegExp(`^${name}$`, 'i') } },  
+        { code: code }  
+      ]  
+    });  
+  
+    if (existingCity) {  
+      return res.status(400).json({  
+        success: false,  
+        message: 'Cette ville existe déjà'  
+      });  
     }  
-    res.json({ success: true, data: region });  
+  
+    const cityData = {  
+      name,  
+      actif  
+    };  
+  
+    if (code) cityData.code = code;  
+    if (latitude) cityData.latitude = parseFloat(latitude);  
+    if (longitude) cityData.longitude = parseFloat(longitude);  
+  
+    const city = await City.create(cityData);  
+      
+    res.status(201).json({   
+      success: true,   
+      message: 'Ville créée avec succès',  
+      data: city   
+    });  
   } catch (error) {  
-    res.status(400).json({ success: false, error: error.message });  
+    console.error('Erreur création ville:', error);  
+    if (error.code === 11000) {  
+      return res.status(400).json({   
+        success: false,   
+        message: 'Cette ville existe déjà'   
+      });  
+    }  
+    res.status(500).json({   
+      success: false,   
+      message: 'Erreur serveur lors de la création de la ville',  
+      error: error.message   
+    });  
   }  
 };  
   
-exports.deleteRegion = async (req, res) => {  
+// Récupérer une ville par ID  
+const getCityById = async (req, res) => {  
   try {  
-    const region = await Region.findByIdAndUpdate(req.params.id, { actif: false }, { new: true });  
-    if (!region) {  
-      return res.status(404).json({ success: false, error: 'Région non trouvée' });  
+    const { id } = req.params;  
+  
+    if (!mongoose.Types.ObjectId.isValid(id)) {  
+      return res.status(400).json({  
+        success: false,  
+        message: 'ID de ville invalide'  
+      });  
     }  
-    res.json({ success: true, message: 'Région supprimée' });  
+  
+    const city = await City.findById(id);  
+      
+    if (!city) {  
+      return res.status(404).json({  
+        success: false,  
+        message: 'Ville non trouvée'  
+      });  
+    }  
+  
+    res.status(200).json({  
+      success: true,  
+      message: 'Ville récupérée avec succès',  
+      data: city  
+    });  
   } catch (error) {  
-    res.status(500).json({ success: false, error: error.message });  
+    console.error('Erreur récupération ville:', error);  
+    res.status(500).json({  
+      success: false,  
+      message: 'Erreur serveur lors de la récupération de la ville',  
+      error: error.message  
+    });  
   }  
-};
-
-
-exports.getAllRegions = async (req, res) => {  
+};  
+  
+// Mettre à jour une ville  
+const updateCity = async (req, res) => {  
   try {  
-    const regions = await Region.find({ actif: true })  
-      .populate('city_id', 'name code')  
-      .sort({ nom: 1 });  
-    res.json({ success: true, data: regions });  
+    const { id } = req.params;  
+    const updateData = req.body;  
+  
+    if (!mongoose.Types.ObjectId.isValid(id)) {  
+      return res.status(400).json({  
+        success: false,  
+        message: 'ID de ville invalide'  
+      });  
+    }  
+  
+    // Vérifier que la ville existe  
+    const existingCity = await City.findById(id);  
+    if (!existingCity) {  
+      return res.status(404).json({  
+        success: false,  
+        message: 'Ville non trouvée'  
+      });  
+    }  
+  
+    // Vérifier l'unicité si le nom ou code change  
+    if (updateData.name || updateData.code) {  
+      const duplicateQuery = {  
+        _id: { $ne: id }  
+      };  
+  
+      if (updateData.name) {  
+        duplicateQuery.name = { $regex: new RegExp(`^${updateData.name}$`, 'i') };  
+      }  
+      if (updateData.code) {  
+        duplicateQuery.code = updateData.code;  
+      }  
+  
+      const duplicate = await City.findOne(duplicateQuery);  
+      if (duplicate) {  
+        return res.status(400).json({  
+          success: false,  
+          message: 'Une ville avec ce nom ou code existe déjà'  
+        });  
+      }  
+    }  
+  
+    // Convertir les coordonnées en nombres si fournies  
+    if (updateData.latitude) updateData.latitude = parseFloat(updateData.latitude);  
+    if (updateData.longitude) updateData.longitude = parseFloat(updateData.longitude);  
+  
+    const city = await City.findByIdAndUpdate(  
+      id,   
+      updateData,   
+      { new: true, runValidators: true }  
+    );  
+  
+    res.status(200).json({   
+      success: true,   
+      message: 'Ville mise à jour avec succès',  
+      data: city   
+    });  
   } catch (error) {  
-    res.status(500).json({ success: false, error: error.message });  
+    console.error('Erreur mise à jour ville:', error);  
+    res.status(500).json({   
+      success: false,   
+      message: 'Erreur serveur lors de la mise à jour de la ville',  
+      error: error.message   
+    });  
   }  
+};  
+  
+// Supprimer une ville (soft delete)  
+const deleteCity = async (req, res) => {  
+  try {  
+    const { id } = req.params;  
+  
+    if (!mongoose.Types.ObjectId.isValid(id)) {  
+      return res.status(400).json({  
+        success: false,  
+        message: 'ID de ville invalide'  
+      });  
+    }  
+  
+    // Vérifier que la ville existe  
+    const existingCity = await City.findById(id);  
+    if (!existingCity) {  
+      return res.status(404).json({  
+        success: false,  
+        message: 'Ville non trouvée'  
+      });  
+    }  
+  
+    // Vérifier si la ville est utilisée dans des adresses  
+    const addressCount = await Address.countDocuments({   
+      city_id: id,   
+      actif: true   
+    });  
+  
+    if (addressCount > 0) {  
+      return res.status(400).json({  
+        success: false,  
+        message: `Impossible de supprimer cette ville car elle est utilisée dans ${addressCount} adresse(s)`  
+      });  
+    }  
+  
+    // Soft delete - marquer comme inactive  
+    const city = await City.findByIdAndUpdate(  
+      id,   
+      { actif: false },   
+      { new: true }  
+    );  
+  
+    res.status(200).json({   
+      success: true,   
+      message: 'Ville supprimée avec succès',  
+      data: city  
+    });  
+  } catch (error) {  
+    console.error('Erreur suppression ville:', error);  
+    res.status(500).json({   
+      success: false,   
+      message: 'Erreur serveur lors de la suppression de la ville',  
+      error: error.message   
+    });  
+  }  
+};  
+  
+// Rechercher des villes par nom  
+const searchCities = async (req, res) => {  
+  try {  
+    const { q } = req.query;  
+  
+    if (!q || q.trim().length < 2) {  
+      return res.status(400).json({  
+        success: false,  
+        message: 'Le terme de recherche doit contenir au moins 2 caractères'  
+      });  
+    }  
+  
+    const cities = await City.find({  
+      name: { $regex: new RegExp(q.trim(), 'i') },  
+      actif: true  
+    })  
+    .sort({ name: 1 })  
+    .limit(20);  
+  
+    res.status(200).json({  
+      success: true,  
+      message: 'Recherche effectuée avec succès',  
+      data: cities  
+    });  
+  } catch (error) {  
+    console.error('Erreur recherche villes:', error);  
+    res.status(500).json({  
+      success: false,  
+      message: 'Erreur serveur lors de la recherche',  
+      error: error.message  
+    });  
+  }  
+};  
+  
+// Récupérer les statistiques des villes  
+const getCitiesStats = async (req, res) => {  
+  try {  
+    const totalCities = await City.countDocuments({ actif: true });  
+    const inactiveCities = await City.countDocuments({ actif: false });  
+      
+    // Statistiques des adresses par ville  
+    const addressStats = await Address.aggregate([  
+      { $match: { actif: true } },  
+      { $group: { _id: '$city_id', count: { $sum: 1 } } },  
+      { $lookup: { from: 'cities', localField: '_id', foreignField: '_id', as: 'city' } },  
+      { $unwind: '$city' },  
+      { $project: { cityName: '$city.name', addressCount: '$count' } },  
+      { $sort: { addressCount: -1 } },  
+      { $limit: 10 }  
+    ]);  
+  
+    res.status(200).json({  
+      success: true,  
+      message: 'Statistiques récupérées avec succès',  
+      data: {  
+        totalCities,  
+        inactiveCities,  
+        topCitiesByAddresses: addressStats  
+      }  
+    });  
+  } catch (error) {  
+    console.error('Erreur statistiques villes:', error);  
+    res.status(500).json({  
+      success: false,  
+      message: 'Erreur serveur lors de la récupération des statistiques',  
+      error: error.message  
+    });  
+  }  
+};  
+  
+// Géocoder une adresse (fonction utilitaire)  
+const geocodeAddress = async (req, res) => {  
+  try {  
+    const { address } = req.body;  
+  
+    if (!address) {  
+      return res.status(400).json({  
+        success: false,  
+        message: 'Adresse requise pour le géocodage'  
+      });  
+    }  
+  
+    // Note: Ici vous pourriez intégrer un service de géocodage externe  
+    // comme Google Maps API, OpenStreetMap Nominatim, etc.  
+      
+    res.status(200).json({  
+      success: true,  
+      message: 'Géocodage non implémenté',  
+      data: {  
+        address,  
+        coordinates: null,  
+        note: 'Service de géocodage à implémenter'  
+      }  
+    });  
+  } catch (error) {  
+    console.error('Erreur géocodage:', error);  
+    res.status(500).json({  
+      success: false,  
+      message: 'Erreur serveur lors du géocodage',  
+      error: error.message  
+    });  
+  }  
+};  
+  
+module.exports = {  
+  getCities,  
+  createCity,  
+  getCityById,  
+  updateCity,  
+  deleteCity,  
+  searchCities,  
+  getCitiesStats,  
+  geocodeAddress  
 };

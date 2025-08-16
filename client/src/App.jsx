@@ -3,16 +3,19 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { authService } from './services/authService';        
 import FirstLoginModal from './components/FirstLoginModal/FirstLoginModal';  
   
-
 import Home from './components/Home';        
 import Dashboard from './pages/admin/Dashboard/Dashboard';        
 import GestionCamion from './pages/admin/gestionCamion/gestionCamion'; 
 import AjouterCamion from './pages/admin/AjouterCamion/AjouterCamion';        
 import GestionClient from './pages/admin/gestionClient/gestionClient';        
-import GestionChauffeur from './pages/admin/GestionChauffeur/GestionChauffeur';        
-import GestionRegion from './pages/admin/gestionRegion/gestionRegion';        
+import GestionChauffeur from './pages/admin/GestionChauffeur/GestionChauffeur';    
+import GestionRegion from './pages/admin/gestionRegion/gestionRegion';    
+
 import GestionBon from './pages/admin/gestionBon/gestionBon';        
-import AjouterProduit from './pages/admin/AjouterProduit/AjouterProduit';        
+import AjouterProduit from './pages/admin/AjouterProduit/AjouterProduit';   
+import GestionListePrix from './pages/admin/GestionListePrix/GestionListePrix';   
+import GestionUMs from './pages/admin/GestionUniteMesure/GestionUniteMesure';   
+
 import SuiviCommande from './pages/admin/suiviCommande/suiviCommande';        
 import OrderManagement from './pages/admin/OrderManagement/OrderManagement';       
 
@@ -52,8 +55,6 @@ import GestionDepot from './pages/admin/GestionDepot/GestionDepot'
 import GestionProduits from './pages/admin/GestionProduits/GestionProduits'
 import StockDepotManagement from './pages/magasinier/StockDepotManagement/StockDepotManagement';  
 import StockLineManagement from './pages/magasinier/StockLineManagement/StockLineManagement';  
-
-  
         
 import './App.css';        
         
@@ -73,7 +74,7 @@ function App() {
         setIsAuthenticated(authenticated);        
         setUser(userData);  
           
-        // AJOUTÉ: Vérifier si l'utilisateur doit changer son mot de passe  
+        // Vérifier si l'utilisateur doit changer son mot de passe  
         if (authenticated && userData?.requiresPasswordChange &&   
             (userData?.role === 'EMPLOYE' || userData?.role === 'EMPLOYE_MAGASIN')) {  
           setShowFirstLoginModal(true);  
@@ -105,7 +106,7 @@ function App() {
     }      
   }, [isAuthenticated]);  
   
-  // AJOUTÉ: Gérer la fermeture du modal après changement de mot de passe  
+  // Gérer la fermeture du modal après changement de mot de passe  
   const handlePasswordChanged = () => {  
     setShowFirstLoginModal(false);  
     // Recharger les données utilisateur pour supprimer le flag requiresPasswordChange  
@@ -214,10 +215,22 @@ function App() {
                 </ProtectedRoute>  
               }   
             />
-
-            
-
-            
+            <Route   
+              path="/admin/gestion-liste-prix"   
+              element={  
+                <ProtectedRoute allowedRoles={['ADMIN']}>  
+                  <GestionListePrix />  
+                </ProtectedRoute>  
+              }   
+            />
+            <Route   
+              path="/admin/gestion-ums"   
+              element={  
+                <ProtectedRoute allowedRoles={['ADMIN']}>  
+                  <GestionUMs />  
+                </ProtectedRoute>  
+              }   
+            />
       
             <Route         
               path="/gestionclient"         
@@ -235,6 +248,7 @@ function App() {
                 </ProtectedRoute>        
               }         
             />        
+        
             <Route         
               path="/gestionregion"         
               element={        
@@ -242,7 +256,7 @@ function App() {
                   <GestionRegion />        
                 </ProtectedRoute>        
               }         
-            />        
+            />  
             <Route         
               path="/gestionbon"         
               element={        
@@ -332,109 +346,109 @@ function App() {
               element={        
                 <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>        
                   <TruckLoading />        
-                </ProtectedRoute>        
-              }         
-            />        
-            <Route         
-              path="/magasin/dechargement"         
-              element={        
-                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>        
-                  <TruckUnloading />        
-                </ProtectedRoute>        
-              }         
-            />        
-            <Route   
-              path="/magasinier/inventaires"   
-              element={  
-                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>  
-                  <StockDepotManagement />  
-                </ProtectedRoute>  
-              }   
+                </ProtectedRoute>          
+              }           
+            />          
+            <Route           
+              path="/magasin/dechargement"           
+              element={          
+                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>          
+                  <TruckUnloading />          
+                </ProtectedRoute>          
+              }           
+            />          
+            <Route     
+              path="/magasinier/inventaires"     
+              element={    
+                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>    
+                  <StockDepotManagement />    
+                </ProtectedRoute>    
+              }     
+            />    
+            <Route     
+              path="/magasinier/stock-lines/:stockDepotId"     
+              element={    
+                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>    
+                  <StockLineManagement />    
+                </ProtectedRoute>    
+              }     
             />  
-            <Route   
-              path="/magasinier/stock-lines/:stockDepotId"   
-              element={  
-                <ProtectedRoute allowedRoles={['EMPLOYE_MAGASIN']}>  
-                  <StockLineManagement />  
-                </ProtectedRoute>  
-              }   
-            />
-        
-            {/* Routes protégées pour clients */}        
-            <Route         
-              path="/Command"         
-              element={        
-                <ProtectedRoute allowedRoles={['CLIENT']}>        
-                  <Command />        
-                </ProtectedRoute>        
-              }         
-            />        
-            <Route         
-              path="/Trackorder"         
-              element={        
-                <ProtectedRoute allowedRoles={['CLIENT']}>        
-                  <TrackOrder />        
-                </ProtectedRoute>        
-              }         
-            />        
-            <Route         
-              path="/Orderhistory"         
-              element={        
-                <ProtectedRoute allowedRoles={['CLIENT']}>        
-                  <OrderHistory />        
-                </ProtectedRoute>        
-              }         
-            />        
-            <Route         
-              path="/Serviceevaluation"         
-              element={        
-                <ProtectedRoute allowedRoles={['CLIENT']}>        
-                  <ServiceEvaluation />        
-                </ProtectedRoute>        
-              }         
+          
+            {/* Routes protégées pour clients */}          
+            <Route           
+              path="/Command"           
+              element={          
+                <ProtectedRoute allowedRoles={['CLIENT']}>          
+                  <Command />          
+                </ProtectedRoute>          
+              }           
+            />          
+            <Route           
+              path="/Trackorder"           
+              element={          
+                <ProtectedRoute allowedRoles={['CLIENT']}>          
+                  <TrackOrder />          
+                </ProtectedRoute>          
+              }           
+            />          
+            <Route           
+              path="/Orderhistory"           
+              element={          
+                <ProtectedRoute allowedRoles={['CLIENT']}>          
+                  <OrderHistory />          
+                </ProtectedRoute>          
+              }           
+            />          
+            <Route           
+              path="/Serviceevaluation"           
+              element={          
+                <ProtectedRoute allowedRoles={['CLIENT']}>          
+                  <ServiceEvaluation />          
+                </ProtectedRoute>          
+              }           
+            />    
+             <Route     
+              path="/profile"     
+              element={    
+                <ProtectedRoute allowedRoles={['CLIENT']}>    
+                  <Profile />    
+                </ProtectedRoute>    
+              }     
             />  
-             <Route   
-              path="/profile"   
-              element={  
-                <ProtectedRoute allowedRoles={['CLIENT']}>  
-                  <Profile />  
-                </ProtectedRoute>  
-              }   
-            />
-  
-            {/* Routes protégées pour entreprises */}  
-            <Route         
-              path="/entreprise/gestion-clients"         
-              element={        
-                <ProtectedRoute allowedRoles={['CLIENT']}>        
-                  <EntrepriseGestionClient />        
-                </ProtectedRoute>        
-              }         
-            />  
-            <Route         
-              path="/entreprise/suivi-commandes"         
-              element={        
-                <ProtectedRoute allowedRoles={['CLIENT']}>        
-                  <EntrepriseSuiviCommande />        
-                </ProtectedRoute>        
-              }         
-            />  
-                    
-            {/* Redirection par défaut */}        
-            <Route         
-              path="/"         
-              element={isAuthenticated ? <Home /> : <LoginPage />}         
-            />        
-          </Routes>        
-        </div>  
-  
-        {/* AJOUTÉ: Modal de première connexion */}  
-        {showFirstLoginModal && (  
-          <FirstLoginModal onPasswordChanged={handlePasswordChanged} />  
-        )}  
-      </div>        
-    </Router>        
-  );        
-}        
-        
+    
+            {/* Routes protégées pour entreprises */}    
+            <Route           
+              path="/entreprise/gestion-clients"           
+              element={          
+                <ProtectedRoute allowedRoles={['CLIENT']}>          
+                  <EntrepriseGestionClient />          
+                </ProtectedRoute>          
+              }           
+            />    
+            <Route           
+              path="/entreprise/suivi-commandes"           
+              element={          
+                <ProtectedRoute allowedRoles={['CLIENT']}>          
+                  <EntrepriseSuiviCommande />          
+                </ProtectedRoute>          
+              }           
+            />    
+                      
+            {/* Redirection par défaut */}          
+            <Route           
+              path="/"           
+              element={isAuthenticated ? <Home /> : <LoginPage />}           
+            />          
+          </Routes>          
+        </div>    
+    
+        {/* Modal de première connexion */}    
+        {showFirstLoginModal && (    
+          <FirstLoginModal onPasswordChanged={handlePasswordChanged} />    
+        )}    
+      </div>          
+    </Router>          
+  );          
+}          
+          
 export default App;

@@ -1,15 +1,23 @@
-const mongoose = require('mongoose');  
-  
-const ListePrixSchema = new mongoose.Schema({  
-  code: { type: String, required: true, unique: true },  
-  nom: { type: String, required: true },  
+const mongoose = require('mongoose');    
+    
+const ListePrixSchema = new mongoose.Schema({      
+  listeprix_id: { type: String, required: true, unique: true },  
+  dtdebut: { type: Date, required: true },  
+  dtfin: Date,  
+  isactif: { type: Boolean, default: true },  
+  nom: { type: String },  
   description: String,  
-  date_debut: { type: Date, required: true },  
-  date_fin: Date,  
-  actif: { type: Boolean, default: true },  
+    
+  // Nouveau : tableau des prix par produit/unité  
+  prix: [{  
+    product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },  
+    UM_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Um', required: true },  
+    prix: { type: Number, required: true }  
+  }]  
 }, { timestamps: true });  
-  
-ListePrixSchema.index({ code: 1 });  
-ListePrixSchema.index({ date_debut: 1, date_fin: 1 });  
-  
+    
+ListePrixSchema.index({ listeprix_id: 1 });    
+ListePrixSchema.index({ dtdebut: 1, dtfin: 1 });    
+ListePrixSchema.index({ isactif: 1 });  
+    
 module.exports = mongoose.model('ListePrix', ListePrixSchema);

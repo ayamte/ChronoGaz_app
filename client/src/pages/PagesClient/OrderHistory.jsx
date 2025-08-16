@@ -5,6 +5,7 @@ import StatisticsBar from '../../components/client/OrderHistoryPage/StatisticsBa
 import SearchAndFilters from '../../components/client/OrderHistoryPage/SearchAndFilters';
 import OrderCard from '../../components/client/OrderHistoryPage/OrderCard';
 import Title from '../../components/client/OrderHistoryPage/Title';
+import './OrderHistory.css'; 
 
 const OrderHistory = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -145,6 +146,10 @@ const OrderHistory = () => {
   }
 
   return (
+  <div className="order-wrapper">  
+<div className="order-container">  
+  <div className="order-content">  
+    <div className="order-page-content">  
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <Title stats={stats} customerId={customerId}/>
@@ -194,6 +199,10 @@ const OrderHistory = () => {
         )}
       </div>
     </div>
+           </div>  
+      </div>  
+    </div>  
+  </div> 
   );
 };
 

@@ -1,28 +1,38 @@
-const express = require("express");
-const Command = require("../models/Commande");
-const router = express.Router();
-const {getCommands, getCommandById, createCommand, deleteCommandById, updateCommandById, updateCommandStatus, getCommandsStats, getCommandsStatsByCustomer, getCommandsByCustomerId, cancelOrder} = require("../controllers/orderController");
+const express = require('express');    
+const {     
+  getCommands,    
+  getCommandById,    
+  getCommandsByCustomerId,    
+  createCommand,    
+  updateCommandById,    
+  updateCommandStatus,    
+  cancelPlanification,  // ✅ NOUVEAU: Fonction ajoutée  
+  cancelOrder,    
+  deleteCommandById,    
+  getCommandsStats,    
+  getCommandsStatsByCustomer    
+} = require('../controllers/orderController');    
+const { authenticateToken } = require('../middleware/authMiddleware');    
+const { requireAdmin } = require('../middleware/adminAuthMiddleware');    
+    
+const router = express.Router();    
+    
+// Routes de consultation (authentifiées)    
+router.get('/', authenticateToken, getCommands);    
+router.get('/stats', authenticateToken, getCommandsStats);    
+router.get('/customer/:customerId/stats', authenticateToken, getCommandsStatsByCustomer);    
+router.get('/customer/:customerId', authenticateToken, getCommandsByCustomerId);    
+router.get('/:id', authenticateToken, getCommandById);    
+    
+// Routes de création et modification (authentifiées)    
+router.post('/', authenticateToken, createCommand);    
+router.put('/:id', authenticateToken, updateCommandById);    
+router.put('/:id/status', authenticateToken, updateCommandStatus);    
+router.put('/:id/cancel', authenticateToken, cancelOrder);    
+router.put('/:id/cancel-planification', authenticateToken, cancelPlanification); 
 
-router.get('/', getCommands);
-
-router.get('/stats', getCommandsStats);
-
-router.get('/customer/:customerId/stats', getCommandsStatsByCustomer);
-
-router.get('/customer/:customerId', getCommandsByCustomerId);
-
-router.get('/:id', getCommandById);
-
-router.post('/', createCommand);
-
-router.delete('/:id', deleteCommandById);
-
-router.put('/:id', updateCommandById);
-
-router.put('/:id/status', updateCommandStatus);
-
-router.put('/:id/cancel', cancelOrder);
-
-
-
+    
+// Routes administratives (admin seulement)    
+router.delete('/:id', requireAdmin, deleteCommandById);    
+    
 module.exports = router;

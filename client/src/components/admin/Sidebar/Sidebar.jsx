@@ -30,12 +30,7 @@ const menuItems = [
     icon: Truck,    
     label: "Gestion des Camions",    
     href: "/admin/gestion-camions",    
-  },
-  {    
-    icon: Truck,    
-    label: "Ajouter camion",    
-    href: "/admin/ajouter-camion",    
-  },    
+  },  
   {    
     icon: Users,    
     label: "Gestion des Clients",    
@@ -46,6 +41,32 @@ const menuItems = [
     label: "Gestion des employés",    
     href: "/gestion-chauffeur",    
   },    
+    
+  {    
+    icon: Package,    
+    label: "Suivre les commandes",    
+    href: "/suivicommande",    
+  },  
+    {    
+    icon: Package,    
+    label: "Gérer les commandes",    
+    href: "/gerer-commande",    
+  },
+  {    
+    icon: Receipt,    
+    label: "Gestion des produit",    
+    href: "/admin/gestion-produits",    
+  }, 
+  {    
+    icon: Receipt,    
+    label: "Gestion des listes prix",    
+    href: "/admin/gestion-liste-prix",    
+  }, 
+  {    
+    icon: Receipt,    
+    label: "Gestion des ums",    
+    href: "/admin/gestion-ums",    
+  }, 
   {    
     icon: MapPin,    
     label: "Gestion des régions",    
@@ -56,31 +77,11 @@ const menuItems = [
     label: "Bons fournisseurs",    
     href: "/gestionbon",    
   }, 
-   {    
-    icon: Receipt,    
-    label: "Ajouter produit",    
-    href: "/ajouter-produit",    
-  },
-  {    
-    icon: Receipt,    
-    label: "Gestion des produit",    
-    href: "/admin/gestion-produits",    
-  }, 
   {    
     icon: Warehouse,    
     label: "Gestion Stocks",    
     href: "/admin/gestion-depots",    
-  },  
-  {    
-    icon: Package,    
-    label: "Suivre les commandes",    
-    href: "/suivicommande",    
-  },  
-    {    
-    icon: Package,    
-    label: "Gérer les commandes",    
-    href: "/gerer-commande",    
-  }  
+  }
 ]    
     
 function SidebarNavigation({ userName = "Utilisateur" }) {    

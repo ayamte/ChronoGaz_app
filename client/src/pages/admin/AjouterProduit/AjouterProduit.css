@@ -777,3 +777,108 @@ body.sidebar-collapsed .product-management-wrapper {
     margin-right: 0;  
   }  
 }
+
+/* Styles pour les sections d'unités et prix */  
+.unite-item,  
+.prix-item {  
+  display: flex;  
+  align-items: center;  
+  gap: 15px;  
+  padding: 15px;  
+  background: #f8fafc;  
+  border-radius: 8px;  
+  margin-bottom: 10px;  
+  border: 1px solid #e5e7eb;  
+}  
+  
+.unite-fields,  
+.prix-fields {  
+  display: flex;  
+  flex: 1;  
+  gap: 15px;  
+  align-items: end;  
+}  
+  
+.remove-btn,  
+.add-btn {  
+  padding: 8px 12px;  
+  border: none;  
+  border-radius: 6px;  
+  cursor: pointer;  
+  display: flex;  
+  align-items: center;  
+  gap: 5px;  
+  font-size: 0.9rem;  
+  font-weight: 500;  
+  transition: all 0.2s ease;  
+}  
+  
+.add-btn {  
+  background: #10b981;  
+  color: white;  
+}  
+  
+.add-btn:hover {  
+  background: #059669;  
+  transform: translateY(-1px);  
+}  
+  
+.remove-btn {  
+  background: #ef4444;  
+  color: white;  
+  padding: 8px;  
+}  
+  
+.remove-btn:hover {  
+  background: #dc2626;  
+  transform: scale(1.05);  
+}  
+  
+.form-select {  
+  padding: 10px 12px;  
+  border: 2px solid #e5e7eb;  
+  border-radius: 6px;  
+  font-size: 0.9rem;  
+  background: white;  
+  transition: all 0.2s ease;  
+}  
+  
+.form-select:focus {  
+  outline: none;  
+  border-color: #667eea;  
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);  
+}  
+  
+.form-checkbox {  
+  margin-right: 8px;  
+  transform: scale(1.1);  
+}  
+  
+.empty-state {  
+  text-align: center;  
+  color: #6b7280;  
+  font-style: italic;  
+  padding: 20px;  
+  background: #f9fafb;  
+  border-radius: 6px;  
+  border: 1px dashed #d1d5db;  
+}  
+  
+/* Responsive pour les nouvelles sections */  
+@media (max-width: 768px) {  
+  .unite-fields,  
+  .prix-fields {  
+    flex-direction: column;  
+    gap: 10px;  
+  }  
+  
+  .unite-item,  
+  .prix-item {  
+    flex-direction: column;  
+    align-items: stretch;  
+  }  
+  
+  .remove-btn {  
+    align-self: flex-end;  
+  }  
+}
