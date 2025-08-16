@@ -1,307 +1,446 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';  
-import {   
-  MdSearch as Search,   
-  MdVisibility as Eye,  
-  MdClose as X,  
-  MdStar as Star,  
-  MdStarBorder as StarBorder,  
-  MdFilterList as Filter,  
-  MdRefresh as Refresh  
-} from "react-icons/md";  
-import { orderService } from '../../../services/orderService';  
-import { authService } from '../../../services/authService';  
-import LoadingSpinner from '../../../components/common/LoadingSpinner';  
-import Pagination from '../../../components/common/Pagination';  
-import "./suiviCommande.css";  
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  MdSearch as Search,
+  MdVisibility as Eye,
+  MdClose as X,
+  MdStar as Star,
+  MdStarBorder as StarBorder,
+  MdFilterList as Filter,
+  MdRefresh as Refresh
+} from "react-icons/md";
+import { orderService } from '../../../services/orderService';
+import { authService } from '../../../services/authService';
+import LoadingSpinner from '../../../components/common/LoadingSpinner';
+import Pagination from '../../../components/common/Pagination';
+import "./suiviCommande.css";
+
+export default function OrderTrackingManagement() {
+  // États pour les données
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   
-export default function OrderTrackingManagement() {  
-  // États pour les données  
-  const [orders, setOrders] = useState([]);  
-  const [loading, setLoading] = useState(true);  
-  const [error, setError] = useState('');  
-    
-  // États pour les filtres  
-  const [filters, setFilters] = useState({  
-    search: '',  
-    status: 'all',  
-    clientType: 'all',  
-    region: 'all',  
-    dateFrom: '',  
-    dateTo: ''  
-  });  
-    
-  // États pour la modal et pagination  
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);  
-  const [selectedOrder, setSelectedOrder] = useState(null);  
-  const [pagination, setPagination] = useState({  
-    page: 1,  
-    limit: 20,  
-    total: 0,  
-    totalPages: 0  
-  });  
-  
-  // Refs pour la gestion des timeouts  
-  const searchTimeoutRef = useRef(null);  
-  const isMountedRef = useRef(true);  
-  
-  // Fonction pour récupérer les commandes  
+  // 🔧 NOUVEAU: État pour les villes
+  const [cities, setCities] = useState([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+
+  // États pour les filtres - 🔧 MODIFIÉ: region -> ville
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    clientType: 'all',
+    ville: 'all', // 🔧 CHANGÉ: region -> ville
+    date:''
+  });
+
+  // États pour la modal et pagination
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0
+  });
+
+  // Refs pour la gestion des timeouts
+  const searchTimeoutRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  // 🔧 NOUVEAU: Charger les villes depuis l'API
+  const loadCities = async () => {
+    try {
+      setLoadingCities(true);
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/locations/cities`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setCities(data.data || []);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des villes:', error);
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
+  // 🔧 CORRIGÉ: Fonction fetchOrders avec filtrage cohérent
   const fetchOrders = useCallback(async (currentFilters = null, currentPage = null) => {  
-    if (!isMountedRef.current) return;  
+  if (!isMountedRef.current) return;  
       
-    try {  
-      setLoading(true);  
-      setError('');  
+  try {  
+    setLoading(true);  
+    setError('');  
         
-      const filtersToUse = currentFilters || filters;  
-      const pageToUse = currentPage || pagination.page;  
+    const filtersToUse = currentFilters || filters;  
+    const pageToUse = currentPage || pagination.page;  
+      
+    console.log('🔍 [DEBUG] Filtres appliqués:', filtersToUse);  
         
-      // Utiliser orderService.getOrders avec tous les filtres  
-      const response = await orderService.getOrders({  
+    // 🔧 CORRECTION: Mapper correctement les statuts  
+    let statusFilter = undefined;  
+    if (filtersToUse.status && filtersToUse.status !== 'all') {  
+      const statusMapping = {  
+        'EN_ATTENTE': 'pending',  
+        'PLANIFIE': 'assigned',   
+        'EN_COURS': 'in_progress',  
+        'LIVRE': 'delivered',  
+        'ANNULE': 'cancelled'  
+      };  
+      statusFilter = statusMapping[filtersToUse.status] || filtersToUse.status;  
+    }  
+      
+    console.log('🎯 [DEBUG] Status mappé pour API:', statusFilter);  
+      
+    // 🔧 MODIFIÉ: Logique pour filtrer par date du jour  
+    let dateFromFilter, dateToFilter;  
+    if (filtersToUse.date) {  
+      // Créer le début et la fin de la journée sélectionnée  
+      const selectedDate = new Date(filtersToUse.date);  
+      dateFromFilter = new Date(selectedDate.setHours(0, 0, 0, 0)).toISOString();  
+      dateToFilter = new Date(selectedDate.setHours(23, 59, 59, 999)).toISOString();  
+      console.log('📅 [DEBUG] Plage de dates:', { dateFromFilter, dateToFilter });  
+    }  
+        
+    // Utiliser orderService.getOrders avec les filtres supportés par l'API  
+    const response = await orderService.getOrders({  
+      page: pageToUse,  
+      limit: pagination.limit,  
+      search: filtersToUse.search,  
+      status: statusFilter,  
+      dateFrom: dateFromFilter,  
+      dateTo: dateToFilter  
+    });  
+  
+    console.log('📊 [DEBUG] Réponse API:', response);  
+  
+    if (isMountedRef.current) {  
+      // 🔧 CORRECTION: Appliquer les filtres non supportés par l'API côté client  
+      let filteredData = response.data || [];  
+        
+      // Filtre par type de client  
+      if (filtersToUse.clientType && filtersToUse.clientType !== 'all') {  
+        filteredData = filteredData.filter((order) => {  
+          const customerType = order.customer?.type ||   
+                              (order.customer?.id ? 'PHYSIQUE' : 'MORAL');  
+          return customerType.toLowerCase() === filtersToUse.clientType.toLowerCase();  
+        });  
+        console.log('🔍 [DEBUG] Après filtre clientType:', filteredData.length);  
+      }  
+        
+      // 🔧 CORRECTION: Filtre par ville (remplace région)  
+      if (filtersToUse.ville && filtersToUse.ville !== 'all') {  
+        filteredData = filteredData.filter((order) => {  
+          const city = order.deliveryAddress?.city || '';  
+          return city.toLowerCase() === filtersToUse.ville.toLowerCase();  
+        });  
+        console.log('🔍 [DEBUG] Après filtre ville:', filteredData.length);  
+      }  
+        
+      setOrders(filteredData);  
+      setPagination(prev => ({  
+        ...prev,  
         page: pageToUse,  
-        limit: pagination.limit,  
-        search: filtersToUse.search,  
-        status: filtersToUse.status === 'all' ? undefined : filtersToUse.status,  
-        dateFrom: filtersToUse.dateFrom,  
-        dateTo: filtersToUse.dateTo  
-      });  
-  
-      if (isMountedRef.current) {  
-        setOrders(response.data);  
-        setPagination(prev => ({  
-          ...prev,  
-          page: pageToUse,  
-          total: response.total || 0,  
-          totalPages: response.totalPages || 0  
-        }));  
-      }  
-    } catch (err) {  
-      console.error('Erreur lors du chargement des commandes:', err);  
-      if (isMountedRef.current) {  
-        setError(err.message);  
-      }  
-    } finally {  
-      if (isMountedRef.current) {  
-        setLoading(false);  
-      }  
-    }  
-  }, [filters, pagination.page, pagination.limit]);  
-  
-  // Effet pour charger les données  
-  useEffect(() => {  
-    fetchOrders(filters, pagination.page);  
-  }, [filters, pagination.page]);  
-  
-  // Debounce pour la recherche  
-  useEffect(() => {  
-    if (searchTimeoutRef.current) {  
-      clearTimeout(searchTimeoutRef.current);  
-    }  
-      
-    if (filters.search.length >= 2 || filters.search === '') {  
-      searchTimeoutRef.current = setTimeout(() => {  
-        if (!isMountedRef.current) return;  
-        fetchOrders({ ...filters }, 1);  
-      }, 500);  
-    }  
-      
-    return () => {  
-      if (searchTimeoutRef.current) {  
-        clearTimeout(searchTimeoutRef.current);  
-      }  
-    };  
-  }, [filters.search, fetchOrders]);  
-  
-  // Gestionnaires d'événements  
-  const handleFilterChange = useCallback((filterType, value) => {  
-    setFilters(prev => ({ ...prev, [filterType]: value }));  
-    if (filterType !== 'search') {  
-      setPagination(prev => ({ ...prev, page: 1 }));  
-    }  
-  }, []);  
-  
-  const handleRefresh = useCallback(() => {  
-    fetchOrders(filters, pagination.page);  
-  }, [fetchOrders, filters, pagination.page]);  
-  
-  const handlePageChange = useCallback((newPage) => {  
-    setPagination(prev => ({ ...prev, page: newPage }));  
-  }, []);  
-  
-  // Filtrer les commandes localement pour les critères non supportés par l'API  
-  const filteredOrders = orders.filter((order) => {  
-    const matchesClientType = filters.clientType === 'all' ||   
-      (order.customer?.type && order.customer.type.toLowerCase() === filters.clientType.toLowerCase());  
-      
-    const matchesRegion = filters.region === 'all' ||   
-      (order.deliveryAddress?.city && order.deliveryAddress.city.toLowerCase().includes(filters.region.toLowerCase()));  
-      
-    return matchesClientType && matchesRegion;  
-  });  
-  
-  // ✅ CORRIGÉ: Fonction pour obtenir l'état réel de la planification  
-  const getRealOrderState = (order) => {  
-    // Priorité : état de la livraison > état de la planification > statut par défaut  
-    if (order.livraison?.etat) {  
-      return order.livraison.etat;  
-    }  
-    if (order.planification?.etat) {  
-      return order.planification.etat;  
-    }  
-    return 'EN_ATTENTE'; // État par défaut  
-  };  
-  
-  // ✅ CORRIGÉ: Fonction pour obtenir le texte de l'état  
-  const getStateText = (state) => {  
-    const stateMap = {  
-      'EN_ATTENTE': 'En attente',  
-      'PLANIFIE': 'Assignée',  
-      'EN_COURS': 'En cours',  
-      'LIVRE': 'Livrée',  
-      'ANNULE': 'Annulée'  
-    };  
-    return stateMap[state] || state;  
-  };  
-  
-  // ✅ CORRIGÉ: Fonction pour obtenir la classe CSS de l'état  
-  const getStateBadgeClass = (state) => {  
-    const stateMap = {  
-      'EN_ATTENTE': 'tracking-badge-preparing',  
-      'PLANIFIE': 'tracking-badge-preparing',   
-      'EN_COURS': 'tracking-badge-in-progress',  
-      'LIVRE': 'tracking-badge-delivered',  
-      'ANNULE': 'tracking-badge-cancelled'  
-    };  
-    return stateMap[state] || 'tracking-badge-default';  
-  };  
-  
-  // ✅ CORRIGÉ: Fonction pour obtenir le montant total  
-  const getTotalAmount = (order) => {  
-    // Essayer plusieurs sources pour le montant total  
-    return order.totalAmount ||   
-           order.montant_total ||   
-           order.planification?.total ||   
-           order.livraison?.total ||   
-           0;  
-  };  
-  
-  // ✅ CORRIGÉ: Fonction pour obtenir les infos du camion  
-  const getTruckInfo = (order) => {  
-    const truck = order.planification?.trucks_id || order.assignedTruck;  
-    if (!truck) return null;  
-      
-    return {  
-      plateNumber: truck.matricule || truck.plateNumber,  
-      model: truck.marque || truck.model,  
-      capacity: truck.capacite || truck.capacity  
-    };  
-  };  
-  
-  // ✅ CORRIGÉ: Fonction pour obtenir les infos du chauffeur  
-  const getDriverInfo = (order) => {  
-    const driver = order.planification?.livreur_employee_id;  
-    if (!driver?.physical_user_id) return null;  
-      
-    return {  
-      name: `${driver.physical_user_id.first_name} ${driver.physical_user_id.last_name}`,  
-      matricule: driver.matricule,  
-      phone: driver.physical_user_id.telephone_principal  
-    };  
-  };  
-  
-  // ✅ CORRIGÉ: Fonction pour obtenir les infos de l'accompagnant  
-  const getAccompagnantInfo = (order) => {  
-    const accompagnant = order.planification?.accompagnateur_id;  
-    if (!accompagnant?.physical_user_id) return null;  
-      
-    return {  
-      name: `${accompagnant.physical_user_id.first_name} ${accompagnant.physical_user_id.last_name}`,  
-      matricule: accompagnant.matricule,  
-      phone: accompagnant.physical_user_id.telephone_principal  
-    };  
-  };  
-  
-  // ✅ CORRIGÉ: Fonction pour obtenir les notes du livreur  
-  const getDriverNotes = (order) => {  
-    return order.livraison?.commentaires_livreur ||   
-           order.livraison?.details ||   
-           'Aucune note du livreur';  
-  };  
-  
-  // ✅ CORRIGÉ: Fonction pour formater les dates correctement  
-  const formatDate = (dateString) => {  
-    if (!dateString) return 'Date non disponible';  
-      
-    try {  
-      const date = new Date(dateString);  
-      if (isNaN(date.getTime())) return 'Date invalide';  
+        total: filteredData.length,  
+        totalPages: Math.ceil(filteredData.length / pagination.limit)  
+      }));  
         
-      return date.toLocaleDateString('fr-FR', {  
-        year: 'numeric',  
-        month: '2-digit',  
-        day: '2-digit',  
-        hour: '2-digit',  
-        minute: '2-digit'  
-      });  
-    } catch (error) {  
-      return 'Date invalide';  
+      console.log('✅ [DEBUG] Données finales:', filteredData.length, 'commandes');  
     }  
-  };  
-  
-  // ✅ CORRIGÉ: Fonction pour générer l'historique avec dates valides  
-  const generateOrderHistory = (order) => {  
-    const history = [];  
-      
-    // Commande créée  
-    if (order.orderDate || order.createdAt) {  
-      history.push({  
-        id: 'hist-1',  
-        action: 'Commande créée',  
-        date: order.orderDate || order.createdAt,  
-        details: 'Commande créée dans le système'  
-      });  
+  } catch (err) {  
+    console.error('💥 [ERROR] Erreur lors du chargement des commandes:', err);  
+    if (isMountedRef.current) {  
+      setError(err.message);  
     }  
-      
-    // Planification/Assignation  
-    if (order.planification?.createdAt) {  
-      const truckInfo = getTruckInfo(order);  
-      history.push({  
-        id: 'hist-2',  
-        action: 'Camion assigné',  
-        date: order.planification.createdAt,  
-        details: truckInfo ? `Camion ${truckInfo.plateNumber} assigné` : 'Camion assigné'  
-      });  
+  } finally {  
+    if (isMountedRef.current) {  
+      setLoading(false);  
     }  
+  }  
+}, [filters, pagination.page, pagination.limit]);
+
+  // Effet pour charger les données
+  useEffect(() => {
+    loadCities(); // 🔧 NOUVEAU: Charger les villes
+    fetchOrders(filters, pagination.page);
+  }, [filters, pagination.page]);
+
+  // Debounce pour la recherche
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
       
-    // Livraison en cours  
-    if (order.livraison?.date && order.livraison.etat === 'EN_COURS') {  
-      history.push({  
-        id: 'hist-3',  
-        action: 'Livraison en cours',  
-        date: order.livraison.date,  
-        details: 'Le chauffeur a commencé la livraison'  
-      });  
-    }  
+    if (filters.search.length >= 2 || filters.search === '') {
+      searchTimeoutRef.current = setTimeout(() => {
+        if (!isMountedRef.current) return;
+        fetchOrders({ ...filters }, 1);
+      }, 500);
+    }
       
-    // Livraison terminée  
-    if (order.livraison?.updatedAt && ['LIVRE', 'ANNULE'].includes(order.livraison.etat)) {  
-      history.push({  
-        id: 'hist-4',  
-        action: order.livraison.etat === 'LIVRE' ? 'Livraison terminée' : 'Livraison annulée',  
-        date: order.livraison.updatedAt,  
-        details: order.livraison.etat === 'LIVRE' ? 'Commande livrée avec succès' : 'Livraison annulée'  
-      });  
-    }  
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [filters.search, fetchOrders]);
+
+  // Gestionnaires d'événements
+  const handleFilterChange = useCallback((filterType, value) => {
+    setFilters(prev => ({ ...prev, [filterType]: value }));
+    if (filterType !== 'search') {
+      setPagination(prev => ({ ...prev, page: 1 }));
+    }
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    fetchOrders(filters, pagination.page);
+  }, [fetchOrders, filters, pagination.page]);
+
+  const handlePageChange = useCallback((newPage) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  }, []);
+
+  // 🔧 SUPPRIMÉ: Plus besoin de filtrage local car fait dans fetchOrders
+  const filteredOrders = orders;
+
+  // ✅ CORRIGÉ: Fonction pour obtenir l'état réel de la planification
+  const getRealOrderState = (order) => {
+    if (order.livraison?.etat) {
+      return order.livraison.etat;
+    }
+    if (order.planification?.etat) {
+      return order.planification.etat;
+    }
+    return 'EN_ATTENTE';
+  };
+
+  // Fonctions utilitaires pour l'affichage
+  const getStateText = (state) => {
+    const stateTexts = {
+      'EN_ATTENTE': 'En attente',
+      'PLANIFIE': 'Assignée',
+      'EN_COURS': 'En cours',
+      'LIVRE': 'Livrée',
+      'ANNULE': 'Annulée',
+      'ECHEC': 'Échec',
+      'PARTIELLE': 'Partielle'
+    };
+    return stateTexts[state] || state;
+  };
+
+  const getStateBadgeClass = (state) => {
+    const badgeClasses = {
+      'EN_ATTENTE': 'tracking-badge-pending',
+      'PLANIFIE': 'tracking-badge-assigned',
+      'EN_COURS': 'tracking-badge-in-progress',
+      'LIVRE': 'tracking-badge-delivered',
+      'ANNULE': 'tracking-badge-cancelled',
+      'ECHEC': 'tracking-badge-failed',
+      'PARTIELLE': 'tracking-badge-partial'
+    };
+    return badgeClasses[state] || 'tracking-badge-default';
+  };
+
+  const getTotalAmount = (order) => {  
+  // 🔧 PRIORITÉ 1: Montant calculé lors de la création de commande  
+  if (order.montant_total) return order.montant_total;  
+    
+  // 🔧 PRIORITÉ 2: Calculer depuis les lignes de commande (products)  
+  if (order.products && order.products.length > 0) {  
+    const calculatedTotal = order.products.reduce((total, product) => {  
+      const quantity = product.quantity || product.quantite || 0;  
+      const price = product.price || product.prix_unitaire || 0;  
+      return total + (quantity * price);  
+    }, 0);  
       
-    return history.sort((a, b) => new Date(a.date) - new Date(b.date));  
-  };  
-  
-  const handleViewDetails = async (order) => {  
-    try {  
-      const detailedOrder = await orderService.getOrder(order.id);  
-      setSelectedOrder(detailedOrder);  
+    // Ajouter les frais de livraison si pas déjà inclus  
+    return calculatedTotal > 0 ? calculatedTotal + 20 : calculatedTotal;  
+  }  
+    
+  // 🔧 PRIORITÉ 3: Montant depuis planification/livraison (après assignation)  
+  if (order.livraison?.total) return order.livraison.total;  
+  if (order.planification?.total) return order.planification.total;  
+    
+  return 0;  
+};
+
+  const getTruckInfo = (order) => {
+    if (order.assignedTruck) return order.assignedTruck;
+    if (order.planification?.trucks_id) {
+      return {
+        plateNumber: order.planification.trucks_id.matricule || 'N/A',
+        model: order.planification.trucks_id.marque || 'N/A'
+      };
+    }
+    return null;
+  };
+
+  const getDriverInfo = (order) => {
+    if (order.planification?.livreur_employee_id?.physical_user_id) {
+      const driver = order.planification.livreur_employee_id.physical_user_id;
+      return {
+        name: `${driver.first_name} ${driver.last_name}`,
+        matricule: order.planification.livreur_employee_id.matricule || 'N/A',
+        phone: driver.telephone_principal || 'N/A'
+      };
+    }
+    return { name: 'Non assigné', matricule: 'N/A', phone: 'N/A' };
+  };
+
+  const getAccompagnantInfo = (order) => {
+    if (order.planification?.accompagnateur_id?.physical_user_id) {
+      const accompagnant = order.planification.accompagnateur_id.physical_user_id;
+      return {
+        name: `${accompagnant.first_name} ${accompagnant.last_name}`,
+        matricule: order.planification.accompagnateur_id.matricule || 'N/A',
+        phone: accompagnant.telephone_principal || 'N/A'
+      };
+    }
+    return { name: 'Aucun', matricule: 'N/A', phone: 'N/A' };
+  };
+
+  const getDriverNotes = (order) => {
+    if (order.livraison?.commentaires_livreur) {
+      return order.livraison.commentaires_livreur;
+    }
+    if (order.livraison?.details) {
+      return order.livraison.details;
+    }
+    return 'Aucune note';
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'Date invalide';
+    }
+  };
+
+  const generateOrderHistory = (order) => {
+    const history = [];
+    
+    if (order.orderDate) {
+      history.push({
+        id: 'hist-1',
+        action: 'Commande créée',
+        date: order.orderDate
+      });
+    }
+    
+    if (order.planification?.createdAt) {
+      history.push({
+        id: 'hist-2',
+        action: 'Camion assigné',
+        date: order.planification.createdAt
+      });
+    }
+    
+    if (order.livraison?.createdAt) {
+      history.push({
+        id: 'hist-3',
+        action: 'Livraison démarrée',
+        date: order.livraison.createdAt
+      });
+    }
+    
+    if (order.livraison?.updatedAt && order.livraison.etat === 'LIVRE') {
+      history.push({
+        id: 'hist-4',
+        action: 'Livraison terminée',
+        date: order.livraison.updatedAt
+      });
+    }
+    
+    return history.sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+
+  // 🔧 CORRIGÉ: Fonction handleViewDetails avec mapping des données
+  const handleViewDetails = async (order) => {
+    console.log('🔍 [DEBUG] handleViewDetails - Début de la fonction');
+    console.log('📦 [DEBUG] Order reçue:', order);
+    
+    try {
+      setLoading(true);
+      
+      const orderId = order.id || order._id;
+      console.log('🎯 [DEBUG] ID utilisé pour la requête:', orderId);
+      
+      if (!orderId) {
+        console.error('❌ [ERROR] Aucun ID trouvé pour la commande');
+        setError('Impossible de charger les détails: ID manquant');
+        return;
+      }
+      
+      console.log('🌐 [DEBUG] Appel à orderService.getOrder avec ID:', orderId);
+      const detailedOrder = await orderService.getOrder(orderId);
+      
+      console.log('✅ [DEBUG] Réponse reçue:', detailedOrder);
+      
+      if (!detailedOrder) {
+        console.error('❌ [ERROR] Réponse vide');
+        setError('Aucune donnée reçue pour cette commande');
+        return;
+      }
+      
+      const orderData = detailedOrder.data || detailedOrder;
+      
+      // 🔧 CORRECTION: Mapper les données de la commande originale vers la structure attendue
+      const enrichedOrder = {
+        ...orderData,
+        // Mapper les données de planification depuis la commande originale
+        planification: order.planification ? {  
+          ...order.planification,  
+          trucks_id: order.planification.trucks_id || order.assignedTruck,  
+          livreur_employee_id: order.planification.livreur_employee_id,  
+          accompagnateur_id: order.planification.accompagnateur_id,  
+          total: order.planification.total || order.livraison?.total || 0  
+        } : null,  
+          
+        // Mapper les données de livraison depuis la commande originale    
+        livraison: order.livraison ? {  
+          ...order.livraison,  
+          commentaires_livreur: order.livraison.commentaires_livreur || order.livraison.details,  
+          total: order.livraison.total || order.livraison.total_ttc || 0  
+        } : null,  
+          
+        // S'assurer que les champs essentiels existent  
+        customer: orderData.customer || order.customer || { name: 'Client inconnu' },  
+        deliveryAddress: orderData.deliveryAddress || order.deliveryAddress || {   
+          city: 'Ville inconnue',   
+          address: 'Adresse inconnue'   
+        },  
+        products: orderData.products || order.products || [],  
+        orderNumber: orderData.orderNumber || order.orderNumber || order.numero_commande || 'N/A',  
+        orderDate: orderData.orderDate || order.orderDate || order.createdAt,  
+          
+        // Mapper assignedTruck pour compatibilité  
+        assignedTruck: orderData.assignedTruck || order.assignedTruck  
+      };  
+        
+      console.log('🎨 [DEBUG] Données enrichies avec planification/livraison:', enrichedOrder);  
+      console.log('🔍 [DEBUG] Planification mappée:', enrichedOrder.planification);  
+      console.log('🔍 [DEBUG] Livraison mappée:', enrichedOrder.livraison);  
+        
+      setSelectedOrder(enrichedOrder);  
       setIsDetailsModalOpen(true);  
+      console.log('✅ [DEBUG] Modal ouverte avec données complètes');  
+        
     } catch (error) {  
-      console.error('Erreur lors du chargement des détails:', error);  
+      console.error('💥 [ERROR] Erreur dans handleViewDetails:', error);  
+      setError(`Erreur lors du chargement des détails: ${error.message}`);  
+      alert(`Impossible de charger les détails de la commande.\nErreur: ${error.message}`);  
+    } finally {  
+      setLoading(false);  
+      console.log('🏁 [DEBUG] handleViewDetails - Fin de la fonction');  
     }  
   };  
   
@@ -368,7 +507,7 @@ export default function OrderTrackingManagement() {
                       <Search className="tracking-search-icon" />  
                       <input  
                         type="text"  
-                        placeholder="N° commande, client, région..."  
+                        placeholder="N° commande, client, ville..."  
                         value={filters.search}  
                         onChange={(e) => handleFilterChange('search', e.target.value)}  
                         className="tracking-search-input"  
@@ -407,44 +546,36 @@ export default function OrderTrackingManagement() {
                     </select>  
                   </div>  
   
-                  {/* Filtre par région */}  
+                  {/* 🔧 MODIFIÉ: Filtre par ville (remplace région) */}  
                   <div className="tracking-form-group">  
-                    <label className="tracking-label">Région</label>  
+                    <label className="tracking-label">Ville</label>  
                     <select  
-                      value={filters.region}  
-                      onChange={(e) => handleFilterChange('region', e.target.value)}  
+                      value={filters.ville}  
+                      onChange={(e) => handleFilterChange('ville', e.target.value)}  
                       className="tracking-select"  
+                      disabled={loadingCities}  
                     >  
-                      <option value="all">Toutes les régions</option>  
-                      <option value="casablanca">Casablanca</option>  
-                      <option value="rabat">Rabat</option>  
-                      <option value="marrakech">Marrakech</option>  
-                      <option value="fès">Fès</option>  
-                      <option value="tanger">Tanger</option>  
-                      <option value="agadir">Agadir</option>  
+                      <option value="all">Toutes les villes</option>  
+                      {cities.map(city => (  
+                        <option key={city._id} value={city.name}>  
+                          {city.name}  
+                        </option>  
+                      ))}  
                     </select>  
                   </div>  
   
                   {/* Filtre par date */}  
                   <div className="tracking-form-group">  
-                    <label className="tracking-label">Date de début</label>  
+                    <label className="tracking-label">Date</label>  
                     <input  
                       type="date"  
-                      value={filters.dateFrom}  
-                      onChange={(e) => handleFilterChange('dateFrom', e.target.value)}  
+                      value={filters.date}  
+                      onChange={(e) => handleFilterChange('date', e.target.value)}  
                       className="tracking-input"  
+                      title="Filtrer les commandes de cette date"  
                     />  
-                  </div>  
-  
-                  <div className="tracking-form-group">  
-                    <label className="tracking-label">Date de fin</label>  
-                    <input  
-                      type="date"  
-                      value={filters.dateTo}  
-                      onChange={(e) => handleFilterChange('dateTo', e.target.value)}  
-                      className="tracking-input"  
-                    />  
-                  </div>  
+                  </div>
+
                 </div>  
               </div>  
             </div>  
@@ -472,7 +603,7 @@ export default function OrderTrackingManagement() {
                       <tr>  
                         <th>N° Cmd</th>  
                         <th>Client</th>  
-                        <th>Région</th>  
+                        <th>Ville</th>  
                         <th>Date</th>  
                         <th>Total (DH)</th>  
                         <th>État</th>  
@@ -492,7 +623,7 @@ export default function OrderTrackingManagement() {
                           const realState = getRealOrderState(order);  
                           const totalAmount = getTotalAmount(order);  
                           const truckInfo = getTruckInfo(order);  
-                            
+                              
                           return (  
                             <tr key={order.id}>  
                               <td className="tracking-font-medium">{order.orderNumber || order.numero_commande}</td>  
@@ -552,7 +683,7 @@ export default function OrderTrackingManagement() {
                 <X className="tracking-close-icon" />  
               </button>  
             </div>  
-                
+                  
             <div className="tracking-modal-body">  
               <div className="tracking-details-grid">  
                 <div className="tracking-detail-item">  
@@ -571,14 +702,14 @@ export default function OrderTrackingManagement() {
                   <label className="tracking-detail-label">Adresse complète</label>  
                   <span className="tracking-detail-value">  
                     {selectedOrder.deliveryAddress ?   
-                      `${selectedOrder.deliveryAddress.street}, ${selectedOrder.deliveryAddress.city}` :   
+                      `${selectedOrder.deliveryAddress.address}, ${selectedOrder.deliveryAddress.city}` :   
                       'N/A'  
                     }  
                   </span>  
                 </div>  
   
                 <div className="tracking-detail-item">  
-                  <label className="tracking-detail-label">Région</label>  
+                  <label className="tracking-detail-label">Ville</label>  
                   <span className="tracking-detail-value">{selectedOrder.deliveryAddress?.city || 'N/A'}</span>  
                 </div>  
   
@@ -612,7 +743,7 @@ export default function OrderTrackingManagement() {
                   </span>  
                 </div>  
   
-                {/* ✅ CORRIGÉ: Informations complètes du camion */}  
+                {/* Informations complètes du camion */}  
                 {getTruckInfo(selectedOrder) && (  
                   <>  
                     <div className="tracking-detail-item">  
@@ -631,7 +762,7 @@ export default function OrderTrackingManagement() {
                   </>  
                 )}  
   
-                {/* ✅ NOUVEAU: Informations du chauffeur */}  
+                {/* Informations du chauffeur */}  
                 {getDriverInfo(selectedOrder) && (  
                   <>  
                     <div className="tracking-detail-item">  
@@ -657,7 +788,7 @@ export default function OrderTrackingManagement() {
                   </>  
                 )}  
   
-                {/* ✅ NOUVEAU: Informations de l'accompagnant */}  
+                {/* Informations de l'accompagnant */}  
                 {getAccompagnantInfo(selectedOrder) && (  
                   <>  
                     <div className="tracking-detail-item">  
@@ -690,7 +821,7 @@ export default function OrderTrackingManagement() {
                   </span>  
                 </div>  
   
-                {/* ✅ NOUVEAU: Note du livreur */}  
+                {/* Note du livreur */}  
                 <div className="tracking-detail-item tracking-full-width">  
                   <label className="tracking-detail-label">Note du livreur</label>  
                   <span className="tracking-detail-value">  
@@ -705,7 +836,7 @@ export default function OrderTrackingManagement() {
                   </span>  
                 </div>  
   
-                {/* ✅ CORRIGÉ: Historique avec dates valides */}  
+                {/* Historique avec dates valides */}  
                 <div className="tracking-detail-item tracking-full-width">  
                   <label className="tracking-detail-label">Historique</label>  
                   <div className="tracking-history-list">  

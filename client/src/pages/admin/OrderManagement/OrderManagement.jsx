@@ -46,7 +46,7 @@ const OrderManagement = () => {
     status: 'pending',    
     priority: 'all',    
     dateFrom: '',    
-    dateTo: ''    
+    date: ''    
   });    
       
   const [selectedOrder, setSelectedOrder] = useState(null);    
@@ -85,48 +85,76 @@ const OrderManagement = () => {
   }, []);    
     
   // ✅ MODIFIÉ: Utiliser le nouveau orderService  
-  const fetchOrders = useCallback(async (currentFilters = null, currentPage = null) => {    
-    if (!isMountedRef.current) return;    
+  const fetchOrders = useCallback(async (currentFilters = null, currentPage = null) => {  
+    if (!isMountedRef.current) return;  
+          
+    try {  
+      setLoading(true);  
+      setError('');  
+            
+      const filtersToUse = currentFilters || filters;  
+      const pageToUse = currentPage || pagination.page;  
         
-    try {    
-      setLoading(true);    
-      setError('');    
-          
-      const filtersToUse = currentFilters || filters;    
-      const pageToUse = currentPage || pagination.page;    
-          
-      // ✅ MODIFIÉ: Utiliser directement orderService.getOrders  
+      console.log('🔍 [DEBUG] Filtres appliqués:', filtersToUse);  
+        
+      // 🔧 FORCÉ: Toujours filtrer sur pending uniquement  
+      const statusFilter = 'pending';  
+        
+      // 🔧 MODIFIÉ: Logique pour filtrer par date du jour  
+      let dateFromFilter, dateToFilter;  
+      if (filtersToUse.date) {  
+        const selectedDate = new Date(filtersToUse.date);  
+        dateFromFilter = new Date(selectedDate.setHours(0, 0, 0, 0)).toISOString();  
+        dateToFilter = new Date(selectedDate.setHours(23, 59, 59, 999)).toISOString();  
+        console.log('📅 [DEBUG] Plage de dates:', { dateFromFilter, dateToFilter });  
+      }  
+            
       const response = await orderService.getOrders({  
         page: pageToUse,  
         limit: pagination.limit,  
         search: filtersToUse.search,  
-        status: filtersToUse.status === 'all' ? undefined : filtersToUse.status,  
-        priority: filtersToUse.priority === 'all' ? undefined : filtersToUse.priority,  
-        dateFrom: filtersToUse.dateFrom,  
-        dateTo: filtersToUse.dateTo  
+        status: statusFilter, // Toujours pending  
+        // 🔧 SUPPRIMÉ: Ne pas envoyer priority à l'API  
+        // priority: filtersToUse.priority === 'all' ? undefined : filtersToUse.priority,  
+        dateFrom: dateFromFilter,  
+        dateTo: dateToFilter  
       });  
-  
+    
+      console.log('📊 [DEBUG] Réponse API:', response);  
+    
       if (isMountedRef.current) {  
-        setOrders(response.data);    
-        setPagination(prev => ({    
-          ...prev,    
-          page: pageToUse,    
-          total: response.total || 0,    
-          totalPages: response.totalPages || 0  
-        }));    
+        let filteredData = response.data || [];  
+          
+        // 🔧 NOUVEAU: Appliquer le filtre de priorité côté client  
+        if (filtersToUse.priority && filtersToUse.priority !== 'all') {  
+          filteredData = filteredData.filter((order) => {  
+            return order.priority === filtersToUse.priority;  
+          });  
+          console.log('🔍 [DEBUG] Après filtre priorité:', filteredData.length);  
+        }  
+          
+        setOrders(filteredData);  
+        setPagination(prev => ({  
+          ...prev,  
+          page: pageToUse,  
+          total: filteredData.length, // Ajuster le total après filtrage client  
+          totalPages: Math.ceil(filteredData.length / pagination.limit)  
+        }));  
+          
+        console.log('✅ [DEBUG] Données finales:', filteredData.length, 'commandes');  
       }  
-    } catch (err) {    
-      console.error('Erreur lors du chargement des commandes:', err);    
+    } catch (err) {  
+      console.error('💥 [ERROR] Erreur lors du chargement des commandes:', err);  
       if (isMountedRef.current) {  
-        setError(err.message);    
-        showNotification('Erreur lors du chargement des commandes', 'error');    
+        setError(err.message);  
+        showNotification('Erreur lors du chargement des commandes', 'error');  
       }  
-    } finally {    
+    } finally {  
       if (isMountedRef.current) {  
-        setLoading(false);    
+        setLoading(false);  
       }  
-    }    
-  }, [filters, pagination.page, pagination.limit, showNotification]);    
+    }  
+  }, [filters, pagination.page, pagination.limit, showNotification]);
     
   // ✅ MODIFIÉ: Chargement des camions simplifié  
   const fetchTrucks = useCallback(async () => {    
@@ -383,6 +411,43 @@ const OrderManagement = () => {
     };    
     return priorityTexts[priority] || priority;    
   };    
+
+  const getTotalAmount = (order) => {  
+  // 🔧 PRIORITÉ 1: Montant calculé lors de la création de commande  
+  if (order.montant_total) return order.montant_total;  
+    
+  // 🔧 PRIORITÉ 2: Calculer depuis les lignes de commande (products)  
+  if (order.products && order.products.length > 0) {  
+    const calculatedTotal = order.products.reduce((total, product) => {  
+      const quantity = product.quantity || product.quantite || 0;  
+      const price = product.price || product.prix_unitaire || 0;  
+      return total + (quantity * price);  
+    }, 0);  
+      
+    // Ajouter les frais de livraison si pas déjà inclus  
+    return calculatedTotal > 0 ? calculatedTotal + 20 : calculatedTotal;  
+  }  
+    
+  // 🔧 PRIORITÉ 3: Montant depuis planification/livraison (après assignation)  
+  if (order.livraison?.total) return order.livraison.total;  
+  if (order.planification?.total) return order.planification.total;  
+    
+  return 0;  
+}; 
+  
+const getTruckInfo = (order) => {  
+  if (order.assignedTruck) return order.assignedTruck;  
+  if (order.planification?.trucks_id) {  
+    return {  
+      plateNumber: order.planification.trucks_id.matricule || 'N/A',  
+      model: order.planification.trucks_id.marque || 'N/A',  
+      driverName: order.planification.livreur_employee_id?.physical_user_id   
+        ? `${order.planification.livreur_employee_id.physical_user_id.first_name} ${order.planification.livreur_employee_id.physical_user_id.last_name}`  
+        : 'Non assigné'  
+    };  
+  }  
+  return null;  
+};
     
   // Loading state - affichage initial    
   if (loading && orders.length === 0) {    
@@ -537,22 +602,7 @@ const OrderManagement = () => {
                     </div>    
                   </div>    
     
-                  <div className="om-form-group">    
-                    <label htmlFor="status-filter" className="om-label">Statut</label>    
-                    <select    
-                      id="status-filter"    
-                      value={filters.status}    
-                      onChange={(e) => handleFilterChange('status', e.target.value)}    
-                      className="om-select"    
-                    >    
-                      <option value="all">Tous les statuts</option>    
-                      <option value="pending">En attente</option>    
-                      <option value="assigned">Assignées</option>    
-                      <option value="in_progress">En cours</option>    
-                      <option value="delivered">Livrées</option>    
-                      <option value="cancelled">Annulées</option>    
-                    </select>    
-                  </div>    
+  
     
                   <div className="om-form-group">    
                     <label htmlFor="priority-filter" className="om-label">Priorité</label>    
@@ -570,27 +620,17 @@ const OrderManagement = () => {
                     </select>    
                   </div>    
     
-                  <div className="om-form-group">    
-                    <label htmlFor="date-from" className="om-label">Date de début</label>    
-                    <input    
-                      id="date-from"    
-                      type="date"    
-                      value={filters.dateFrom}    
-                      onChange={(e) => handleFilterChange('dateFrom', e.target.value)}    
-                      className="om-input"    
-                    />    
-                  </div>    
-    
-                  <div className="om-form-group">    
-                    <label htmlFor="date-to" className="om-label">Date de fin</label>    
-                    <input    
-                      id="date-to"    
-                      type="date"    
-                      value={filters.dateTo}    
-                      onChange={(e) => handleFilterChange('dateTo', e.target.value)}    
-                      className="om-input"    
-                    />    
-                  </div>    
+                  <div className="om-form-group">  
+                    <label htmlFor="date" className="om-label">Date</label>  
+                    <input  
+                      id="date"  
+                      type="date"  
+                      value={filters.date}  
+                      onChange={(e) => handleFilterChange('date', e.target.value)}  
+                      className="om-input"  
+                      title="Filtrer les commandes de cette date"  
+                    />  
+                  </div> 
                 </div>    
               </div>    
             </div>    
@@ -668,21 +708,27 @@ const OrderManagement = () => {
                                 <span className="om-priority-text">{getPriorityText(order.priority)}</span>      
                               </div>      
                             </td>      
-                            <td>      
-                              {order.assignedTruck ? (      
-                                <div className="om-truck-info">      
-                                  <p className="om-truck-plate">{order.assignedTruck.plateNumber}</p>      
-                                  <p className="om-truck-driver">{order.assignedTruck.driverName}</p>      
-                                </div>      
-                              ) : (      
-                                <span className="om-not-assigned">Non assigné</span>      
-                              )}      
-                            </td>      
-                            <td>      
-                              <div className="om-amount-info">      
-                                <span className="om-amount">{order.montant_total || 'N/A'} DH</span>      
-                              </div>      
-                            </td>      
+                            <td>    
+                              {(() => {    
+                                const truckInfo = getTruckInfo(order);    
+                                return truckInfo ? (    
+                                  <div className="om-truck-info">    
+                                    <p className="om-truck-plate">{truckInfo.plateNumber}</p>    
+                                    <p className="om-truck-driver">{truckInfo.driverName}</p>    
+                                  </div>    
+                                ) : (    
+                                  <span className="om-not-assigned">Non assigné</span>    
+                                );    
+                              })()}    
+                            </td>    
+                            <td>    
+                              <div className="om-amount-info">    
+                                <span className="om-amount">    
+                                  {getTotalAmount(order).toFixed(2)} DH    
+                                </span>    
+                              </div>    
+                            </td>     
+                                
                             <td>      
                               <div className="om-action-buttons">      
                                 <button      

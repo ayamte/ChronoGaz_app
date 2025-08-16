@@ -128,37 +128,63 @@ const Command = () => {
   };      
       
   // ✅ Amélioration du chargement des adresses client  
-  const loadClientData = async () => {        
-    try {        
-      setLoadingClient(true);        
-      const user = authService.getUser();        
-      if (user) {        
-        setClientData(user);        
-        if (user.customer_id) {      
-          // Utiliser le nouveau endpoint du router modulaire  
-          const addressesResponse = await fetch(`${API_BASE_URL}/api/customer/${user.customer_id}/addresses`, {      
-            headers: {      
-              'Authorization': `Bearer ${authService.getToken()}`,      
-              'Content-Type': 'application/json'      
-            }      
-          });        
-          if (addressesResponse.ok) {        
-            const addressesData = await addressesResponse.json();        
-            // ✅ Structure de réponse du nouveau contrôleur  
-            setClientAddresses(addressesData.addresses || []);        
-          } else {  
-            console.warn('Impossible de charger les adresses client');  
-            setClientAddresses([]);  
+const loadClientData = async () => {          
+  try {          
+    setLoadingClient(true);          
+    const user = authService.getUser();          
+    if (user) {          
+      setClientData(user);          
+        
+      // 🔧 CORRECTION: Récupérer customer_id comme dans le profil  
+      let customerId = user.customer_id;  
+        
+      // Si pas de customer_id dans les données locales, le récupérer via l'API profile  
+      if (!customerId) {  
+        const token = authService.getToken();  
+        const profileResponse = await fetch(`${API_BASE_URL}/api/users/profile`, {  
+          headers: {  
+            'Authorization': `Bearer ${token}`,  
+            'Content-Type': 'application/json'  
           }  
-        }      
+        });  
+          
+        if (profileResponse.ok) {  
+          const profileData = await profileResponse.json();  
+          customerId = profileData.data?.customer_info?.customer_id;  
+            
+          // Mettre à jour les données utilisateur locales avec le customer_id  
+          if (customerId && user) {  
+            const updatedUser = { ...user, customer_id: customerId };  
+            authService.setUser(updatedUser);  
+            setClientData(updatedUser);  
+          }  
+        }  
+      }  
+        
+      if (customerId) {        
+        // Utiliser le nouveau endpoint du router modulaire    
+        const addressesResponse = await fetch(`${API_BASE_URL}/api/customer/${customerId}/addresses`, {        
+          headers: {        
+            'Authorization': `Bearer ${authService.getToken()}`,        
+            'Content-Type': 'application/json'        
+          }        
+        });          
+        if (addressesResponse.ok) {          
+          const addressesData = await addressesResponse.json();          
+          setClientAddresses(addressesData.addresses || []);          
+        } else {    
+          console.warn('Impossible de charger les adresses client');    
+          setClientAddresses([]);    
+        }    
       }        
-    } catch (error) {        
-      console.error('Erreur lors du chargement des données client:', error);  
-      setClientAddresses([]);        
-    } finally {        
-      setLoadingClient(false);        
-    }        
-  };      
+    }          
+  } catch (error) {          
+    console.error('Erreur lors du chargement des données client:', error);    
+    setClientAddresses([]);          
+  } finally {          
+    setLoadingClient(false);          
+  }          
+};     
       
   useEffect(() => {          
     loadProductsWithPrices();      

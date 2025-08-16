@@ -191,73 +191,7 @@ const AddressStep = ({
   
       {/* Options de sélection d'adresse */}  
       <div className="mb-8 space-y-4">  
-        {/* Option GPS améliorée */}  
-        <div   
-          className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${  
-            addressMode === 'gps'   
-              ? 'border-blue-500 bg-blue-50'   
-              : 'border-gray-300 hover:border-blue-300'  
-          }`}  
-          onClick={handleUseGPS}  
-        >  
-          <div className="flex items-center space-x-3">  
-            <input  
-              type="radio"  
-              name="addressType"  
-              checked={addressMode === 'gps'}  
-              onChange={handleUseGPS}  
-              className="w-4 h-4 text-blue-600"  
-            />  
-            <Navigation className="text-blue-600" size={24} />  
-            <div>  
-              <h3 className="text-lg font-semibold text-blue-900">  
-                Utiliser ma position  
-              </h3>  
-              <p className="text-gray-600 text-sm">  
-                Géolocalisation automatique ou sélection sur carte  
-              </p>  
-            </div>  
-          </div>  
-            
-          {addressMode === 'gps' && (  
-            <div className="mt-4 ml-10">
-              <div className="flex gap-3 mb-3">
-                <button  
-                  onClick={onGPSLocation}  
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"  
-                >  
-                  <Navigation className="inline mr-2" size={16} />
-                  Position automatique
-                </button>
-                <button  
-                  onClick={() => setShowMapSelector(!showMapSelector)}  
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"  
-                >  
-                  <Map className="inline mr-2" size={16} />
-                  Sélectionner sur carte
-                </button>
-              </div>
-
-              {gpsLocation && (  
-                <div className="mt-3 p-3 bg-green-50 rounded-lg">  
-                  <p className="text-green-800 font-medium text-sm">  
-                    ✓ Position automatique : {gpsLocation.latitude.toFixed(6)}, {gpsLocation.longitude.toFixed(6)}  
-                  </p>  
-                </div>  
-              )}
-
-              {manualCoordinates && (  
-                <div className="mt-3 p-3 bg-blue-50 rounded-lg">  
-                  <p className="text-blue-800 font-medium text-sm">  
-                    ✓ Position sélectionnée : {manualCoordinates.latitude.toFixed(6)}, {manualCoordinates.longitude.toFixed(6)}  
-                  </p>  
-                </div>  
-              )}
-
-              {showMapSelector && <MapSelector />}
-            </div>  
-          )}  
-        </div>  
+       
   
         {/* Adresses sauvegardées améliorées */}  
         {clientAddresses.length > 0 && (  

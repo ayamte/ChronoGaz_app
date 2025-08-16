@@ -1,13 +1,27 @@
 import api from './api';    
 import { authService } from './authService';    
     
-// Création de commande avec nouvelle architecture d'adresses    
+// Création de commande avec nouvelle architecture d'adresses - SANS GPS    
 export const createOrderFromSteps = async (orderData) => {        
   try {        
     console.log('🛒 Création de commande avec:', orderData);        
         
     const user = authService.getUser();        
-    const clientId = user?.customer_id || orderData.clientId;      
+    console.log('👤 [DEBUG] Utilisateur récupéré:', user);
+    
+    // 🔧 CORRECTION: Vérifier plusieurs sources pour le customer_id
+    let clientId = user?.customer_id || user?.customerId || orderData.clientId;
+    
+    // Si toujours pas de clientId, essayer de le récupérer depuis le token
+    if (!clientId && user?.userId) {
+      clientId = user.userId;
+    }
+    
+    console.log('🆔 [DEBUG] Client ID utilisé:', clientId);
+    
+    if (!clientId) {
+      throw new Error("Impossible de récupérer l'ID du client. Veuillez vous reconnecter.");
+    }
         
     // Lignes de commande      
     const lignes = [];        
@@ -28,25 +42,17 @@ export const createOrderFromSteps = async (orderData) => {
       throw new Error("Aucun produit sélectionné");        
     }        
         
-    // Structure d'adresse corrigée selon le contrôleur    
+    // 🔧 MODIFIÉ: Structure d'adresse SANS GPS - seulement 2 options
     let addressPayload = {};        
         
-    if (orderData.useGPS && orderData.gpsLocation) {        
-      addressPayload = {        
-        use_existing_address: false,        
-        new_address: {        
-          street: 'Position GPS',        
-          latitude: orderData.gpsLocation.latitude,        
-          longitude: orderData.gpsLocation.longitude,        
-          type_adresse: 'LIVRAISON'    
-        }        
-      };        
-    } else if (orderData.selectedExistingAddress) {        
+    if (orderData.selectedExistingAddress) {        
+      // Option 1: Adresse existante sélectionnée
       addressPayload = {        
         use_existing_address: true,        
         address_id: orderData.selectedExistingAddress._id        
       };        
     } else if (orderData.address && orderData.address.new_address) {        
+      // Option 2: Nouvelle adresse manuelle
       addressPayload = {        
         use_existing_address: false,        
         new_address: orderData.address.new_address    
@@ -55,7 +61,6 @@ export const createOrderFromSteps = async (orderData) => {
       throw new Error("Aucune adresse de livraison fournie");        
     }        
         
-    // Utiliser l'objet api au lieu d'axios directement  
     const response = await api.post('/commands', {      
       customer_id: clientId,      
       address: addressPayload,  
@@ -71,19 +76,23 @@ export const createOrderFromSteps = async (orderData) => {
   }        
 };  
     
-// ✅ Validation d'adresse corrigée - Sans région    
-export const validateAddress = (address, useGPS, selectedExistingAddress) => {    
-  if (useGPS) return true;    
+// ✅ Validation d'adresse corrigée - SANS GPS    
+export const validateAddress = (address, selectedExistingAddress) => {    
+  // Option 1: Adresse existante sélectionnée
   if (selectedExistingAddress) return true;    
       
-  // ✅ SUPPRIMER 'region_id' des champs requis    
-  const requiredFields = ['street', 'city_id', 'telephone'];    
-  const missingFields = requiredFields.filter(field => !address[field]);    
-  if (missingFields.length > 0) {    
-    console.warn('Champs manquants:', missingFields);    
-    return false;    
-  }    
-  return true;    
+  // Option 2: Nouvelle adresse manuelle
+  if (address && address.new_address) {
+    const requiredFields = ['street', 'city_id', 'telephone'];    
+    const missingFields = requiredFields.filter(field => !address.new_address[field]);    
+    if (missingFields.length > 0) {    
+      console.warn('Champs manquants:', missingFields);    
+      return false;    
+    }    
+    return true;
+  }
+  
+  return false;    
 };    
     
 // Service principal avec toutes les fonctions    
@@ -103,14 +112,13 @@ export const orderService = {
       customerId    
     } = params;    
           
-    // ✅ MODIFIÉ: Ne plus mapper les statuts car le backend gère maintenant les planifications
     try {    
       const response = await api.get('/commands', {    
         params: {    
           page,    
           limit,    
           search,    
-          status, // Passer directement le statut frontend
+          status,
           priority,    
           dateFrom,    
           dateTo,    
@@ -121,6 +129,8 @@ export const orderService = {
       const transformedData = response.data.data.map(command => ({    
         id: command._id,    
         orderNumber: command.numero_commande,    
+        montant_total: command.montant_total, // 🔧 AJOUTÉ: Mapper le montant total
+        totalAmount: command.montant_total,   // 🔧 AJOUTÉ: Alias pour compatibilité
         customer: {    
           id: command.customer_id._id,    
           name: command.customer_id?.physical_user_id?.first_name ||    
@@ -138,9 +148,7 @@ export const orderService = {
         } : null,    
         orderDate: command.date_commande,    
         requestedDeliveryDate: command.date_souhaite || command.date_commande,    
-        // ✅ MODIFIÉ: Déterminer le statut basé sur la planification
         status: this.mapPlanificationToStatus(command.planification, command.livraison),    
-        // ✅ MODIFIÉ: Priorité basée sur la planification
         priority: command.planification?.priority || (command.urgent ? 'high' : 'medium'),    
         assignedTruckId: command.planification?.trucks_id?._id || null,    
         assignedTruck: command.planification?.trucks_id ? {    
@@ -157,7 +165,6 @@ export const orderService = {
         orderSource: 'website',    
         createdAt: command.createdAt,    
         updatedAt: command.updatedAt,
-        // ✅ NOUVEAU: Ajouter les données de planification et livraison
         planification: command.planification,
         livraison: command.livraison
       }));    
@@ -200,7 +207,6 @@ export const orderService = {
         } : null,    
         orderDate: command.date_commande,    
         requestedDeliveryDate: command.date_souhaite || command.date_commande,    
-        // ✅ MODIFIÉ: Statut basé sur la planification
         status: this.mapPlanificationToStatus(planification),    
         priority: planification?.priority || (command.urgent ? 'high' : 'medium'),    
         products: response.data.data.lignes || [],    
@@ -224,13 +230,11 @@ export const orderService = {
     }    
   },    
     
-  // ✅ MODIFIÉ: Statistiques basées sur les planifications
   async getOrderStats() {    
     try {    
       const response = await api.get('/commands/stats');    
       const stats = response.data.data;    
             
-      // ✅ MODIFIÉ: Utiliser les nouvelles statistiques du backend
       return {    
         total: stats.totalCommandes,    
         pending: stats.pending || 0,    
@@ -244,41 +248,54 @@ export const orderService = {
     }    
   },    
     
-  async assignTruck(orderId, payload) {    
-    try {    
-      const response = await api.put(`/commands/${orderId}/status`, payload);    
-      return response.data.data;    
-    } catch (error) {    
-      console.error('Erreur assignTruck:', error);    
-      throw error;    
-    }    
-  },    
+  // Fonction pour mapper les planifications vers les statuts frontend
+  mapPlanificationToStatus(planification, livraison) {
+    if (livraison) {
+      switch (livraison.etat) {
+        case 'EN_COURS': return 'in_progress';
+        case 'LIVRE': return 'delivered';
+        case 'ANNULE': return 'cancelled';
+        case 'ECHEC': return 'cancelled';
+        case 'PARTIELLE': return 'delivered';
+        default: return 'in_progress';
+      }
+    }
     
-  // ✅ MODIFIÉ: Utiliser la nouvelle route pour annuler planification
-  async cancelAssignment(orderId) {    
-    try {    
-      const response = await api.put(`/commands/${orderId}/cancel-planification`);    
-      return response.data.data;    
-    } catch (error) {    
-      console.error('Erreur cancelAssignment:', error);    
-      throw error;    
-    }    
-  },    
+    if (planification) {
+      switch (planification.etat) {
+        case 'PLANIFIE': return 'assigned';
+        case 'ANNULE': return 'cancelled';
+        default: return 'assigned';
+      }
+    }
     
-  // ✅ MODIFIÉ: Fonction simplifiée pour la planification
-  async updateOrderStatus(orderId, status, notes = '') {    
-    try {    
-      // Cette fonction n'est plus utilisée avec le nouveau workflow
-      console.warn('updateOrderStatus est dépréciée, utiliser assignTruck à la place');
-      const response = await api.put(`/commands/${orderId}/status`, {    
-        details: notes    
-      });    
-      return response.data.data;    
-    } catch (error) {    
-      console.error('Erreur updateOrderStatus:', error);    
-      throw error;    
-    }    
-  },    
+    return 'pending';
+  },
+
+  // Fonction pour assigner un camion
+  async assignTruck(orderId, assignmentData) {
+    try {
+      const response = await api.post(`/planifications`, {
+        commande_id: orderId,
+        ...assignmentData
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Erreur assignTruck:', error);
+      throw error;
+    }
+  },
+
+  // Fonction pour annuler une assignation
+  async cancelAssignment(orderId) {
+    try {
+      const response = await api.delete(`/planifications/commande/${orderId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur cancelAssignment:', error);
+      throw error;
+    }
+  },
     
   // Utiliser l'endpoint existant pour les commandes client  
   async getClientOrders(customerId) {    
@@ -308,115 +325,30 @@ export const orderService = {
     }    
   },    
     
-  // ✅ NOUVEAU: Mapper l'état de planification vers le statut frontend
-  mapPlanificationToStatus(planification, livraison = null) {
-    if (!planification) return 'pending';
+  // Fonction pour générer l'historique d'une commande
+  generateHistory(command, planification) {
+    const history = [];
     
-    // Si il y a une livraison, utiliser son état
-    if (livraison) {
-      switch(livraison.etat) {
-        case 'EN_COURS': return 'in_progress';
-        case 'LIVRE': return 'delivered';
-        case 'ECHEC': return 'cancelled';
-        case 'PARTIELLE': return 'in_progress';
-        default: return 'assigned';
-      }
+    if (command.createdAt) {
+      history.push({
+        id: 'created',
+        action: 'Commande créée',
+        date: command.createdAt,
+        status: 'pending'
+      });
     }
     
-    // Sinon utiliser l'état de la planification
-    switch(planification.etat) {
-      case 'PLANIFIE': return 'assigned';
-      case 'EN_COURS': return 'in_progress';
-      case 'LIVRE': return 'delivered';
-      case 'ANNULE': return 'cancelled';
-      case 'REPORTE': return 'assigned';
-      default: return 'pending';
+    if (planification?.createdAt) {
+      history.push({
+        id: 'assigned',
+        action: 'Camion assigné',
+        date: planification.createdAt,
+        status: 'assigned'
+      });
     }
+    
+    return history.sort((a, b) => new Date(a.date) - new Date(b.date));
   },
-    
-  // ✅ MODIFIÉ: Fonctions de mapping dépréciées mais conservées pour compatibilité
-  mapLocalStatusToBackend(localStatus) {    
-    console.warn('mapLocalStatusToBackend est déprécié avec le nouveau workflow');
-    const mapping = {    
-      'pending': null, // Pas de planification
-      'assigned': 'PLANIFIE',    
-      'in_progress': 'EN_COURS',    
-      'delivered': 'LIVRE',    
-      'cancelled': 'ANNULE'    
-    };    
-    return mapping[localStatus] || localStatus;    
-  },    
-    
-  mapStatusToLocal(backendStatus) {    
-    console.warn('mapStatusToLocal est déprécié avec le nouveau workflow');
-    const mapping = {      
-      'EN_ATTENTE': 'pending',      
-      'PLANIFIEE': 'assigned',      
-      'EN_COURS': 'in_progress',      
-      'LIVREE': 'delivered',      
-      'ANNULEE': 'cancelled'      
-    };      
-    return mapping[backendStatus] || backendStatus;      
-  },      
-      
-  // ✅ MODIFIÉ: Historique basé sur les planifications et livraisons  
-  generateHistory(command, planification = null) {      
-    const history = [{      
-      id: 'hist-1',      
-      action: 'Commande créée',      
-      details: 'Commande créée dans le système',      
-      timestamp: command.createdAt || command.date_commande,      
-      userId: 'system',      
-      userName: 'Système'      
-    }];      
-      
-    if (command.updatedAt && command.updatedAt !== command.createdAt) {      
-      history.push({      
-        id: 'hist-2',      
-        action: 'Commande mise à jour',      
-        details: 'Commande modifiée',      
-        timestamp: command.updatedAt,      
-        userId: 'system',      
-        userName: 'Système'      
-      });      
-    }      
-      
-    // ✅ MODIFIÉ: Utiliser la planification au lieu du statut  
-    if (planification) {      
-      history.push({      
-        id: 'hist-3',      
-        action: 'Camion assigné',      
-        details: `Camion ${planification.trucks_id?.matricule} assigné`,      
-        timestamp: planification.createdAt,      
-        userId: planification.created_by || 'system',      
-        userName: 'Administrateur'      
-      });      
-  
-      if (planification.etat === 'EN_COURS') {      
-        history.push({      
-          id: 'hist-4',      
-          action: 'Livraison en cours',      
-          details: 'Le chauffeur a commencé la livraison',      
-          timestamp: planification.updatedAt,      
-          userId: 'driver',      
-          userName: 'Chauffeur'      
-        });      
-      }      
-        
-      if (planification.etat === 'LIVRE') {      
-        history.push({      
-          id: 'hist-5',      
-          action: 'Livraison terminée',      
-          details: 'Commande livrée avec succès',      
-          timestamp: planification.updatedAt,      
-          userId: 'driver',      
-          userName: 'Chauffeur'      
-        });      
-      }  
-    }      
-      
-    return history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));      
-  },      
       
   // Fonction pour créer une commande depuis les étapes du workflow client      
   async createOrder(orderData) {      
@@ -429,11 +361,11 @@ export const orderService = {
     }      
   },      
       
-  // ✅ MODIFIÉ: Fonction pour obtenir les commandes par statut (utilise le nouveau système)  
+  // Fonction pour obtenir les commandes par statut
   async getOrdersByStatus(status) {      
     try {      
       const response = await api.get('/commands', {      
-        params: { status } // Passer directement le statut frontend  
+        params: { status }
       });      
       return response.data.data;      
     } catch (error) {      
@@ -450,90 +382,90 @@ export const orderService = {
       });      
       return response.data.data;      
     } catch (error) {      
-      console.error('Erreur récupération commandes urgentes:', error);      
-      throw error;      
-    }      
-  },      
-      
-  // Fonction pour marquer une commande comme urgente (via update)    
-  async markOrderAsUrgent(orderId) {      
-    try {      
-      const response = await api.put(`/commands/${orderId}`, {      
-        urgent: true      
-      });      
-      return response.data.data;      
-    } catch (error) {      
-      console.error('Erreur marquage commande urgente:', error);      
-      throw error;      
-    }      
-  },      
-      
-  // Fonction pour obtenir les commandes d'une période      
-  async getOrdersByDateRange(startDate, endDate) {      
-    try {      
-      const response = await api.get('/commands', {      
-        params: {      
-          dateFrom: startDate,      
-          dateTo: endDate      
-        }      
-      });      
-      return response.data.data;      
-    } catch (error) {      
-      console.error('Erreur récupération commandes par période:', error);      
-      throw error;      
-    }      
-  },  
-  
-  // ✅ NOUVEAU: Service pour les livraisons  
-  async startDelivery(planificationId, deliveryData) {  
-    try {  
-      const response = await api.post(`/livraisons/start/${planificationId}`, deliveryData);  
-      return response.data.data;  
-    } catch (error) {  
-      console.error('Erreur démarrage livraison:', error);  
-      throw error;  
-    }  
-  },  
-  
-  async completeDelivery(livraisonId, completionData) {  
-    try {  
-      const response = await api.put(`/livraisons/${livraisonId}/complete`, completionData);  
-      return response.data.data;  
-    } catch (error) {  
-      console.error('Erreur finalisation livraison:', error);  
-      throw error;  
-    }  
-  },  
-  
-  async getDeliveries(params = {}) {  
-    try {  
-      const response = await api.get('/livraisons', { params });  
-      return response.data;  
-    } catch (error) {  
-      console.error('Erreur récupération livraisons:', error);  
-      throw error;  
-    }  
-  },  
-  
-  async getDeliveryById(livraisonId) {  
-    try {  
-      const response = await api.get(`/livraisons/${livraisonId}`);  
-      return response.data.data;  
-    } catch (error) {  
-      console.error('Erreur récupération livraison:', error);  
-      throw error;  
-    }  
-  },  
-  
-  async updateDeliveryLines(livraisonId, lignes) {  
-    try {  
-      const response = await api.put(`/livraisons/${livraisonId}/lines`, { lignes });  
-      return response.data.data;  
-    } catch (error) {  
-      console.error('Erreur mise à jour lignes livraison:', error);  
-      throw error;  
-    }  
-  }  
-};      
-      
+      console.error('Erreur récupération commandes urgentes:', error);        
+      throw error;        
+    }        
+  },        
+        
+  // Fonction pour marquer une commande comme urgente (via update)      
+  async markOrderAsUrgent(orderId) {        
+    try {        
+      const response = await api.put(`/commands/${orderId}`, {        
+        urgent: true        
+      });        
+      return response.data.data;        
+    } catch (error) {        
+      console.error('Erreur marquage commande urgente:', error);        
+      throw error;        
+    }        
+  },        
+        
+  // Fonction pour obtenir les commandes d'une période        
+  async getOrdersByDateRange(startDate, endDate) {        
+    try {        
+      const response = await api.get('/commands', {        
+        params: {        
+          dateFrom: startDate,        
+          dateTo: endDate        
+        }        
+      });        
+      return response.data.data;        
+    } catch (error) {        
+      console.error('Erreur récupération commandes par période:', error);        
+      throw error;        
+    }        
+  },    
+    
+  // ✅ NOUVEAU: Service pour les livraisons    
+  async startDelivery(planificationId, deliveryData) {    
+    try {    
+      const response = await api.post(`/livraisons/start/${planificationId}`, deliveryData);    
+      return response.data.data;    
+    } catch (error) {    
+      console.error('Erreur démarrage livraison:', error);    
+      throw error;    
+    }    
+  },    
+    
+  async completeDelivery(livraisonId, completionData) {    
+    try {    
+      const response = await api.put(`/livraisons/${livraisonId}/complete`, completionData);    
+      return response.data.data;    
+    } catch (error) {    
+      console.error('Erreur finalisation livraison:', error);    
+      throw error;    
+    }    
+  },    
+    
+  async getDeliveries(params = {}) {    
+    try {    
+      const response = await api.get('/livraisons', { params });    
+      return response.data;    
+    } catch (error) {    
+      console.error('Erreur récupération livraisons:', error);    
+      throw error;    
+    }    
+  },    
+    
+  async getDeliveryById(livraisonId) {    
+    try {    
+      const response = await api.get(`/livraisons/${livraisonId}`);    
+      return response.data.data;    
+    } catch (error) {    
+      console.error('Erreur récupération livraison:', error);    
+      throw error;    
+    }    
+  },    
+    
+  async updateDeliveryLines(livraisonId, lignes) {    
+    try {    
+      const response = await api.put(`/livraisons/${livraisonId}/lines`, { lignes });    
+      return response.data.data;    
+    } catch (error) {    
+      console.error('Erreur mise à jour lignes livraison:', error);    
+      throw error;    
+    }    
+  }    
+};        
+        
 export default orderService;
